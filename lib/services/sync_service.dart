@@ -130,10 +130,31 @@ class SyncService {
     );
   }
 
+  static const _maxPayloadBytes = 50 * 1024 * 1024; // 50 MB
+
+  Future<String?> _readBodyWithLimit(Request req, [int maxBytes = _maxPayloadBytes]) async {
+    final lengthHeader = req.headers['content-length'];
+    if (lengthHeader != null) {
+      final declared = int.tryParse(lengthHeader);
+      if (declared != null && declared > maxBytes) return null;
+    }
+    final chunks = <int>[];
+    await for (final chunk in req.read()) {
+      chunks.addAll(chunk);
+      if (chunks.length > maxBytes) return null;
+    }
+    return utf8.decode(chunks);
+  }
+
   Future<Response> _handlePush(Request req) async {
     try {
-      final data = Map<String, dynamic>.from(
-          jsonDecode(await req.readAsString()) as Map);
+      final bodyStr = await _readBodyWithLimit(req);
+      if (bodyStr == null) {
+        return Response(413,
+            body: jsonEncode({'ok': false, 'error': 'Payload too large'}),
+            headers: {'content-type': 'application/json'});
+      }
+      final data = Map<String, dynamic>.from(jsonDecode(bodyStr) as Map);
       final senderPort = data['senderPort'] as int?;
       final connInfo =
           req.context['shelf.io.connection_info'] as HttpConnectionInfo?;
@@ -165,8 +186,13 @@ class SyncService {
 
   Future<Response> _handlePull(Request req) async {
     try {
-      final data = Map<String, dynamic>.from(
-          jsonDecode(await req.readAsString()) as Map);
+      final bodyStr = await _readBodyWithLimit(req);
+      if (bodyStr == null) {
+        return Response(413,
+            body: jsonEncode({'error': 'Payload too large'}),
+            headers: {'content-type': 'application/json'});
+      }
+      final data = Map<String, dynamic>.from(jsonDecode(bodyStr) as Map);
       final folderIds =
           (data['folderIds'] as List).map((e) => e as String).toList();
       final quizIds =
@@ -599,7 +625,10 @@ class SyncService {
 
         String? imagePath;
         final imgName = qJson['imageName'] as String?;
-        if (imgName != null) imagePath = p.join(imgDir, imgName);
+        if (imgName != null) {
+          final safe = p.basename(imgName);
+          if (safe.isNotEmpty) imagePath = p.join(imgDir, safe);
+        }
 
         final newId = await _db!.insertQuestion(QuestionsCompanion(
           id: Value(id),
@@ -627,7 +656,10 @@ class SyncService {
 
         String? imagePath;
         final imgName = fJson['imageName'] as String?;
-        if (imgName != null) imagePath = p.join(imgDir, imgName);
+        if (imgName != null) {
+          final safe = p.basename(imgName);
+          if (safe.isNotEmpty) imagePath = p.join(imgDir, safe);
+        }
 
         final newId = await _db!.insertFolder(FoldersCompanion(
           id: Value(id),
@@ -664,7 +696,10 @@ class SyncService {
 
           String? imagePath;
           final imgName = qzJson['imageName'] as String?;
-          if (imgName != null) imagePath = p.join(imgDir, imgName);
+          if (imgName != null) {
+            final safe = p.basename(imgName);
+            if (safe.isNotEmpty) imagePath = p.join(imgDir, safe);
+          }
 
           quizLocalId = await _db!.insertQuiz(QuizzesCompanion(
             id: Value(id),
@@ -709,10 +744,14 @@ class SyncService {
     }
 
     // Favorites (outside transaction — Hive)
+    // Only add favorites whose quiz was actually imported (prevents broken refs).
     for (final favId in payload.favoriteSyncIds) {
       if (!FavoritesService().isFavorite(favId)) {
-        await FavoritesService().addFavorite(favId);
-        favoritesAdded++;
+        final quizExists = await _db!.getQuizById(favId) != null;
+        if (quizExists) {
+          await FavoritesService().addFavorite(favId);
+          favoritesAdded++;
+        }
       }
     }
 
@@ -748,12 +787,12 @@ class SyncService {
     if (answerType != 'flashcard') return config;
     final result = Map<String, dynamic>.from(config);
     if (result['frontImagePath'] != null) {
-      result['frontImagePath'] =
-          p.join(imgDir, result['frontImagePath'] as String);
+      final name = p.basename(result['frontImagePath'] as String);
+      result['frontImagePath'] = name.isNotEmpty ? p.join(imgDir, name) : null;
     }
     if (result['backImagePath'] != null) {
-      result['backImagePath'] =
-          p.join(imgDir, result['backImagePath'] as String);
+      final name = p.basename(result['backImagePath'] as String);
+      result['backImagePath'] = name.isNotEmpty ? p.join(imgDir, name) : null;
     }
     return result;
   }

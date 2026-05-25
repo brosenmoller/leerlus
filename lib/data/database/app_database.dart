@@ -147,7 +147,12 @@ class AppDatabase extends _$AppDatabase {
         if (seenQuestionIds.contains(question.id)) continue;
         seenQuestionIds.add(question.id);
 
-        final config = jsonDecode(question.answerConfig) as Map<String, dynamic>;
+        final Map<String, dynamic> config;
+        try {
+          config = jsonDecode(question.answerConfig) as Map<String, dynamic>;
+        } catch (_) {
+          continue;
+        }
         final questionJson = <String, dynamic>{
           'id': question.id,
           'questionVariants': question.questionVariants != null
@@ -362,14 +367,15 @@ class AppDatabase extends _$AppDatabase {
   Future<bool> updateFolder(FoldersCompanion entry) =>
       update(folders).replace(entry);
 
-  Future<void> deleteFolder(String id) async {
-    // Recursively delete subfolders
+  Future<void> deleteFolder(String id) =>
+      transaction(() => _deleteFolderRecursive(id));
+
+  Future<void> _deleteFolderRecursive(String id) async {
     final subs = await (select(folders)
       ..where((t) => t.parentFolderId.equals(id))).get();
     for (final sub in subs) {
-      await deleteFolder(sub.id);
+      await _deleteFolderRecursive(sub.id);
     }
-    // Delete quizzes in this folder
     final quizzesInFolder = await (select(quizzes)
       ..where((t) => t.folderId.equals(id))).get();
     for (final quiz in quizzesInFolder) {
@@ -504,13 +510,13 @@ class AppDatabase extends _$AppDatabase {
         await delete(folders).go();
       });
 
-  Future<void> insertJunctionRowSafe(String quizId, String questionId, int sortOrder) async {
-    try {
-      await into(quizQuestions).insert(QuizQuestionsCompanion.insert(
-        quizId: quizId,
-        questionId: questionId,
-        sortOrder: Value(sortOrder),
-      ));
-    } catch (_) {} // Ignore duplicate junction rows
-  }
+  Future<void> insertJunctionRowSafe(String quizId, String questionId, int sortOrder) =>
+      into(quizQuestions).insert(
+        QuizQuestionsCompanion.insert(
+          quizId: quizId,
+          questionId: questionId,
+          sortOrder: Value(sortOrder),
+        ),
+        mode: InsertMode.insertOrIgnore,
+      );
 }

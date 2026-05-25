@@ -1,0 +1,190 @@
+Stability Audit: Med Brew
+
+  I split the audit into three areas. Here are the findings, ordered by severity within each area.
+  
+  ---
+  Area 1 — Hive / SRS / UserQuestionData
+
+  CRITICAL: No recovery if a Hive box is corrupt on open
+  - srs_service.dart:22, settings_service.dart:16, streak_service.dart:92, favorites_service.dart:15
+  - Hive.openBox() is called with no try/catch in any service. If any box file is corrupted (e.g. from an unclean shutdown, disk error, or OS kill), the exception propagates uncaught from
+  main() and the app crashes permanently — the user can't open it at all.
+
+  HIGH: Race condition creating new UserQuestionData on first access
+  - srs_service.dart:33-40
+  - Two concurrent callers seeing a null entry both create a new UserQuestionData and call _box.put(). The second write silently overwrites the first. Unlikely in practice today but could
+  matter if quiz screens are parallelized.
+
+  HIGH: _box.put() in SrsService.getUserData() is not awaited
+  - srs_service.dart:40
+  - The newly created UserQuestionData may not be flushed to disk if the app is force-closed immediately after first access.
+
+  MEDIUM: No cleanup of SRS entries when a question is deleted
+  - srs_service.dart (general), app_database.dart:461
+  - Deleting a question never removes its corresponding UserQuestionData from the Hive box. The box slowly accumulates orphaned entries for deleted questions indefinitely.
+
+  MEDIUM: Services can be accessed before init() completes
+  - settings_service.dart:26,48-63,80, streak_service.dart:76-86, favorites_service.dart:19
+  - All property getters access _box directly without any initialized guard. If any eager consumer calls a getter before the await service.init() in main() completes, it crashes with a
+  LateInitializationError.
+
+  ---
+  Area 2 — Sync System
+
+  CRITICAL: No HTTP status code checks anywhere in the initiator
+  - sync_service.dart:247-265, 315-337, 348-356
+  - Every http.get() / http.post() call parses the response body as JSON without first checking statusCode. A 500 or 503 from the peer causes a JSON parse exception mid-sync, potentially
+  after the DB has already received partial data.
+
+  CRITICAL: Images are fetched outside the DB transaction boundary
+  - sync_service.dart:145-150, 360-366, 565-674
+  - Image downloads happen before _importPayload() enters its transaction(). If the transaction rolls back after images are already written to disk, the image files remain (disk leak). If
+  image downloads fail after the transaction commits, the DB has imagePath references to files that don't exist.
+
+  CRITICAL: Image fetch failures are silently swallowed
+  - sync_service.dart:750-762
+  - _fetchImage() wraps everything in catch (_) {} with no logging or retry. Failed image downloads produce no error; quiz/question records are imported with broken image paths.
+
+  HIGH: No payload size limit
+  - sync_service.dart:135-136, 168-169
+  - await req.readAsString() reads the entire request body with no size cap. A large or malicious payload can exhaust RAM and crash the acceptor.
+
+  HIGH: No timeouts on any HTTP requests
+  - sync_service.dart:263, 348
+  - If the remote peer stops responding mid-sync, the initiator hangs indefinitely with no timeout or cancellation.
+
+  HIGH: Quiz and question edits are never synced (silent first-write-wins)
+  - sync_service.dart:569-572, 644-646
+  - The import logic checks if (existing != null) { continue; } — existing records are skipped entirely. If the user edits a question on Device A and syncs to Device B, the edit is
+  silently discarded. The manifest has no modifiedAt timestamp, so there's no way to detect which version is newer.
+
+  HIGH: SRS data and favorites are imported outside the DB transaction
+  - sync_service.dart:676-704
+  - The Drift transaction commits first, then SRS (Hive) and favorites (Hive) are written. If the app is killed or a Hive write fails in between, the DB has the new quizzes/questions but
+  their SRS state is lost.
+
+  HIGH: Initiator crash after push but before /sync/done leaves acceptor hanging
+  - sync_service.dart:377-384
+  - The acceptor successfully imports data but never receives the /sync/done signal. Its UI blocks waiting for a result that never comes.
+
+  MEDIUM: Folder parent hierarchy can break on partial sync
+  - sync_service.dart:627-637
+  - Child folders are linked to parents via a second pass over folderIdMap. If a parent folder fails to import (or arrives out of order), the child is silently created at root level with
+  no parent link.
+
+  MEDIUM: Quizzes created without their folder on partial payload
+  - sync_service.dart:648-650
+  - If a quiz's folderId isn't in folderIdMap (folder failed or wasn't included in payload), the quiz is created with folderId: null — silently orphaned at root.
+
+  MEDIUM: Favorites added for quizzes that don't exist
+  - sync_service.dart:698-704
+  - Remote favorites are added without checking whether the referenced quiz was actually imported. If the quiz wasn't in the payload, the app stores a favorite pointing at a non-existent
+  quiz, which can crash any UI screen trying to load it.
+
+  MEDIUM: SRS progress can go backward on clock skew
+  - srs_service.dart:99-104
+  - upsertUserData() keeps whichever entry has the later lastReviewed timestamp. If Device B's clock is ahead of Device A, syncing from B to A overwrites A's more recent study session with
+   B's older one.
+
+  MEDIUM: Streak merge can produce an incorrect "studied today" state
+  - streak_service.dart:195-234
+  - If the remote has a higher streak count but an older date, mergeFromSync() takes the higher count but may adopt the remote date, causing the app to think the user studied today when
+  they didn't (or vice versa).
+
+  MEDIUM: imageName from payload not re-validated in _importPayload()
+  - sync_service.dart:588-589, 617, 653-654
+  - _handleImage() sanitizes with p.basename(), but _importPayload() takes imageName from the payload JSON and joins it directly to imgDir without re-sanitizing. A crafted imageName like
+  ../../etc/sensitive would store a path outside the intended directory.
+
+  LOW: Questions can be silently missing from a quiz after sync
+  - sync_service.dart:666-672
+  - Junction rows are only created if questionIdMap[qId] is non-null. If a question in the payload failed to import, the quiz simply has fewer questions with no error.
+
+  ---
+  Area 3 — Drift DB / Schema
+
+  CRITICAL: PRAGMA foreign_keys is never enabled
+  - app_database.dart:17-26
+  - SQLite does not enforce foreign key constraints by default, and Drift does not enable it automatically. All references() declarations in the schema are completely unenforced. Any
+  orphaned reference (deleted quiz, deleted question, deleted folder) silently persists with no DB-level protection.
+
+  HIGH: deleteQuestion() does not clean the junction table
+  - app_database.dart:461-462
+  - Deleting a question leaves its quiz_questions junction rows pointing at the now-deleted question. With FK enforcement off, these accumulate silently. Any UI rendering a quiz's question
+   list that relies on those junction rows can return missing/null items.
+
+  HIGH: insertQuestionIntoQuiz() is not wrapped in a transaction
+  - app_database.dart:448-459
+  - Two sequential writes: first insertQuestion(), then into(quizQuestions).insert(). If the second fails, the question exists in the DB but is unreachable from any quiz — permanently
+  orphaned.
+
+  HIGH: QuestionService force-unwraps nullable parentFolderId
+  - question_service.dart:52-54
+  - _folders[row.parentFolderId!] will crash with a null assertion if any folder has a parentFolderId that doesn't exist in the loaded map (e.g. after a partial sync or failed import).
+  This crashes the entire service load.
+
+  MEDIUM: Recursive folder deletion is not wrapped in a transaction
+  - app_database.dart:360-374
+  - deleteFolder() recursively deletes sub-folders and quizzes across multiple DB calls without a wrapping transaction. An interruption mid-recursion leaves a partially-deleted hierarchy.
+
+  MEDIUM: insertJunctionRowSafe() silently swallows all exceptions
+  - app_database.dart:498-506
+  - The catch (_) {} is intended to ignore duplicate-key violations, but it also suppresses disk-full errors, type errors, and DB corruption — making real failures invisible.
+
+  MEDIUM: JSON export crashes if any answerConfig is malformed
+  - app_database.dart:145-158
+  - jsonDecode(question.answerConfig) has no try/catch. If any question has a corrupted config blob (from a bad sync or manual edit), the entire export fails with an unhandled exception.
+
+  MEDIUM: Migration < v8 drops all tables without a transaction
+  - app_database.dart:35-50
+  - The destructive wipe for old schema versions runs bare DROP TABLE statements with no wrapping transaction. A crash mid-migration leaves the schema in an unknown state with no rollback.
+
+  ---
+  Summary: Top Priorities
+
+  ┌──────────┬───────────────────────────────────────────────────────────────────────────────────────────────────┬──────────────────────────────────────────────────┐
+  │ Priority │                                               Issue                                               │                      Payoff                      │
+  ├──────────┼───────────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+  │ 1        │ Enable PRAGMA foreign_keys = ON on DB open                                                        │ Stops all silent orphaned-reference accumulation │
+  ├──────────┼───────────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+  │ 2        │ Wrap deleteQuestion() + insertQuestionIntoQuiz() in transactions and cascade the junction cleanup │ Stops orphaned questions/junction rows           │
+  │ 3        │ Add try/catch + box-delete-and-recreate fallback on Hive.openBox()                                │ Prevents permanent app crash from box corruption │
+  ├──────────┼───────────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+  │ 4        │ Add HTTP status code checks + timeouts to all sync HTTP calls                                     │ Prevents hangs and mid-sync crashes              │
+  ├──────────┼───────────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+  │ 5        │ Move image downloads inside the sync DB transaction (or add rollback/cleanup)                     │ Prevents broken image references and disk leaks  │
+  ├──────────┼───────────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+  │ 6        │ Add a payload size limit to the sync HTTP server                                                  │ Prevents OOM from large/malicious payloads       │
+  ├──────────┼───────────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+  │ 7        │ Add modifiedAt to quizzes/questions and update the sync merge logic                               │ Prevents silent loss of edits                    │
+  ├──────────┼───────────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+  │ 8        │ Check quiz existence before adding synced favorites                                               │ Prevents broken favorite references              │
+  ├──────────┼───────────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+  │ 9        │ Clean up SRS entries when questions are deleted                                                   │ Stops indefinite Hive growth                     │
+  ├──────────┼───────────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+  │ 10       │ Fix question_service.dart:52 force-unwrap on parentFolderId                                       │ Prevents crash on any orphaned folder            │
+  └──────────┴───────────────────────────────────────────────────────────────────────────────────────────────────┴──────────────────────────────────────────────────┘
+
+  Would you like me to start implementing fixes? I'd suggest tackling the DB layer (priorities 1-2) and the Hive crash recovery (priority 3) first, as those are the most likely to cause
+  real data loss in normal use.
+  
+  
+  
+  
+  First run:
+  Changes made
+
+  lib/data/database/app_database.dart
+  - PRAGMA foreign_keys = ON — passed a setup callback to NativeDatabase.createInBackground so SQLite enforces FK constraints on every connection
+  - deleteQuestion() — now deletes junction rows from quiz_questions first, then deletes the question itself; prevents a FK violation now that FK enforcement is on, and stops orphaned
+  junction rows accumulating
+  - insertQuestionIntoQuiz() — wrapped both inserts (question + junction row) in a transaction() so a failure on the second write rolls back the first, preventing orphaned questions
+
+  lib/services/srs_service.dart, settings_service.dart, streak_service.dart, favorites_service.dart
+  - Hive box corruption recovery — each Hive.openBox() is now wrapped in try/catch; on failure it deletes the corrupted box file and opens a fresh one, so the app starts cleanly instead of
+   crashing permanently (at the cost of losing that box's data, which is far better than a broken app)
+
+  lib/services/sync_service.dart
+  - HTTP status checks — manifest GET, both push POSTs, and pull POST now verify the response status code and throw a SyncException with the status code if not 200, so sync failures
+  surface immediately with a clear error instead of silently parsing a garbage response body
+  - Timeouts — manifest GET gets a 30s timeout; push and pull POST get 60s/120s timeouts so they can't hang forever

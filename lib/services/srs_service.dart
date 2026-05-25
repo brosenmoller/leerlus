@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:hive/hive.dart';
 import 'package:med_brew/models/question_data.dart';
 import 'package:med_brew/models/quiz_data.dart';
@@ -42,7 +43,7 @@ class SrsService {
         questionId: question.id,
         easeFactor: settings.initialEase,
       );
-      _box.put(question.id, userData);
+      unawaited(_box.put(question.id, userData));
     }
     return userData;
   }
@@ -93,6 +94,11 @@ class SrsService {
   /// Return all UserQuestionData
   List<UserQuestionData> getAllUserData() {
     return _box.values.toList();
+  }
+
+  /// Remove SRS data for a deleted question.
+  Future<void> deleteUserData(String questionId) async {
+    await _box.delete(questionId);
   }
 
   /// Reset all user SRS data
