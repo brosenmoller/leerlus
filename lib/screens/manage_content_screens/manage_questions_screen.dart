@@ -180,12 +180,12 @@ class _Chip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withOpacity(0.4)),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Text(label,
-          style: TextStyle(fontSize: 11, color: color.withOpacity(0.9))),
+          style: TextStyle(fontSize: 11, color: color.withValues(alpha: 0.9))),
     );
   }
 }

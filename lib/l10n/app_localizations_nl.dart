@@ -973,4 +973,50 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get occlusionClear => 'Verwijderen';
+
+  @override
+  String get imageLibraryTitle => 'Afbeeldingsbibliotheek';
+
+  @override
+  String get imageLibrarySubtitle => 'Beheer afbeeldingen op dit apparaat';
+
+  @override
+  String get imageLibraryEmpty => 'Geen afbeeldingen gevonden';
+
+  @override
+  String get imageNotUsed => 'Niet gebruikt';
+
+  @override
+  String get imageBuiltIn => 'Ingebouwd';
+
+  @override
+  String get imageDeleteUnused => 'Verwijder ongebruikte';
+
+  @override
+  String imageDeleteUnusedConfirm(int count) {
+    return 'Verwijder $count ongebruikte afbeelding(en)? Dit kan niet ongedaan worden gemaakt.';
+  }
+
+  @override
+  String imageDeleteUnusedSuccess(int count) {
+    return '$count afbeelding(en) verwijderd';
+  }
+
+  @override
+  String get imageUpload => 'Afbeelding uploaden';
+
+  @override
+  String get imageUploadSuccess => 'Afbeelding toegevoegd aan bibliotheek';
+
+  @override
+  String get imageDeleteConfirm =>
+      'Afbeelding verwijderen? Het wordt nergens gebruikt en wordt permanent verwijderd.';
+
+  @override
+  String get imageUsedByTitle => 'Afbeeldingsgebruik';
+
+  @override
+  String deleteOrphanImages(int count) {
+    return 'Verwijder ook $count ongebruikte afbeelding(en)';
+  }
 }

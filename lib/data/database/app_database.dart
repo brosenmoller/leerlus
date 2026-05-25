@@ -536,4 +536,141 @@ class AppDatabase extends _$AppDatabase {
         ),
         mode: InsertMode.insertOrIgnore,
       );
+
+  // ─── Image reference helpers ──────────────────────────────────
+
+  static bool isUserImagePath(String? path) =>
+      path != null && !path.startsWith('assets/');
+
+  Set<String> _extractUserImagePathsFromQuestion(Question q) {
+    final paths = <String>{};
+    if (isUserImagePath(q.imagePath)) paths.add(q.imagePath!);
+    if (q.imagePathVariants != null) {
+      try {
+        final variants = jsonDecode(q.imagePathVariants!) as List;
+        for (final v in variants) {
+          if (v is String && isUserImagePath(v)) paths.add(v);
+        }
+      } catch (_) {}
+    }
+    if (q.answerType == 'flashcard') {
+      try {
+        final config = jsonDecode(q.answerConfig) as Map<String, dynamic>;
+        final front = config['frontImagePath'] as String?;
+        final back = config['backImagePath'] as String?;
+        if (isUserImagePath(front)) paths.add(front!);
+        if (isUserImagePath(back)) paths.add(back!);
+      } catch (_) {}
+    }
+    return paths;
+  }
+
+  /// Returns all user image paths referenced by the given quiz IDs
+  /// (cover images + question images).
+  Future<Set<String>> getImagePathsForQuizzes(Set<String> quizIds) async {
+    if (quizIds.isEmpty) return {};
+    final paths = <String>{};
+    for (final quizId in quizIds) {
+      final quiz = await getQuizById(quizId);
+      if (quiz != null && isUserImagePath(quiz.imagePath)) paths.add(quiz.imagePath!);
+      final qs = await getQuestionsForQuiz(quizId);
+      for (final q in qs) {
+        paths.addAll(_extractUserImagePathsFromQuestion(q));
+      }
+    }
+    return paths;
+  }
+
+  /// Returns all user image paths referenced by the given folder IDs (cover images only).
+  Future<Set<String>> getImagePathsForFolders(Set<String> folderIds) async {
+    if (folderIds.isEmpty) return {};
+    final paths = <String>{};
+    for (final folderId in folderIds) {
+      final folder = await getFolderById(folderId);
+      if (folder != null && isUserImagePath(folder.imagePath)) paths.add(folder.imagePath!);
+    }
+    return paths;
+  }
+
+  /// Returns all quiz IDs contained in the given folder (recursive).
+  Future<Set<String>> getFolderQuizIds(String folderId) async {
+    final folderIds = await _collectFolderSubtree(folderId);
+    final result = <String>{};
+    for (final id in folderIds) {
+      final folderQuizzes = await (select(quizzes)
+        ..where((t) => t.folderId.equals(id))).get();
+      for (final quiz in folderQuizzes) {
+        result.add(quiz.id);
+      }
+    }
+    return result;
+  }
+
+  /// Returns all user image paths currently referenced in the DB,
+  /// optionally excluding specific quiz and folder IDs.
+  Future<Set<String>> getAllReferencedUserImagePaths({
+    Set<String> excludeQuizIds = const {},
+    Set<String> excludeFolderIds = const {},
+  }) async {
+    final paths = <String>{};
+
+    final allFolders = await getAllFolders();
+    for (final f in allFolders) {
+      if (excludeFolderIds.contains(f.id)) continue;
+      if (isUserImagePath(f.imagePath)) paths.add(f.imagePath!);
+    }
+
+    final allQuizzes = await getAllQuizzes();
+    for (final q in allQuizzes) {
+      if (excludeQuizIds.contains(q.id)) continue;
+      if (isUserImagePath(q.imagePath)) paths.add(q.imagePath!);
+    }
+
+    final allQuestions = await getAllQuestions();
+    for (final q in allQuestions) {
+      if (excludeQuizIds.isNotEmpty) {
+        final junctions = await (select(quizQuestions)
+          ..where((t) => t.questionId.equals(q.id))).get();
+        if (junctions.isNotEmpty &&
+            junctions.every((r) => excludeQuizIds.contains(r.quizId))) {
+          continue;
+        }
+      }
+      paths.addAll(_extractUserImagePathsFromQuestion(q));
+    }
+
+    return paths;
+  }
+
+  /// Returns a map from user image path to list of referencing names
+  /// (quiz/folder titles) for the image library screen.
+  Future<Map<String, List<String>>> getImageUsageMap() async {
+    final usageMap = <String, Set<String>>{};
+
+    void record(String? path, String label) {
+      if (path == null || path.isEmpty) return;
+      // In debug mode, user images are stored with 'assets/images/' relative
+      // paths (not absolute). Include them so the image library can map usage.
+      if (!isUserImagePath(path) && !path.startsWith('assets/images/')) return;
+      usageMap.putIfAbsent(path, () => {}).add(label);
+    }
+
+    final allFolders = await getAllFolders();
+    for (final f in allFolders) {
+      record(f.imagePath, f.title);
+    }
+
+    final allQuizzes = await getAllQuizzes();
+    for (final quiz in allQuizzes) {
+      record(quiz.imagePath, quiz.title);
+      final qs = await getQuestionsForQuiz(quiz.id);
+      for (final q in qs) {
+        for (final path in _extractUserImagePathsFromQuestion(q)) {
+          usageMap.putIfAbsent(path, () => {}).add(quiz.title);
+        }
+      }
+    }
+
+    return usageMap.map((k, v) => MapEntry(k, v.toList()..sort()));
+  }
 }

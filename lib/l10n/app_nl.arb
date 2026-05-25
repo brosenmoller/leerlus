@@ -376,5 +376,34 @@
   "occlusionNoImage": "Stel eerst een afbeelding in",
   "occlusionHideMode": "Verbergen",
   "occlusionHighlightMode": "Markeren",
-  "occlusionClear": "Verwijderen"
+  "occlusionClear": "Verwijderen",
+
+  "imageLibraryTitle": "Afbeeldingsbibliotheek",
+  "imageLibrarySubtitle": "Beheer afbeeldingen op dit apparaat",
+  "imageLibraryEmpty": "Geen afbeeldingen gevonden",
+  "imageNotUsed": "Niet gebruikt",
+  "imageBuiltIn": "Ingebouwd",
+  "imageDeleteUnused": "Verwijder ongebruikte",
+  "imageDeleteUnusedConfirm": "Verwijder {count} ongebruikte afbeelding(en)? Dit kan niet ongedaan worden gemaakt.",
+  "@imageDeleteUnusedConfirm": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "imageDeleteUnusedSuccess": "{count} afbeelding(en) verwijderd",
+  "@imageDeleteUnusedSuccess": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "imageUpload": "Afbeelding uploaden",
+  "imageUploadSuccess": "Afbeelding toegevoegd aan bibliotheek",
+  "imageDeleteConfirm": "Afbeelding verwijderen? Het wordt nergens gebruikt en wordt permanent verwijderd.",
+  "imageUsedByTitle": "Afbeeldingsgebruik",
+  "deleteOrphanImages": "Verwijder ook {count} ongebruikte afbeelding(en)",
+  "@deleteOrphanImages": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  }
 }

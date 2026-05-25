@@ -326,30 +326,71 @@ class _FolderTileState extends State<_FolderTile> {
     }
   }
 
-  void _confirmDeleteFolder(BuildContext context) {
+  Future<void> _confirmDeleteFolder(BuildContext context) async {
     final l10n = AppLocalizations.of(context);
-    showDialog(
+
+    final folderSubtreeIds = await db.getFolderSubtreeIds(f.id);
+    final folderQuizIds = await db.getFolderQuizIds(f.id);
+    final ownPaths = (await db.getImagePathsForFolders(folderSubtreeIds))
+        .union(await db.getImagePathsForQuizzes(folderQuizIds));
+    final otherPaths = await db.getAllReferencedUserImagePaths(
+      excludeQuizIds: folderQuizIds,
+      excludeFolderIds: folderSubtreeIds,
+    );
+    final orphans = ownPaths.difference(otherPaths).toList();
+
+    if (!context.mounted) return;
+
+    bool deleteOrphans = orphans.isNotEmpty;
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.deleteFolderTitle),
-        content: Text(l10n.deleteFolderContent(f.title)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(l10n.cancel),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setStateDlg) => AlertDialog(
+          title: Text(l10n.deleteFolderTitle),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.deleteFolderContent(f.title)),
+              if (orphans.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                CheckboxListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  title: Text(
+                    l10n.deleteOrphanImages(orphans.length),
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                  value: deleteOrphans,
+                  onChanged: (v) => setStateDlg(() => deleteOrphans = v ?? false),
+                ),
+              ],
+            ],
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () async {
-              await db.deleteFolder(f.id);
-              await QuestionService().refresh();
-              if (ctx.mounted) Navigator.pop(ctx);
-            },
-            child: Text(l10n.delete),
-          ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(l10n.delete),
+            ),
+          ],
+        ),
       ),
     );
+
+    if (confirmed != true) return;
+    await db.deleteFolder(f.id);
+    if (deleteOrphans) {
+      for (final path in orphans) {
+        try { await File(path).delete(); } catch (_) {}
+      }
+    }
+    await QuestionService().refresh();
   }
 }
 
@@ -528,30 +569,67 @@ class _QuizTileState extends State<_QuizTile> {
     }
   }
 
-  void _confirmDeleteQuiz(BuildContext context) {
+  Future<void> _confirmDeleteQuiz(BuildContext context) async {
     final l10n = AppLocalizations.of(context);
-    showDialog(
+
+    final ownPaths = await db.getImagePathsForQuizzes({q.id});
+    final otherPaths = await db.getAllReferencedUserImagePaths(
+      excludeQuizIds: {q.id},
+    );
+    final orphans = ownPaths.difference(otherPaths).toList();
+
+    if (!context.mounted) return;
+
+    bool deleteOrphans = orphans.isNotEmpty;
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.deleteQuizTitle),
-        content: Text(l10n.deleteQuizContent(q.title)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(l10n.cancel),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setStateDlg) => AlertDialog(
+          title: Text(l10n.deleteQuizTitle),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.deleteQuizContent(q.title)),
+              if (orphans.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                CheckboxListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  title: Text(
+                    l10n.deleteOrphanImages(orphans.length),
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                  value: deleteOrphans,
+                  onChanged: (v) => setStateDlg(() => deleteOrphans = v ?? false),
+                ),
+              ],
+            ],
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () async {
-              await db.deleteQuiz(q.id);
-              await QuestionService().refresh();
-              if (ctx.mounted) Navigator.pop(ctx);
-            },
-            child: Text(l10n.delete),
-          ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(l10n.delete),
+            ),
+          ],
+        ),
       ),
     );
+
+    if (confirmed != true) return;
+    await db.deleteQuiz(q.id);
+    if (deleteOrphans) {
+      for (final path in orphans) {
+        try { await File(path).delete(); } catch (_) {}
+      }
+    }
+    await QuestionService().refresh();
   }
 }
 

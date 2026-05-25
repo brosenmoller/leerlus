@@ -79,7 +79,7 @@ class MultipleChoiceSection extends StatelessWidget {
                     decoration: InputDecoration(
                       labelText: l10n.optionN(i + 1),
                       border: const OutlineInputBorder(),
-                      fillColor: isCorrect ? Colors.green.withOpacity(0.1) : null,
+                      fillColor: isCorrect ? Colors.green.withValues(alpha: 0.1) : null,
                       filled: isCorrect,
                     ),
                     validator: (v) {

@@ -190,7 +190,7 @@ class ImagePickerFieldState extends State<ImagePickerField> {
                     ? Theme.of(context)
                     .colorScheme
                     .primary
-                    .withOpacity(0.07)
+                    .withValues(alpha: 0.07)
                     : Colors.grey.shade50,
               ),
               child: _currentPath != null

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:leerlus/data/database/app_database.dart';
 import 'package:leerlus/l10n/app_localizations.dart';
 import 'package:leerlus/models/srs_settings.dart';
+import 'package:leerlus/screens/image_management_screen.dart';
 import 'package:leerlus/screens/sync_screen.dart';
 import 'package:leerlus/services/favorites_service.dart';
 import 'package:leerlus/services/notification_service.dart';
@@ -148,6 +149,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => SyncScreen(db: widget.db)),
+              ),
+            ),
+
+            // ── Image Library ─────────────────────────────────────
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.photo_library_outlined),
+              title: Text(l10n.imageLibraryTitle),
+              subtitle: Text(l10n.imageLibrarySubtitle),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ImageManagementScreen(db: widget.db),
+                ),
               ),
             ),
             const Divider(),

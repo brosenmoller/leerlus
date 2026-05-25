@@ -476,5 +476,34 @@
   "occlusionNoImage": "Set an image first to add occlusion",
   "occlusionHideMode": "Hide",
   "occlusionHighlightMode": "Highlight",
-  "occlusionClear": "Clear occlusion"
+  "occlusionClear": "Clear occlusion",
+
+  "imageLibraryTitle": "Image Library",
+  "imageLibrarySubtitle": "Manage images on this device",
+  "imageLibraryEmpty": "No images found",
+  "imageNotUsed": "Not used",
+  "imageBuiltIn": "Built-in",
+  "imageDeleteUnused": "Delete unused",
+  "imageDeleteUnusedConfirm": "Delete {count} unused image(s)? This cannot be undone.",
+  "@imageDeleteUnusedConfirm": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "imageDeleteUnusedSuccess": "Deleted {count} image(s)",
+  "@imageDeleteUnusedSuccess": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "imageUpload": "Upload image",
+  "imageUploadSuccess": "Image added to library",
+  "imageDeleteConfirm": "Delete this image? It is not used anywhere and will be permanently removed.",
+  "imageUsedByTitle": "Image usage",
+  "deleteOrphanImages": "Also delete {count} unused image(s)",
+  "@deleteOrphanImages": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  }
 }

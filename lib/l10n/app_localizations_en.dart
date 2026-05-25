@@ -968,4 +968,50 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get occlusionClear => 'Clear occlusion';
+
+  @override
+  String get imageLibraryTitle => 'Image Library';
+
+  @override
+  String get imageLibrarySubtitle => 'Manage images on this device';
+
+  @override
+  String get imageLibraryEmpty => 'No images found';
+
+  @override
+  String get imageNotUsed => 'Not used';
+
+  @override
+  String get imageBuiltIn => 'Built-in';
+
+  @override
+  String get imageDeleteUnused => 'Delete unused';
+
+  @override
+  String imageDeleteUnusedConfirm(int count) {
+    return 'Delete $count unused image(s)? This cannot be undone.';
+  }
+
+  @override
+  String imageDeleteUnusedSuccess(int count) {
+    return 'Deleted $count image(s)';
+  }
+
+  @override
+  String get imageUpload => 'Upload image';
+
+  @override
+  String get imageUploadSuccess => 'Image added to library';
+
+  @override
+  String get imageDeleteConfirm =>
+      'Delete this image? It is not used anywhere and will be permanently removed.';
+
+  @override
+  String get imageUsedByTitle => 'Image usage';
+
+  @override
+  String deleteOrphanImages(int count) {
+    return 'Also delete $count unused image(s)';
+  }
 }

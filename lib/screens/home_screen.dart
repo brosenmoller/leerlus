@@ -69,7 +69,7 @@ class HomeScreen extends StatelessWidget {
                         l10n.streakFreezesRestockOn(restockStr),
                         style: TextStyle(
                           fontSize: 12,
-                          color: colorScheme.onSurface.withOpacity(0.55),
+                          color: colorScheme.onSurface.withValues(alpha: 0.55),
                         ),
                       ),
                     ],
@@ -185,7 +185,7 @@ class HomeScreen extends StatelessWidget {
                     child: Icon(
                       Icons.biotech_rounded,
                       size: 100,
-                      color: colorScheme.onPrimary.withOpacity(0.12),
+                      color: colorScheme.onPrimary.withValues(alpha: 0.12),
                     ),
                   ),
                 ),
@@ -298,7 +298,7 @@ class _NavTile extends StatelessWidget {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.15),
+                  color: iconColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(icon, size: 28, color: iconColor),
@@ -321,13 +321,13 @@ class _NavTile extends StatelessWidget {
                       subtitle,
                       style: TextStyle(
                         fontSize: 13,
-                        color: iconColor.withOpacity(0.7),
+                        color: iconColor.withValues(alpha: 0.7),
                       ),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right_rounded, color: iconColor.withOpacity(0.5)),
+              Icon(Icons.chevron_right_rounded, color: iconColor.withValues(alpha: 0.5)),
             ],
           ),
         ),

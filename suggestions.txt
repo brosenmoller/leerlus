@@ -1,0 +1,28 @@
+== SUGGESTIONS FOR LATER ==
+
+
+[1] Remove debug/release image path divergence
+------------------------------------------------------------
+Problem:
+  In debug builds, the image picker saves files to assets/images/ with paths
+  like "assets/images/photo.jpg". isUserImagePath() treats these as bundled
+  assets (returns false), so the .lus exporter skips them from the ZIP.
+  This makes it impossible to author proper portable .lus content packs from
+  a debug build — the recipient gets broken image references.
+
+Fix:
+  Remove the kDebugMode branch from image saving. Always save to the app
+  documents directory, regardless of build mode. Every _getImagesDir() call
+  then returns the same path in debug and release.
+
+  Also consolidate the four duplicated _getImagesDir() implementations into a
+  single shared function in lib/utils/app_storage.dart:
+    - lib/services/lus_archive_service.dart
+    - lib/services/sync_service.dart
+    - lib/widgets/image_picker_field.dart
+    - lib/screens/image_management_screen.dart
+
+Trade-off:
+  Newly picked images in debug will no longer hot-reload — a full restart is
+  needed to see a freshly added image render. Minor inconvenience for content
+  authoring, no impact on normal development.

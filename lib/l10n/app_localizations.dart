@@ -1657,6 +1657,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Clear occlusion'**
   String get occlusionClear;
+
+  /// No description provided for @imageLibraryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Image Library'**
+  String get imageLibraryTitle;
+
+  /// No description provided for @imageLibrarySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage images on this device'**
+  String get imageLibrarySubtitle;
+
+  /// No description provided for @imageLibraryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No images found'**
+  String get imageLibraryEmpty;
+
+  /// No description provided for @imageNotUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Not used'**
+  String get imageNotUsed;
+
+  /// No description provided for @imageBuiltIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in'**
+  String get imageBuiltIn;
+
+  /// No description provided for @imageDeleteUnused.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete unused'**
+  String get imageDeleteUnused;
+
+  /// No description provided for @imageDeleteUnusedConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {count} unused image(s)? This cannot be undone.'**
+  String imageDeleteUnusedConfirm(int count);
+
+  /// No description provided for @imageDeleteUnusedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted {count} image(s)'**
+  String imageDeleteUnusedSuccess(int count);
+
+  /// No description provided for @imageUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload image'**
+  String get imageUpload;
+
+  /// No description provided for @imageUploadSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Image added to library'**
+  String get imageUploadSuccess;
+
+  /// No description provided for @imageDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this image? It is not used anywhere and will be permanently removed.'**
+  String get imageDeleteConfirm;
+
+  /// No description provided for @imageUsedByTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Image usage'**
+  String get imageUsedByTitle;
+
+  /// No description provided for @deleteOrphanImages.
+  ///
+  /// In en, this message translates to:
+  /// **'Also delete {count} unused image(s)'**
+  String deleteOrphanImages(int count);
 }
 
 class _AppLocalizationsDelegate
