@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
-import 'package:med_brew/l10n/app_localizations.dart';
-import 'package:med_brew/data/database/app_database.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:leerlus/l10n/app_localizations.dart';
+import 'package:leerlus/data/database/app_database.dart';
 import 'package:drift/drift.dart' show Value;
-import 'package:med_brew/services/question_service.dart';
-import 'package:med_brew/widgets/image_picker_field.dart';
+import 'package:leerlus/services/question_service.dart';
+import 'package:leerlus/widgets/image_picker_field.dart';
 
 class EditFolderScreen extends StatefulWidget {
   final AppDatabase db;

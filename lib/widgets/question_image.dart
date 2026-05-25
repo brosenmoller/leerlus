@@ -1,8 +1,8 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:med_brew/models/occlusion_data.dart';
-import 'package:med_brew/widgets/app_image.dart';
-import 'package:med_brew/widgets/occluded_image.dart';
+import 'package:leerlus/models/occlusion_data.dart';
+import 'package:leerlus/widgets/app_image.dart';
+import 'package:leerlus/widgets/occluded_image.dart';
 
 /// Displays a question image, optionally with an occlusion overlay.
 ///

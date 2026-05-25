@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import 'package:med_brew/widgets/image_picker_field.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:leerlus/widgets/image_picker_field.dart';
 
 class FlashcardSideEditor extends StatelessWidget {
   final String headerLabel;

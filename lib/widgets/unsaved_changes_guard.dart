@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import 'package:med_brew/l10n/app_localizations.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:leerlus/l10n/app_localizations.dart';
 
 /// Wraps a screen with a [PopScope] that intercepts the back button (and
 /// system back gesture) when [hasChanges] is true and shows a confirmation

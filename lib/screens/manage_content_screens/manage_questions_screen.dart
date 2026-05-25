@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
-import 'package:med_brew/l10n/app_localizations.dart';
-import 'package:med_brew/data/database/app_database.dart';
-import 'package:med_brew/screens/manage_content_screens/edit_question_screen.dart';
-import 'package:med_brew/services/question_service.dart';
-import 'package:med_brew/services/srs_service.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:leerlus/l10n/app_localizations.dart';
+import 'package:leerlus/data/database/app_database.dart';
+import 'package:leerlus/screens/manage_content_screens/edit_question_screen.dart';
+import 'package:leerlus/services/question_service.dart';
+import 'package:leerlus/services/srs_service.dart';
 
 class ManageQuestionsScreen extends StatelessWidget {
   final AppDatabase db;

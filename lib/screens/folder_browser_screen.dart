@@ -1,12 +1,12 @@
-import 'package:flutter/material.dart';
-import 'package:med_brew/l10n/app_localizations.dart';
-import 'package:med_brew/models/folder_data.dart';
-import 'package:med_brew/screens/global_search_screen.dart';
-import 'package:med_brew/screens/quiz_session_screen.dart';
-import 'package:med_brew/services/question_service.dart';
-import 'package:med_brew/widgets/collapsible_app_bar_title.dart';
-import 'package:med_brew/widgets/folder_tile.dart';
-import 'package:med_brew/widgets/quiz_tile.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:leerlus/l10n/app_localizations.dart';
+import 'package:leerlus/models/folder_data.dart';
+import 'package:leerlus/screens/global_search_screen.dart';
+import 'package:leerlus/screens/quiz_session_screen.dart';
+import 'package:leerlus/services/question_service.dart';
+import 'package:leerlus/widgets/collapsible_app_bar_title.dart';
+import 'package:leerlus/widgets/folder_tile.dart';
+import 'package:leerlus/widgets/quiz_tile.dart';
 
 /// Browsable folder/quiz screen. Pass [folder] = null to show the root level.
 class FolderBrowserScreen extends StatelessWidget {

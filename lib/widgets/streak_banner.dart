@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
-import 'package:med_brew/l10n/app_localizations.dart';
-import 'package:med_brew/services/streak_service.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:leerlus/l10n/app_localizations.dart';
+import 'package:leerlus/services/streak_service.dart';
 
 /// Displays a contextual streak result after completing a quiz or SRS session.
 /// Returns an empty widget for [StreakEvent.disabled] and [StreakEvent.sameDay].

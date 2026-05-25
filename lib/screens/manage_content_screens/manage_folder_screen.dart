@@ -1,15 +1,15 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
-import 'package:med_brew/l10n/app_localizations.dart';
-import 'package:med_brew/data/database/app_database.dart';
-import 'package:med_brew/screens/manage_content_screens/edit_folder_screen.dart';
-import 'package:med_brew/screens/manage_content_screens/edit_quiz_screen.dart';
-import 'package:med_brew/screens/manage_content_screens/manage_questions_screen.dart';
-import 'package:med_brew/services/question_service.dart';
-import 'package:med_brew/widgets/app_image.dart';
+import 'package:leerlus/l10n/app_localizations.dart';
+import 'package:leerlus/data/database/app_database.dart';
+import 'package:leerlus/screens/manage_content_screens/edit_folder_screen.dart';
+import 'package:leerlus/screens/manage_content_screens/edit_quiz_screen.dart';
+import 'package:leerlus/screens/manage_content_screens/manage_questions_screen.dart';
+import 'package:leerlus/services/question_service.dart';
+import 'package:leerlus/widgets/app_image.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -312,7 +312,7 @@ class _FolderTileState extends State<_FolderTile> {
           );
         }
       } else {
-        await Share.shareXFiles([XFile(file.path)], subject: 'Med Brew folder export');
+        await Share.shareXFiles([XFile(file.path)], subject: 'Leerlus folder export');
       }
     } catch (e) {
       if (context.mounted) {
@@ -512,7 +512,7 @@ class _QuizTileState extends State<_QuizTile> {
           );
         }
       } else {
-        await Share.shareXFiles([XFile(file.path)], subject: 'Med Brew quiz export');
+        await Share.shareXFiles([XFile(file.path)], subject: 'Leerlus quiz export');
       }
     } catch (e) {
       if (context.mounted) {

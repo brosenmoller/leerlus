@@ -1,11 +1,11 @@
-import 'package:flutter/material.dart';
-import 'package:med_brew/l10n/app_localizations.dart';
-import 'package:med_brew/models/question_data.dart';
-import 'package:med_brew/models/user_question_data.dart' show SrsQuality;
-import 'package:med_brew/services/srs_service.dart';
-import 'package:med_brew/services/streak_service.dart';
-import 'package:med_brew/screens/question_display/question_display_screen.dart';
-import 'package:med_brew/screens/srs_completion_screen.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:leerlus/l10n/app_localizations.dart';
+import 'package:leerlus/models/question_data.dart';
+import 'package:leerlus/models/user_question_data.dart' show SrsQuality;
+import 'package:leerlus/services/srs_service.dart';
+import 'package:leerlus/services/streak_service.dart';
+import 'package:leerlus/screens/question_display/question_display_screen.dart';
+import 'package:leerlus/screens/srs_completion_screen.dart';
 
 class SrsSessionScreen extends StatefulWidget {
   final List<QuestionData> questions;

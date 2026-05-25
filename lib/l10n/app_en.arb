@@ -1,7 +1,7 @@
-{
+﻿{
   "@@locale": "en",
 
-  "appTitle": "Med Brew",
+  "appTitle": "Leerlus",
 
   "settingsTooltip": "Settings",
 
@@ -447,7 +447,7 @@
   },
 
   "syncPermissionTitle": "Network permission required",
-  "syncPermissionRationale": "To discover nearby devices on your network, Med Brew needs the Nearby Wi-Fi Devices permission.",
+  "syncPermissionRationale": "To discover nearby devices on your network, Leerlus needs the Nearby Wi-Fi Devices permission.",
   "syncPermissionGrantButton": "Grant permission",
   "syncPermissionPermanentlyDenied": "Permission was permanently denied. Please enable it in app settings.",
   "syncOpenSettings": "Open settings",

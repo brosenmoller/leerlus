@@ -1,5 +1,5 @@
-import 'package:hive/hive.dart';
-import 'package:med_brew/models/srs_settings.dart';
+﻿import 'package:hive/hive.dart';
+import 'package:leerlus/models/srs_settings.dart';
 part 'user_question_data.g.dart';
 enum SrsQuality { again, hard, good, easy }
 

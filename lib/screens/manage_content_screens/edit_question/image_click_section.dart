@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
-import 'package:med_brew/l10n/app_localizations.dart';
-import 'package:med_brew/screens/manage_content_screens/image_area_selector_screen.dart';
-import 'package:med_brew/widgets/image_picker_field.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:leerlus/l10n/app_localizations.dart';
+import 'package:leerlus/screens/manage_content_screens/image_area_selector_screen.dart';
+import 'package:leerlus/widgets/image_picker_field.dart';
 
 class ImageClickSection extends StatelessWidget {
   final GlobalKey<ImagePickerFieldState> pickerKey;

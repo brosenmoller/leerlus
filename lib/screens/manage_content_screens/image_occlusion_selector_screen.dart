@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
-import 'package:med_brew/models/occlusion_data.dart';
-import 'package:med_brew/widgets/app_image.dart';
-import 'package:med_brew/widgets/unsaved_changes_guard.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:leerlus/models/occlusion_data.dart';
+import 'package:leerlus/widgets/app_image.dart';
+import 'package:leerlus/widgets/unsaved_changes_guard.dart';
 
 enum _Mode { hide, highlight }
 

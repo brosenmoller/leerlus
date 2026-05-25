@@ -1,7 +1,7 @@
-{
+﻿{
   "@@locale": "nl",
 
-  "appTitle": "Med Brew",
+  "appTitle": "Leerlus",
 
   "settingsTooltip": "Instellingen",
 
@@ -347,7 +347,7 @@
   },
 
   "syncPermissionTitle": "Netwerktoestemming vereist",
-  "syncPermissionRationale": "Om apparaten op je netwerk te ontdekken heeft Med Brew de toestemming 'Nabijgelegen Wi-Fi-apparaten' nodig.",
+  "syncPermissionRationale": "Om apparaten op je netwerk te ontdekken heeft Leerlus de toestemming 'Nabijgelegen Wi-Fi-apparaten' nodig.",
   "syncPermissionGrantButton": "Toestemming geven",
   "syncPermissionPermanentlyDenied": "Toestemming is permanent geweigerd. Schakel deze in via de app-instellingen.",
   "syncOpenSettings": "Instellingen openen",

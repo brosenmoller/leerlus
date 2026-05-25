@@ -1,6 +1,6 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
-import 'package:med_brew/services/notification_service.dart';
+import 'package:leerlus/services/notification_service.dart';
 
 // ── Value types ───────────────────────────────────────────────────────────────
 
@@ -61,7 +61,7 @@ class StreakService {
   static const _kNotifsHour = 'streak_notifs_hour';
   static const _kNotifsMinute = 'streak_notifs_minute';
 
-  static const _notifTitle = 'Med Brew';
+  static const _notifTitle = 'Leerlus';
   static const _notifBody = "Don't forget to study — keep your streak alive!";
 
   static const maxFreezesPerWeek = 2;

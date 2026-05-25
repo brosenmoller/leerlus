@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
-import 'package:med_brew/models/answer_state.dart';
-import 'package:med_brew/models/question_data.dart';
-import 'package:med_brew/widgets/app_image.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:leerlus/models/answer_state.dart';
+import 'package:leerlus/models/question_data.dart';
+import 'package:leerlus/widgets/app_image.dart';
 
 class ImageClickWidget extends StatefulWidget {
   final QuestionData question;

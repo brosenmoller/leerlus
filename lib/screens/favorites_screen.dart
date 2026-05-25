@@ -1,11 +1,11 @@
-import 'package:flutter/material.dart';
-import 'package:med_brew/l10n/app_localizations.dart';
-import 'package:med_brew/models/quiz_data.dart';
-import 'package:med_brew/services/favorites_service.dart';
-import 'package:med_brew/services/question_service.dart';
-import 'package:med_brew/screens/quiz_session_screen.dart';
-import 'package:med_brew/widgets/collapsible_app_bar_title.dart';
-import 'package:med_brew/widgets/quiz_tile.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:leerlus/l10n/app_localizations.dart';
+import 'package:leerlus/models/quiz_data.dart';
+import 'package:leerlus/services/favorites_service.dart';
+import 'package:leerlus/services/question_service.dart';
+import 'package:leerlus/screens/quiz_session_screen.dart';
+import 'package:leerlus/widgets/collapsible_app_bar_title.dart';
+import 'package:leerlus/widgets/quiz_tile.dart';
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});

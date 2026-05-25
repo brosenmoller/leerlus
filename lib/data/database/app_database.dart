@@ -1,10 +1,10 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path/path.dart' as path_dart;
 import 'package:uuid/uuid.dart';
-import 'package:med_brew/utils/app_storage.dart';
+import 'package:leerlus/utils/app_storage.dart';
 import 'tables.dart';
 
 part 'app_database.g.dart';
@@ -21,7 +21,7 @@ class AppDatabase extends _$AppDatabase {
   static QueryExecutor _openConnection() {
     return LazyDatabase(() async {
       final dir = await getAppStorageDir();
-      final file = File(path_dart.join(dir.path, 'med_brew.db'));
+      final file = File(path_dart.join(dir.path, 'leerlus.db'));
       return NativeDatabase.createInBackground(
         file,
         setup: (db) {

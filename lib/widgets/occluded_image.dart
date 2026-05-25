@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
-import 'package:med_brew/models/occlusion_data.dart';
-import 'package:med_brew/widgets/app_image.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:leerlus/models/occlusion_data.dart';
+import 'package:leerlus/widgets/app_image.dart';
 
 /// Wraps [AppImage] with an occlusion overlay.
 ///

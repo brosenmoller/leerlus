@@ -1,12 +1,12 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
-import 'package:med_brew/models/answer_state.dart';
-import 'package:med_brew/models/question_data.dart';
-import 'package:med_brew/models/user_question_data.dart';
-import 'package:med_brew/screens/question_display/answer_area.dart';
-import 'package:med_brew/screens/question_display/continue_button.dart';
-import 'package:med_brew/screens/question_display/srs_buttons.dart';
-import 'package:med_brew/services/settings_service.dart';
+import 'package:leerlus/models/answer_state.dart';
+import 'package:leerlus/models/question_data.dart';
+import 'package:leerlus/models/user_question_data.dart';
+import 'package:leerlus/screens/question_display/answer_area.dart';
+import 'package:leerlus/screens/question_display/continue_button.dart';
+import 'package:leerlus/screens/question_display/srs_buttons.dart';
+import 'package:leerlus/services/settings_service.dart';
 
 class QuestionDisplayScreen extends StatefulWidget {
   final QuestionData question;

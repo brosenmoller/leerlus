@@ -101,7 +101,7 @@ abstract class AppLocalizations {
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
-  /// **'Med Brew'**
+  /// **'Leerlus'**
   String get appTitle;
 
   /// No description provided for @settingsTooltip.
@@ -1565,7 +1565,7 @@ abstract class AppLocalizations {
   /// No description provided for @syncPermissionRationale.
   ///
   /// In en, this message translates to:
-  /// **'To discover nearby devices on your network, Med Brew needs the Nearby Wi-Fi Devices permission.'**
+  /// **'To discover nearby devices on your network, Leerlus needs the Nearby Wi-Fi Devices permission.'**
   String get syncPermissionRationale;
 
   /// No description provided for @syncPermissionGrantButton.

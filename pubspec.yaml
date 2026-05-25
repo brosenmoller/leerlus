@@ -1,5 +1,5 @@
-name: med_brew
-description: "A Learning app for Anatomy and Physiology with intermittent learning"
+name: leerlus
+description: "A general purpose spaced repetition quiz app with many question types"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev

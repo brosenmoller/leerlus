@@ -1,11 +1,11 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:med_brew/data/database/app_database.dart';
-import 'package:med_brew/l10n/app_localizations.dart';
-import 'package:med_brew/models/sync_models.dart';
-import 'package:med_brew/services/sync_service.dart';
+import 'package:leerlus/data/database/app_database.dart';
+import 'package:leerlus/l10n/app_localizations.dart';
+import 'package:leerlus/models/sync_models.dart';
+import 'package:leerlus/services/sync_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 enum _SyncState { idle, requesting, syncing, done, error }
@@ -109,7 +109,7 @@ class _SyncScreenState extends State<SyncScreen> {
         deviceName = Platform.localHostname;
       }
     } catch (_) {
-      deviceName = 'Med Brew';
+      deviceName = 'Leerlus';
     }
 
     if (mounted) setState(() => _thisDeviceName = deviceName);

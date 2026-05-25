@@ -1,13 +1,13 @@
-import 'package:flutter/material.dart';
-import 'package:med_brew/models/answer_state.dart';
-import 'package:med_brew/models/question_data.dart';
-import 'package:med_brew/models/answer_type.dart';
-import 'package:med_brew/widgets/multiple_choice_widget.dart';
-import 'package:med_brew/widgets/typed_answer_widget.dart';
-import 'package:med_brew/widgets/image_click_widget.dart';
-import 'package:med_brew/widgets/flashcard_widget.dart';
-import 'package:med_brew/widgets/sorting_widget.dart';
-import 'package:med_brew/widgets/set_widget.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:leerlus/models/answer_state.dart';
+import 'package:leerlus/models/question_data.dart';
+import 'package:leerlus/models/answer_type.dart';
+import 'package:leerlus/widgets/multiple_choice_widget.dart';
+import 'package:leerlus/widgets/typed_answer_widget.dart';
+import 'package:leerlus/widgets/image_click_widget.dart';
+import 'package:leerlus/widgets/flashcard_widget.dart';
+import 'package:leerlus/widgets/sorting_widget.dart';
+import 'package:leerlus/widgets/set_widget.dart';
 
 class AnswerArea extends StatelessWidget {
   final QuestionData question;

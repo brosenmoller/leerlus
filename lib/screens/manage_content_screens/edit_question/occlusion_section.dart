@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
-import 'package:med_brew/l10n/app_localizations.dart';
-import 'package:med_brew/models/occlusion_data.dart';
-import 'package:med_brew/screens/manage_content_screens/image_occlusion_selector_screen.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:leerlus/l10n/app_localizations.dart';
+import 'package:leerlus/models/occlusion_data.dart';
+import 'package:leerlus/screens/manage_content_screens/image_occlusion_selector_screen.dart';
 
 class OcclusionSection extends StatelessWidget {
   /// The image path to draw occlusion on. Null means no image is set yet.

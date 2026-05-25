@@ -1,11 +1,11 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io';
 import 'package:flutter/services.dart';
-import 'package:med_brew/models/sync_models.dart';
+import 'package:leerlus/models/sync_models.dart';
 
 class SyncDiscoveryService {
   static const int _discoveryPort = 47562;
-  static const String _magic = 'MEDBREW_SYNC';
+  static const String _magic = 'Leerlus_SYNC';
   static const Duration _broadcastInterval = Duration(seconds: 3);
   static const Duration _peerTimeout = Duration(seconds: 12);
 

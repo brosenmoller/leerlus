@@ -9,7 +9,7 @@ class AppLocalizationsNl extends AppLocalizations {
   AppLocalizationsNl([String locale = 'nl']) : super(locale);
 
   @override
-  String get appTitle => 'Med Brew';
+  String get appTitle => 'Leerlus';
 
   @override
   String get settingsTooltip => 'Instellingen';
@@ -921,7 +921,7 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get syncPermissionRationale =>
-      'Om apparaten op je netwerk te ontdekken heeft Med Brew de toestemming \'Nabijgelegen Wi-Fi-apparaten\' nodig.';
+      'Om apparaten op je netwerk te ontdekken heeft Leerlus de toestemming \'Nabijgelegen Wi-Fi-apparaten\' nodig.';
 
   @override
   String get syncPermissionGrantButton => 'Toestemming geven';

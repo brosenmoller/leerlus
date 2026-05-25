@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:med_brew/models/srs_settings.dart';
+import 'package:leerlus/models/srs_settings.dart';
 
 class SettingsService {
   SettingsService._internal();

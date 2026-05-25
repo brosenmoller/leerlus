@@ -1,12 +1,12 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:med_brew/l10n/app_localizations.dart';
-import 'package:med_brew/data/database/app_database.dart';
-import 'package:med_brew/models/quiz_data.dart';
-import 'package:med_brew/screens/home_screen.dart';
-import 'package:med_brew/screens/quiz_session_screen.dart';
-import 'package:med_brew/services/streak_service.dart';
-import 'package:med_brew/widgets/streak_banner.dart';
+import 'package:leerlus/l10n/app_localizations.dart';
+import 'package:leerlus/data/database/app_database.dart';
+import 'package:leerlus/models/quiz_data.dart';
+import 'package:leerlus/screens/home_screen.dart';
+import 'package:leerlus/screens/quiz_session_screen.dart';
+import 'package:leerlus/services/streak_service.dart';
+import 'package:leerlus/widgets/streak_banner.dart';
 
 class QuizCompletionScreen extends StatelessWidget {
   final String quizName;

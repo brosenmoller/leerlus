@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
-import 'package:med_brew/models/quiz_data.dart';
-import 'package:med_brew/services/favorites_service.dart';
-import 'package:med_brew/services/srs_service.dart';
-import 'package:med_brew/widgets/app_image.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:leerlus/models/quiz_data.dart';
+import 'package:leerlus/services/favorites_service.dart';
+import 'package:leerlus/services/srs_service.dart';
+import 'package:leerlus/widgets/app_image.dart';
 
 // Same palette as FolderTile for visual consistency.
 const _kTileColors = [

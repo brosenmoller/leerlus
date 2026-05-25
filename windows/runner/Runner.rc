@@ -1,4 +1,4 @@
-// Microsoft Visual C++ generated resource script.
+﻿// Microsoft Visual C++ generated resource script.
 //
 #pragma code_page(65001)
 #include "resource.h"
@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.nebaj" "\0"
-            VALUE "FileDescription", "med_brew" "\0"
+            VALUE "FileDescription", "leerlus" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "med_brew" "\0"
+            VALUE "InternalName", "leerlus" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.nebaj. All rights reserved." "\0"
-            VALUE "OriginalFilename", "med_brew.exe" "\0"
-            VALUE "ProductName", "med_brew" "\0"
+            VALUE "OriginalFilename", "leerlus.exe" "\0"
+            VALUE "ProductName", "leerlus" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

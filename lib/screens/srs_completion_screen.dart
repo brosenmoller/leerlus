@@ -1,12 +1,12 @@
-import 'package:flutter/material.dart';
-import 'package:med_brew/l10n/app_localizations.dart';
-import 'package:med_brew/models/question_data.dart';
-import 'package:med_brew/models/quiz_data.dart';
-import 'package:med_brew/screens/srs_session_screen.dart';
-import 'package:med_brew/services/question_service.dart';
-import 'package:med_brew/services/srs_service.dart';
-import 'package:med_brew/services/streak_service.dart';
-import 'package:med_brew/widgets/streak_banner.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:leerlus/l10n/app_localizations.dart';
+import 'package:leerlus/models/question_data.dart';
+import 'package:leerlus/models/quiz_data.dart';
+import 'package:leerlus/screens/srs_session_screen.dart';
+import 'package:leerlus/services/question_service.dart';
+import 'package:leerlus/services/srs_service.dart';
+import 'package:leerlus/services/streak_service.dart';
+import 'package:leerlus/widgets/streak_banner.dart';
 
 class SrsCompletionScreen extends StatelessWidget {
   final String completedQuizTitle;

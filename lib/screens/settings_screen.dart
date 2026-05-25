@@ -1,15 +1,15 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:med_brew/data/database/app_database.dart';
-import 'package:med_brew/l10n/app_localizations.dart';
-import 'package:med_brew/models/srs_settings.dart';
-import 'package:med_brew/screens/sync_screen.dart';
-import 'package:med_brew/services/favorites_service.dart';
-import 'package:med_brew/services/notification_service.dart';
-import 'package:med_brew/services/question_service.dart';
-import 'package:med_brew/services/settings_service.dart';
-import 'package:med_brew/services/srs_service.dart';
-import 'package:med_brew/services/streak_service.dart';
+import 'package:leerlus/data/database/app_database.dart';
+import 'package:leerlus/l10n/app_localizations.dart';
+import 'package:leerlus/models/srs_settings.dart';
+import 'package:leerlus/screens/sync_screen.dart';
+import 'package:leerlus/services/favorites_service.dart';
+import 'package:leerlus/services/notification_service.dart';
+import 'package:leerlus/services/question_service.dart';
+import 'package:leerlus/services/settings_service.dart';
+import 'package:leerlus/services/srs_service.dart';
+import 'package:leerlus/services/streak_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   final AppDatabase db;

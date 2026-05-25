@@ -1,15 +1,15 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:med_brew/l10n/app_localizations.dart';
-import 'package:med_brew/data/database/app_database.dart';
-import 'package:med_brew/screens/content_packs_screen.dart';
-import 'package:med_brew/screens/manage_content_screens/edit_folder_screen.dart';
-import 'package:med_brew/screens/manage_content_screens/edit_quiz_screen.dart';
-import 'package:med_brew/screens/manage_content_screens/manage_folder_screen.dart';
-import 'package:med_brew/services/question_service.dart';
+import 'package:leerlus/l10n/app_localizations.dart';
+import 'package:leerlus/data/database/app_database.dart';
+import 'package:leerlus/screens/content_packs_screen.dart';
+import 'package:leerlus/screens/manage_content_screens/edit_folder_screen.dart';
+import 'package:leerlus/screens/manage_content_screens/edit_quiz_screen.dart';
+import 'package:leerlus/screens/manage_content_screens/manage_folder_screen.dart';
+import 'package:leerlus/services/question_service.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -97,7 +97,7 @@ class ManageContentScreen extends StatelessWidget {
       } else {
         await Share.shareXFiles(
           [XFile(file.path)],
-          subject: 'Med Brew export',
+          subject: 'Leerlus export',
         );
       }
     } catch (e) {

@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -9,14 +9,14 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_router/shelf_router.dart';
-import 'package:med_brew/data/database/app_database.dart';
-import 'package:med_brew/models/sync_models.dart';
-import 'package:med_brew/models/user_question_data.dart';
-import 'package:med_brew/services/favorites_service.dart';
-import 'package:med_brew/services/question_service.dart';
-import 'package:med_brew/services/srs_service.dart';
-import 'package:med_brew/services/streak_service.dart';
-import 'package:med_brew/services/sync_discovery_service.dart';
+import 'package:leerlus/data/database/app_database.dart';
+import 'package:leerlus/models/sync_models.dart';
+import 'package:leerlus/models/user_question_data.dart';
+import 'package:leerlus/services/favorites_service.dart';
+import 'package:leerlus/services/question_service.dart';
+import 'package:leerlus/services/srs_service.dart';
+import 'package:leerlus/services/streak_service.dart';
+import 'package:leerlus/services/sync_discovery_service.dart';
 import 'package:drift/drift.dart' show Value;
 
 class SyncService {
@@ -829,7 +829,7 @@ class SyncService {
     try {
       return Platform.localHostname;
     } catch (_) {
-      return 'Med Brew Device';
+      return 'Leerlus Device';
     }
   }
 

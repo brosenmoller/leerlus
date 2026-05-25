@@ -1,9 +1,9 @@
-import 'dart:math';
+﻿import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:med_brew/models/occlusion_data.dart';
-import 'package:med_brew/models/question_data.dart';
-import 'package:med_brew/widgets/app_image.dart';
-import 'package:med_brew/widgets/occluded_image.dart';
+import 'package:leerlus/models/occlusion_data.dart';
+import 'package:leerlus/models/question_data.dart';
+import 'package:leerlus/widgets/app_image.dart';
+import 'package:leerlus/widgets/occluded_image.dart';
 
 class FlashcardWidget extends StatefulWidget {
   final QuestionData question;

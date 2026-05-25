@@ -1,6 +1,6 @@
-import 'package:med_brew/models/answer_configs.dart' show FlashcardConfig, ImageClickConfig, MultipleChoiceConfig, SetConfig, SortingConfig, TypedAnswerConfig;
-import 'package:med_brew/models/answer_type.dart' show AnswerType;
-import 'package:med_brew/models/occlusion_data.dart' show OcclusionData;
+﻿import 'package:leerlus/models/answer_configs.dart' show FlashcardConfig, ImageClickConfig, MultipleChoiceConfig, SetConfig, SortingConfig, TypedAnswerConfig;
+import 'package:leerlus/models/answer_type.dart' show AnswerType;
+import 'package:leerlus/models/occlusion_data.dart' show OcclusionData;
 
 class QuestionData {
   final String id;
