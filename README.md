@@ -1,13 +1,13 @@
-# MedBrew
+# Leerlus
 
-**MedBrew** is quiz app built for versatile and long term studying. It is based on my frustrations with common solutions that either lack certain features, cost a lot money or are riddled with ads. That is why this program is Free and Open Source.  
+**Leerlus** is quiz app built for versatile and long term studying. It is based on my frustrations with common solutions that either lack certain features, cost a lot money or are riddled with ads. That is why this program is Free and Open Source.  
 
 ---
 
 ## Features
 
 ### Different Quiz Types
-MedBrew supports six different question formats which are all editable:
+Leerlus supports six different question formats which are all editable:
 
 - **Multiple Choice** - Pick the correct answer from a set of options
 - **Typed Answer** - Type out the answer yourself for active recall
@@ -21,7 +21,7 @@ MedBrew supports six different question formats which are all editable:
 - All questions support inbuilt randomization to avoid remembering question quirks instead of the actual answer.
 
 ### Spaced Repetition (SRS)
-MedBrew uses a **spaced repetition system** to surface the right cards at the right time. After answering, you rate how well you knew it — *Again*, *Hard*, *Good*, or *Easy* — and MedBrew schedules your next review accordingly. Similar to anki, but not limited to flashcards.
+Leerlus uses a **spaced repetition system** to surface the right cards at the right time. After answering, you rate how well you knew it — *Again*, *Hard*, *Good*, or *Easy* — and Leerlus schedules your next review accordingly. Similar to anki, but not limited to flashcards.
 
 ### Other Features
 - Sync across devices (local network)
@@ -45,7 +45,7 @@ MedBrew uses a **spaced repetition system** to surface the right cards at the ri
 
 ## Getting Started
 
-1. Download and install MedBrew for your platform
+1. Download and install Leerlus for your platform
 2. Create a folder and add your first quiz
 3. Add questions using any of the supported answer types
 4. Start a study session or import a content pack to hit the ground running
@@ -60,4 +60,4 @@ You can **export** your quizzes and questions to a JSON file for backup or shari
 
 ## Privacy
 
-MedBrew stores everything **locally on your device**. No account, no data sent to external servers. Syncing between your own devices happens directly over your local network.
+Leerlus stores everything **locally on your device**. No account, no data sent to external servers. Syncing between your own devices happens directly over your local network.
