@@ -20,7 +20,7 @@ class SyncScreen extends StatefulWidget {
 }
 
 class _SyncScreenState extends State<SyncScreen> {
-  static const _wifiChannel = MethodChannel('com.nebaj.med_brew/wifi');
+  static const _wifiChannel = MethodChannel('com.nebaj.leerlus/wifi');
 
   final _syncService = SyncService();
 
@@ -31,6 +31,9 @@ class _SyncScreenState extends State<SyncScreen> {
   String? _error;
   String _thisDeviceName = '';
   SyncPeer? _lastSyncedPeer;
+
+  bool _setupError = false;
+  String _setupErrorMessage = '';
 
   // Permission state (Android 12+ only)
   bool _permissionGranted = true;
@@ -96,25 +99,33 @@ class _SyncScreenState extends State<SyncScreen> {
   // ── Discovery ─────────────────────────────────────────────────
 
   Future<void> _initAndStartDiscovery() async {
-    // Start the HTTP server (triggers Windows Firewall prompt if needed).
-    await _syncService.init(widget.db);
-
-    String deviceName;
+    if (mounted) setState(() { _setupError = false; _setupErrorMessage = ''; });
     try {
-      if (Platform.isAndroid) {
-        // Platform.localHostname returns "localhost" on Android — use Build.MODEL.
-        deviceName = await _wifiChannel.invokeMethod<String>('getDeviceName')
-            ?? 'Android Device';
-      } else {
-        deviceName = Platform.localHostname;
-      }
-    } catch (_) {
-      deviceName = 'Leerlus';
-    }
+      // Start the HTTP server (triggers Windows Firewall prompt if needed).
+      await _syncService.init(widget.db);
 
-    if (mounted) setState(() => _thisDeviceName = deviceName);
-    await _syncService.startDiscovery(deviceName);
-    if (mounted) setState(() => _peers = _syncService.discovery.currentPeers);
+      String deviceName;
+      try {
+        if (Platform.isAndroid) {
+          // Platform.localHostname returns "localhost" on Android — use Build.MODEL.
+          deviceName = await _wifiChannel.invokeMethod<String>('getDeviceName')
+              ?? 'Android Device';
+        } else {
+          deviceName = Platform.localHostname;
+        }
+      } catch (_) {
+        deviceName = 'Leerlus';
+      }
+
+      if (mounted) setState(() => _thisDeviceName = deviceName);
+      await _syncService.startDiscovery(deviceName);
+      if (mounted) setState(() => _peers = _syncService.discovery.currentPeers);
+    } catch (e) {
+      if (mounted) setState(() {
+        _setupError = true;
+        _setupErrorMessage = e.toString();
+      });
+    }
   }
 
   @override
@@ -288,13 +299,15 @@ class _SyncScreenState extends State<SyncScreen> {
           constraints: const BoxConstraints(maxWidth: 680),
           child: !_permissionGranted
               ? _buildPermissionView(l10n, colorScheme)
-              : switch (_state) {
-                  _SyncState.idle => _buildDiscoveryView(l10n, colorScheme),
-                  _SyncState.requesting => _buildProgressView(l10n, colorScheme),
-                  _SyncState.syncing => _buildProgressView(l10n, colorScheme),
-                  _SyncState.done => _buildResultView(l10n, colorScheme),
-                  _SyncState.error => _buildErrorView(l10n),
-                },
+              : _setupError
+                  ? _buildSetupErrorView(l10n, colorScheme)
+                  : switch (_state) {
+                      _SyncState.idle => _buildDiscoveryView(l10n, colorScheme),
+                      _SyncState.requesting => _buildProgressView(l10n, colorScheme),
+                      _SyncState.syncing => _buildProgressView(l10n, colorScheme),
+                      _SyncState.done => _buildResultView(l10n, colorScheme),
+                      _SyncState.error => _buildErrorView(l10n),
+                    },
         ),
       ),
     );
@@ -337,6 +350,40 @@ class _SyncScreenState extends State<SyncScreen> {
                 icon: const Icon(Icons.security_rounded),
                 label: Text(l10n.syncPermissionGrantButton),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Setup error view ──────────────────────────────────────────
+
+  Widget _buildSetupErrorView(AppLocalizations l10n, ColorScheme cs) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.wifi_off_rounded, size: 72, color: cs.error),
+            const SizedBox(height: 16),
+            Text(
+              l10n.syncSetupFailed,
+              style: Theme.of(context).textTheme.headlineSmall,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              Platform.isWindows ? l10n.syncFirewallHint : _setupErrorMessage,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: cs.onSurfaceVariant),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: _initAndStartDiscovery,
+              icon: const Icon(Icons.refresh),
+              label: Text(l10n.retry),
+            ),
           ],
         ),
       ),
@@ -404,6 +451,31 @@ class _SyncScreenState extends State<SyncScreen> {
                 const SizedBox(height: 16),
                 Text(l10n.syncDiscovering,
                     style: const TextStyle(color: Colors.grey)),
+                if (Platform.isWindows) ...[
+                  const SizedBox(height: 24),
+                  Card(
+                    color: cs.errorContainer,
+                    elevation: 0,
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.security_rounded,
+                              size: 18, color: cs.onErrorContainer),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              l10n.syncFirewallHint,
+                              style: TextStyle(
+                                  fontSize: 12, color: cs.onErrorContainer),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           )

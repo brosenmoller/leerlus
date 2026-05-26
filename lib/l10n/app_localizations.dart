@@ -1586,6 +1586,18 @@ abstract class AppLocalizations {
   /// **'Open settings'**
   String get syncOpenSettings;
 
+  /// No description provided for @syncFirewallHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Not finding devices? Windows Firewall may be blocking network traffic. When prompted, allow Leerlus through the firewall, or go to Windows Security → Firewall & network protection → Allow an app through Firewall.'**
+  String get syncFirewallHint;
+
+  /// No description provided for @syncSetupFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start sync'**
+  String get syncSetupFailed;
+
   /// No description provided for @settingsAnimations.
   ///
   /// In en, this message translates to:

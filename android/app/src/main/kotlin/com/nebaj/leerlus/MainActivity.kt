@@ -1,4 +1,4 @@
-package com.nebaj.med_brew
+package com.nebaj.leerlus
 
 import android.content.Context
 import android.net.wifi.WifiManager
@@ -8,7 +8,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
-    private val channel = "com.nebaj.med_brew/wifi"
+    private val channel = "com.nebaj.leerlus/wifi"
     private var multicastLock: WifiManager.MulticastLock? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

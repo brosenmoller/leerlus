@@ -23,7 +23,7 @@ class SyncDiscoveryService {
   Stream<List<SyncPeer>> get peersStream => _peersController.stream;
   List<SyncPeer> get currentPeers => _peers.values.map((e) => e.peer).toList();
 
-  static const _wifiChannel = MethodChannel('com.nebaj.med_brew/wifi');
+  static const _wifiChannel = MethodChannel('com.nebaj.leerlus/wifi');
 
   Future<void> start({required String deviceName, required int httpPort}) async {
     if (_socket != null) return;

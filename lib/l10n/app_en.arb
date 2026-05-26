@@ -451,6 +451,8 @@
   "syncPermissionGrantButton": "Grant permission",
   "syncPermissionPermanentlyDenied": "Permission was permanently denied. Please enable it in app settings.",
   "syncOpenSettings": "Open settings",
+  "syncFirewallHint": "Not finding devices? Windows Firewall may be blocking network traffic. When prompted, allow Leerlus through the firewall, or go to Windows Security → Firewall & network protection → Allow an app through Firewall.",
+  "syncSetupFailed": "Could not start sync",
 
   "settingsAnimations": "Animations",
   "settingsAnimationsSubtitle": "Show confetti and other visual effects",

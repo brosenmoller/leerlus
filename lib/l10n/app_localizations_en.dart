@@ -929,6 +929,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncOpenSettings => 'Open settings';
 
   @override
+  String get syncFirewallHint =>
+      'Not finding devices? Windows Firewall may be blocking network traffic. When prompted, allow Leerlus through the firewall, or go to Windows Security → Firewall & network protection → Allow an app through Firewall.';
+
+  @override
+  String get syncSetupFailed => 'Could not start sync';
+
+  @override
   String get settingsAnimations => 'Animations';
 
   @override

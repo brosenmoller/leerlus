@@ -351,6 +351,8 @@
   "syncPermissionGrantButton": "Toestemming geven",
   "syncPermissionPermanentlyDenied": "Toestemming is permanent geweigerd. Schakel deze in via de app-instellingen.",
   "syncOpenSettings": "Instellingen openen",
+  "syncFirewallHint": "Geen apparaten gevonden? De Windows-firewall blokkeert mogelijk het netwerkverkeer. Sta Leerlus toe via de firewall wanneer hierom gevraagd wordt, of ga naar Windows Beveiliging → Firewall- en netwerkbeveiliging → Een app toestaan via de firewall.",
+  "syncSetupFailed": "Kon synchronisatie niet starten",
 
   "settingsAnimations": "Animaties",
   "settingsAnimationsSubtitle": "Toon confetti en andere visuele effecten",
