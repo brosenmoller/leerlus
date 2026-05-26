@@ -375,6 +375,10 @@ class _IconToggle extends StatelessWidget {
       onPressed: onPressed,
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      style: IconButton.styleFrom(
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        minimumSize: const Size(32, 32),
+      ),
     );
   }
 }
