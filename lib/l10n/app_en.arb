@@ -469,6 +469,13 @@
     }
   },
   "syncOverride": "Override",
+  "syncHardSyncComplete": "Hard sync complete — {deviceName} has been overridden.",
+  "@syncHardSyncComplete": {
+    "placeholders": {
+      "deviceName": { "type": "String" }
+    }
+  },
+
   "syncResultFoldersDeleted": "{count, plural, =1{1 folder removed} other{{count} folders removed}}",
   "@syncResultFoldersDeleted": {
     "placeholders": {

@@ -630,7 +630,14 @@ class _SyncScreenState extends State<SyncScreen> {
               ),
             ],
             const SizedBox(height: 16),
-            if (!r.isEmpty)
+            if (r.isHardSync)
+              Text(
+                l10n.syncHardSyncComplete(
+                    _lastSyncedPeer?.deviceName ?? ''),
+                textAlign: TextAlign.center,
+                style: TextStyle(color: cs.onSurfaceVariant),
+              )
+            else if (!r.isEmpty)
               Card(
                 elevation: 0,
                 color: cs.surfaceContainerHighest,

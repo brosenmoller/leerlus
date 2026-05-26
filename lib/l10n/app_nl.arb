@@ -369,6 +369,13 @@
     }
   },
   "syncOverride": "Overschrijven",
+  "syncHardSyncComplete": "Harde sync voltooid — {deviceName} is overschreven.",
+  "@syncHardSyncComplete": {
+    "placeholders": {
+      "deviceName": { "type": "String" }
+    }
+  },
+
   "syncResultFoldersDeleted": "{count, plural, =1{1 map verwijderd} other{{count} mappen verwijderd}}",
   "@syncResultFoldersDeleted": {
     "placeholders": {

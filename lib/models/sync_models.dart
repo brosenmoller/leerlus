@@ -138,6 +138,9 @@ class SyncResult {
   final int foldersDeleted;
   final int quizzesDeleted;
   final int questionsDeleted;
+  /// True when this result is for the hard-sync initiator. Deletions in that
+  /// case happened on the remote device, not locally, so the UI suppresses them.
+  final bool isHardSync;
 
   const SyncResult({
     this.foldersAdded = 0,
@@ -148,6 +151,7 @@ class SyncResult {
     this.foldersDeleted = 0,
     this.quizzesDeleted = 0,
     this.questionsDeleted = 0,
+    this.isHardSync = false,
   });
 
   bool get isEmpty =>

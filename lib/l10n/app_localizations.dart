@@ -1634,6 +1634,12 @@ abstract class AppLocalizations {
   /// **'Override'**
   String get syncOverride;
 
+  /// No description provided for @syncHardSyncComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Hard sync complete — {deviceName} has been overridden.'**
+  String syncHardSyncComplete(String deviceName);
+
   /// No description provided for @syncResultFoldersDeleted.
   ///
   /// In en, this message translates to:

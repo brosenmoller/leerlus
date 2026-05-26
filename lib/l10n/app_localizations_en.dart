@@ -959,6 +959,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncOverride => 'Override';
 
   @override
+  String syncHardSyncComplete(String deviceName) {
+    return 'Hard sync complete — $deviceName has been overridden.';
+  }
+
+  @override
   String syncResultFoldersDeleted(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

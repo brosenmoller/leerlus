@@ -28,9 +28,15 @@ class SyncService {
   HttpServer? _server;
   int _httpPort = 0;
   bool _initialized = false;
+  String _myDeviceName = '';
 
   Completer<bool>? _pendingAccept;
   SyncResult? _acceptorResult; // set by _handlePush, consumed by _handleSyncDone
+
+  // Tracks peers we've already sent a reverse-advertisement to this session so
+  // we don't spam the request on every peers-stream tick.
+  final _advertisedPeers = <String>{};
+  StreamSubscription<List<SyncPeer>>? _advertiseSub;
 
   final _incomingRequestController = StreamController<String>.broadcast();
   final _syncProgressController = StreamController<String>.broadcast();
@@ -57,11 +63,15 @@ class SyncService {
   /// Stop the HTTP server and reset so [init] can be called again next time
   /// the sync screen is opened.
   Future<void> shutdown() async {
+    await _advertiseSub?.cancel();
+    _advertiseSub = null;
+    _advertisedPeers.clear();
     await discovery.stop();
     await _server?.close(force: true);
     _server = null;
     _httpPort = 0;
     _initialized = false;
+    _myDeviceName = '';
     _pendingAccept?.complete(false);
     _pendingAccept = null;
     _acceptorResult = null;
@@ -77,6 +87,7 @@ class SyncService {
     router.get('/sync/image', _handleImage);
     router.post('/sync/hard-delete', _handleHardDelete);
     router.post('/sync/done', _handleSyncDone);
+    router.post('/sync/advertise', _handleAdvertise);
 
     _server = await shelf_io.serve(router.call, InternetAddress.anyIPv4, 0);
     _httpPort = _server!.port;
@@ -84,10 +95,42 @@ class SyncService {
 
   int get httpPort => _httpPort;
 
-  Future<void> startDiscovery(String deviceName) =>
-      discovery.start(deviceName: deviceName, httpPort: _httpPort);
+  Future<void> startDiscovery(String deviceName) async {
+    _myDeviceName = deviceName;
+    _advertisedPeers.clear();
+    await discovery.start(deviceName: deviceName, httpPort: _httpPort);
+    // When we discover a new peer via UDP, immediately send them an HTTP
+    // advertisement so they can register us — this fixes one-way UDP scenarios
+    // (e.g. Windows Firewall blocks inbound UDP from Android).
+    _advertiseSub = discovery.peersStream.listen(_onPeersForAdvertise);
+  }
 
-  Future<void> stopDiscovery() => discovery.stop();
+  void _onPeersForAdvertise(List<SyncPeer> peers) {
+    for (final peer in peers) {
+      if (_advertisedPeers.contains(peer.host)) continue;
+      _advertisedPeers.add(peer.host);
+      _sendReverseAdvertise(peer);
+    }
+  }
+
+  void _sendReverseAdvertise(SyncPeer peer) {
+    final base = 'http://${peer.host}:${peer.port}';
+    http
+        .post(
+          Uri.parse('$base/sync/advertise'),
+          headers: {'content-type': 'application/json'},
+          body: jsonEncode({'deviceName': _deviceName, 'httpPort': _httpPort}),
+        )
+        .timeout(const Duration(seconds: 5))
+        .ignore(); // best-effort; failure is silent
+  }
+
+  Future<void> stopDiscovery() async {
+    await _advertiseSub?.cancel();
+    _advertiseSub = null;
+    _advertisedPeers.clear();
+    await discovery.stop();
+  }
 
   // ── Server handlers ──────────────────────────────────────────
 
@@ -100,6 +143,20 @@ class SyncService {
     final body = Map<String, dynamic>.from(
         jsonDecode(await req.readAsString()) as Map);
     final requesterName = body['deviceName'] as String? ?? 'Unknown Device';
+
+    // Register the requester as a discovered peer so the acceptor can initiate
+    // sync back even when UDP discovery is blocked (e.g. Windows Firewall).
+    final requesterHttpPort = body['httpPort'] as int?;
+    final connInfo =
+        req.context['shelf.io.connection_info'] as HttpConnectionInfo?;
+    final requesterIp = connInfo?.remoteAddress.address;
+    if (requesterIp != null && requesterHttpPort != null) {
+      discovery.registerPeer(SyncPeer(
+        deviceName: requesterName,
+        host: requesterIp,
+        port: requesterHttpPort,
+      ));
+    }
 
     if (_pendingAccept != null) {
       return Response(503,
@@ -324,6 +381,34 @@ class SyncService {
     }
   }
 
+  Future<Response> _handleAdvertise(Request req) async {
+    try {
+      final body = Map<String, dynamic>.from(
+          jsonDecode(await req.readAsString()) as Map);
+      final deviceName = body['deviceName'] as String? ?? 'Unknown Device';
+      final httpPort = body['httpPort'] as int?;
+      final connInfo =
+          req.context['shelf.io.connection_info'] as HttpConnectionInfo?;
+      final ip = connInfo?.remoteAddress.address;
+      if (ip != null && httpPort != null) {
+        discovery.registerPeer(SyncPeer(
+          deviceName: deviceName,
+          host: ip,
+          port: httpPort,
+        ));
+      }
+      return Response.ok(
+        jsonEncode({'ok': true}),
+        headers: {'content-type': 'application/json'},
+      );
+    } catch (_) {
+      return Response.ok(
+        jsonEncode({'ok': false}),
+        headers: {'content-type': 'application/json'},
+      );
+    }
+  }
+
   Future<Response> _handleSyncDone(Request req) async {
     final result = _acceptorResult ?? const SyncResult();
     _acceptorResult = null;
@@ -346,7 +431,7 @@ class SyncService {
         .post(
           Uri.parse('$base/sync/request'),
           headers: {'content-type': 'application/json'},
-          body: jsonEncode({'deviceName': _deviceName}),
+          body: jsonEncode({'deviceName': _deviceName, 'httpPort': _httpPort}),
         )
         .timeout(const Duration(seconds: 65));
 
@@ -447,7 +532,7 @@ class SyncService {
     }
 
     // Pull remote content (or hard-delete it in override mode)
-    SyncResult result = const SyncResult();
+    SyncResult result = const SyncResult(isHardSync: true);
     if (hardSync) {
       if (toFetchFolderIds.isNotEmpty ||
           toFetchQuizIds.isNotEmpty ||
@@ -469,6 +554,7 @@ class SyncService {
         final hdData =
             Map<String, dynamic>.from(jsonDecode(hdResp.body) as Map);
         result = SyncResult(
+          isHardSync: true,
           foldersDeleted:
               (hdData['foldersDeleted'] as num?)?.toInt() ?? 0,
           quizzesDeleted:
@@ -937,6 +1023,7 @@ class SyncService {
   }
 
   String get _deviceName {
+    if (_myDeviceName.isNotEmpty) return _myDeviceName;
     try {
       return Platform.localHostname;
     } catch (_) {

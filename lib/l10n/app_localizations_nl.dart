@@ -964,6 +964,11 @@ class AppLocalizationsNl extends AppLocalizations {
   String get syncOverride => 'Overschrijven';
 
   @override
+  String syncHardSyncComplete(String deviceName) {
+    return 'Harde sync voltooid — $deviceName is overschreven.';
+  }
+
+  @override
   String syncResultFoldersDeleted(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
