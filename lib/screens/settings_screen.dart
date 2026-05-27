@@ -34,6 +34,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late TimeOfDay _notifTime;
   late bool _animationsEnabled;
   late final TextEditingController _defaultLangController;
+  final FocusNode _defaultLangFocusNode = FocusNode();
+  String? _defaultLangCode;
 
   @override
   void initState() {
@@ -43,14 +45,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _notifsEnabled = _streak.notifsEnabled;
     _notifTime = TimeOfDay(hour: _streak.notifsHour, minute: _streak.notifsMinute);
     _animationsEnabled = _settings.animationsEnabled;
+    _defaultLangCode = _settings.defaultQuizLanguageCode;
     _defaultLangController = TextEditingController(
-      text: codeToDisplay(_settings.defaultQuizLanguageCode),
+      text: codeToDisplay(_defaultLangCode),
     );
+    _defaultLangFocusNode.addListener(() {
+      if (_defaultLangFocusNode.hasFocus) {
+        _defaultLangController.selection = TextSelection(
+          baseOffset: 0,
+          extentOffset: _defaultLangController.text.length,
+        );
+      }
+    });
   }
 
   @override
   void dispose() {
     _defaultLangController.dispose();
+    _defaultLangFocusNode.dispose();
     super.dispose();
   }
 
@@ -140,8 +152,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 8),
 
             // ── Default quiz language ─────────────────────────────
-            DropdownMenu<String?>(
+            DropdownMenu<String>(
               controller: _defaultLangController,
+              focusNode: _defaultLangFocusNode,
               expandedInsets: EdgeInsets.zero,
               menuHeight: MediaQuery.sizeOf(context).height * 0.4,
               enableFilter: true,
@@ -152,19 +165,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 isDense: false,
               ),
               dropdownMenuEntries: [
-                DropdownMenuEntry<String?>(
-                  value: null,
+                DropdownMenuEntry<String>(
+                  value: '',
                   label: l10n.settingsDefaultQuizLanguageNone,
                 ),
-                ...kLanguages.map((l) => DropdownMenuEntry<String?>(
+                ...kLanguages.map((l) => DropdownMenuEntry<String>(
                       value: l.code,
                       label: l.display,
                     )),
               ],
               onSelected: (code) async {
-                await _settings.setDefaultQuizLanguageCode(code);
-                _defaultLangController.text =
-                    code == null ? '' : codeToDisplay(code);
+                final effectiveCode = (code == null || code.isEmpty) ? null : code;
+                setState(() => _defaultLangCode = effectiveCode);
+                await _settings.setDefaultQuizLanguageCode(effectiveCode);
+                _defaultLangController.text = codeToDisplay(effectiveCode);
               },
             ),
             const SizedBox(height: 8),
