@@ -1,11 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:leerlus/l10n/app_localizations.dart';
 import 'package:leerlus/data/database/app_database.dart';
 import 'package:leerlus/screens/manage_content_screens/edit_question_screen.dart';
 import 'package:leerlus/services/question_service.dart';
 import 'package:leerlus/services/srs_service.dart';
 
-class ManageQuestionsScreen extends StatelessWidget {
+class ManageQuestionsScreen extends StatefulWidget {
   final AppDatabase db;
   final Quiz quiz;
 
@@ -16,11 +16,66 @@ class ManageQuestionsScreen extends StatelessWidget {
   });
 
   @override
+  State<ManageQuestionsScreen> createState() => _ManageQuestionsScreenState();
+}
+
+class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
+  final _scrollController = ScrollController();
+  String? _highlightId;
+  bool _pendingScrollToEnd = false;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _openAddScreen() async {
+    final result = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditQuestionScreen(
+          quizId: widget.quiz.id,
+          db: widget.db,
+        ),
+      ),
+    );
+    _handleSaveResult(result);
+  }
+
+  Future<void> _openEditScreen(Question question) async {
+    final result = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditQuestionScreen(
+          quizId: widget.quiz.id,
+          db: widget.db,
+          question: question,
+        ),
+      ),
+    );
+    _handleSaveResult(result);
+  }
+
+  void _handleSaveResult(Map<String, dynamic>? result) {
+    if (result == null || !mounted) return;
+    final id = result['id'] as String;
+    final isNew = result['isNew'] as bool;
+    setState(() {
+      _highlightId = id;
+      _pendingScrollToEnd = isNew;
+    });
+    Future.delayed(const Duration(milliseconds: 1800), () {
+      if (mounted) setState(() => _highlightId = null);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(quiz.title),
+        title: Text(widget.quiz.title),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(20),
           child: Padding(
@@ -33,18 +88,10 @@ class ManageQuestionsScreen extends StatelessWidget {
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.add),
         label: Text(l10n.addQuestion),
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => EditQuestionScreen(
-              quizId: quiz.id,
-              db: db,
-            ),
-          ),
-        ),
+        onPressed: _openAddScreen,
       ),
       body: StreamBuilder<List<Question>>(
-        stream: db.watchQuestionsForQuiz(quiz.id),
+        stream: widget.db.watchQuestionsForQuiz(widget.quiz.id),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
@@ -53,16 +100,40 @@ class ManageQuestionsScreen extends StatelessWidget {
           if (questions.isEmpty) {
             return Center(child: Text(l10n.noQuestionsYet));
           }
+
+          // Scroll to the end once the newly added question appears in the list.
+          if (_pendingScrollToEnd &&
+              questions.any((q) => q.id == _highlightId)) {
+            _pendingScrollToEnd = false;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (_scrollController.hasClients) {
+                _scrollController.animateTo(
+                  _scrollController.position.maxScrollExtent,
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeOut,
+                );
+              }
+            });
+          }
+
           return Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 800),
               child: ListView.builder(
+                controller: _scrollController,
                 padding: const EdgeInsets.only(bottom: 100),
                 itemCount: questions.length,
                 itemBuilder: (context, i) {
                   final question = questions[i];
+                  final isHighlighted = question.id == _highlightId;
                   return ListTile(
+                    tileColor: isHighlighted
+                        ? Theme.of(context)
+                            .colorScheme
+                            .primaryContainer
+                            .withValues(alpha: 0.45)
+                        : null,
                     leading: _answerTypeIcon(question.answerType),
                     title: Text(
                       question.questionText,
@@ -80,19 +151,11 @@ class ManageQuestionsScreen extends StatelessWidget {
                         IconButton(
                           icon: const Icon(Icons.edit_outlined),
                           tooltip: l10n.edit,
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => EditQuestionScreen(
-                                quizId: quiz.id,
-                                db: db,
-                                question: question,
-                              ),
-                            ),
-                          ),
+                          onPressed: () => _openEditScreen(question),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.delete_outline, color: Colors.red),
+                          icon: const Icon(Icons.delete_outline,
+                              color: Colors.red),
                           tooltip: l10n.delete,
                           onPressed: () => _confirmDelete(context, question),
                         ),
@@ -111,17 +174,17 @@ class ManageQuestionsScreen extends StatelessWidget {
   Widget _answerTypeIcon(String type) {
     return switch (type) {
       'multipleChoice' => const CircleAvatar(
-        child: Icon(Icons.list, size: 18),
-      ),
+          child: Icon(Icons.list, size: 18),
+        ),
       'typed' => const CircleAvatar(
-        child: Icon(Icons.keyboard, size: 18),
-      ),
+          child: Icon(Icons.keyboard, size: 18),
+        ),
       'imageClick' => const CircleAvatar(
-        child: Icon(Icons.touch_app, size: 18),
-      ),
+          child: Icon(Icons.touch_app, size: 18),
+        ),
       'sorting' => const CircleAvatar(
-        child: Icon(Icons.sort, size: 18),
-      ),
+          child: Icon(Icons.sort, size: 18),
+        ),
       _ => const CircleAvatar(child: Icon(Icons.help, size: 18)),
     };
   }
@@ -153,7 +216,7 @@ class ManageQuestionsScreen extends StatelessWidget {
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
-              await db.deleteQuestion(q.id);
+              await widget.db.deleteQuestion(q.id);
               await SrsService().deleteUserData(q.id);
               await QuestionService().refresh();
               if (ctx.mounted) Navigator.pop(ctx);

@@ -494,24 +494,26 @@ class AppDatabase extends _$AppDatabase {
     return id;
   }
 
-  Future<void> insertQuestionIntoQuiz({
+  Future<String> insertQuestionIntoQuiz({
     required QuestionsCompanion question,
     required String quizId,
-  }) async {
-    await transaction(() async {
+  }) {
+    return transaction(() async {
       final questionId = await insertQuestion(question);
-      final count = await (selectOnly(quizQuestions)
+      final maxExpr = quizQuestions.sortOrder.max();
+      final maxOrder = await (selectOnly(quizQuestions)
             ..where(quizQuestions.quizId.equals(quizId))
-            ..addColumns([quizQuestions.questionId.count()]))
-          .map((row) => row.read(quizQuestions.questionId.count()) ?? 0)
+            ..addColumns([maxExpr]))
+          .map((row) => row.read(maxExpr) ?? -1)
           .getSingle();
       await into(quizQuestions).insert(
         QuizQuestionsCompanion.insert(
           quizId: quizId,
           questionId: questionId,
-          sortOrder: Value(count),
+          sortOrder: Value(maxOrder + 1),
         ),
       );
+      return questionId;
     });
   }
 

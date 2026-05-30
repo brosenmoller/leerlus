@@ -1066,12 +1066,14 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
       occlusionConfig: Value(occlusionConfigJson),
     );
 
+    final String questionId;
     if (widget.isEditing) {
       await (widget.db.update(widget.db.questions)
         ..where((t) => t.id.equals(widget.question!.id)))
           .write(companion);
+      questionId = widget.question!.id;
     } else {
-      await widget.db.insertQuestionIntoQuiz(
+      questionId = await widget.db.insertQuestionIntoQuiz(
         quizId: widget.quizId,
         question: companion,
       );
@@ -1091,7 +1093,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
       await _showOrphanPromptAndDelete(_originalImagePaths.difference(finalUserPaths));
     }
 
-    if (mounted) Navigator.pop(context);
+    if (mounted) Navigator.pop(context, {'id': questionId, 'isNew': !widget.isEditing});
   }
 
   Future<void> _saveAndAddReversed() async {
@@ -1183,7 +1185,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
       randomizeSides: _flashcardRandomizeSides,
     ).toJson());
 
-    await widget.db.insertQuestionIntoQuiz(
+    final reversedId = await widget.db.insertQuestionIntoQuiz(
       quizId: widget.quizId,
       question: QuestionsCompanion(
         questionText: Value(reversedQuestionText),
@@ -1203,6 +1205,6 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
       await _showOrphanPromptAndDelete(_originalImagePaths.difference(finalUserPaths));
     }
 
-    if (mounted) Navigator.pop(context);
+    if (mounted) Navigator.pop(context, {'id': reversedId, 'isNew': true});
   }
 }
