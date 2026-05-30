@@ -567,7 +567,7 @@ class SyncService {
     }
 
     // Pull remote content (or hard-delete it in override mode)
-    SyncResult result = const SyncResult(isHardSync: true);
+    SyncResult result = hardSync ? const SyncResult(isHardSync: true) : const SyncResult();
     if (hardSync) {
       if (toFetchFolderIds.isNotEmpty ||
           toFetchQuizIds.isNotEmpty ||
