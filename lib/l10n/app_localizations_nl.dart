@@ -935,6 +935,39 @@ class AppLocalizationsNl extends AppLocalizations {
   }
 
   @override
+  String syncResultFoldersUpdated(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count mappen bijgewerkt',
+      one: '1 map bijgewerkt',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String syncResultQuizzesUpdated(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count quizzen bijgewerkt',
+      one: '1 quiz bijgewerkt',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String syncResultQuestionsUpdated(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count vragen bijgewerkt',
+      one: '1 vraag bijgewerkt',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String syncResultSrs(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

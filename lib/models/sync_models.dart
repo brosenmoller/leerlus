@@ -23,17 +23,20 @@ class SyncPeer {
 class SyncEntry {
   final String id;
   final DateTime createdAt;
+  final String? contentHash;
 
-  const SyncEntry({required this.id, required this.createdAt});
+  const SyncEntry({required this.id, required this.createdAt, this.contentHash});
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'createdAt': createdAt.toIso8601String(),
+        if (contentHash != null) 'contentHash': contentHash,
       };
 
   factory SyncEntry.fromJson(Map<String, dynamic> json) => SyncEntry(
         id: json['id'] as String,
         createdAt: DateTime.parse(json['createdAt'] as String),
+        contentHash: json['contentHash'] as String?,
       );
 }
 
@@ -133,6 +136,9 @@ class SyncResult {
   final int foldersAdded;
   final int quizzesAdded;
   final int questionsAdded;
+  final int foldersUpdated;
+  final int quizzesUpdated;
+  final int questionsUpdated;
   final int srsUpdated;
   final int favoritesAdded;
   final int foldersDeleted;
@@ -147,6 +153,9 @@ class SyncResult {
     this.foldersAdded = 0,
     this.quizzesAdded = 0,
     this.questionsAdded = 0,
+    this.foldersUpdated = 0,
+    this.quizzesUpdated = 0,
+    this.questionsUpdated = 0,
     this.srsUpdated = 0,
     this.favoritesAdded = 0,
     this.foldersDeleted = 0,
@@ -160,6 +169,9 @@ class SyncResult {
     foldersAdded: foldersAdded,
     quizzesAdded: quizzesAdded,
     questionsAdded: questionsAdded,
+    foldersUpdated: foldersUpdated,
+    quizzesUpdated: quizzesUpdated,
+    questionsUpdated: questionsUpdated,
     srsUpdated: srsUpdated,
     favoritesAdded: favoritesAdded,
     foldersDeleted: foldersDeleted,
@@ -173,6 +185,9 @@ class SyncResult {
       foldersAdded == 0 &&
       quizzesAdded == 0 &&
       questionsAdded == 0 &&
+      foldersUpdated == 0 &&
+      quizzesUpdated == 0 &&
+      questionsUpdated == 0 &&
       srsUpdated == 0 &&
       favoritesAdded == 0 &&
       foldersDeleted == 0 &&

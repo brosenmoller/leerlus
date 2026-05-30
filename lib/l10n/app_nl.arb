@@ -356,6 +356,24 @@
       "count": { "type": "int" }
     }
   },
+  "syncResultFoldersUpdated": "{count, plural, =1{1 map bijgewerkt} other{{count} mappen bijgewerkt}}",
+  "@syncResultFoldersUpdated": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "syncResultQuizzesUpdated": "{count, plural, =1{1 quiz bijgewerkt} other{{count} quizzen bijgewerkt}}",
+  "@syncResultQuizzesUpdated": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "syncResultQuestionsUpdated": "{count, plural, =1{1 vraag bijgewerkt} other{{count} vragen bijgewerkt}}",
+  "@syncResultQuestionsUpdated": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "syncResultSrs": "{count, plural, =1{1 SRS-invoer bijgewerkt} other{{count} SRS-invoeren bijgewerkt}}",
   "@syncResultSrs": {
     "placeholders": {

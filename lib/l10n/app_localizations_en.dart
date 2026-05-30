@@ -929,6 +929,39 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String syncResultFoldersUpdated(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count folders updated',
+      one: '1 folder updated',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String syncResultQuizzesUpdated(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count quizzes updated',
+      one: '1 quiz updated',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String syncResultQuestionsUpdated(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count questions updated',
+      one: '1 question updated',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String syncResultSrs(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

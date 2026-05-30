@@ -517,6 +517,9 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
+  Future<bool> updateQuestion(QuestionsCompanion entry) =>
+      update(questions).replace(entry);
+
   Future<void> deleteQuestion(String id) async {
     await (delete(quizQuestions)..where((t) => t.questionId.equals(id))).go();
     await (delete(questions)..where((t) => t.id.equals(id))).go();

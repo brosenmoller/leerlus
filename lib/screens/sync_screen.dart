@@ -654,6 +654,15 @@ class _SyncScreenState extends State<SyncScreen> {
                       if (r.questionsAdded > 0)
                         _ResultRow(Icons.help_outline,
                             l10n.syncResultQuestions(r.questionsAdded)),
+                      if (r.foldersUpdated > 0)
+                        _ResultRow(Icons.drive_file_rename_outline,
+                            l10n.syncResultFoldersUpdated(r.foldersUpdated)),
+                      if (r.quizzesUpdated > 0)
+                        _ResultRow(Icons.edit_outlined,
+                            l10n.syncResultQuizzesUpdated(r.quizzesUpdated)),
+                      if (r.questionsUpdated > 0)
+                        _ResultRow(Icons.edit_note,
+                            l10n.syncResultQuestionsUpdated(r.questionsUpdated)),
                       if (r.srsUpdated > 0)
                         _ResultRow(Icons.auto_awesome_outlined,
                             l10n.syncResultSrs(r.srsUpdated)),

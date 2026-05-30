@@ -461,6 +461,24 @@
       "count": { "type": "int" }
     }
   },
+  "syncResultFoldersUpdated": "{count, plural, =1{1 folder updated} other{{count} folders updated}}",
+  "@syncResultFoldersUpdated": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "syncResultQuizzesUpdated": "{count, plural, =1{1 quiz updated} other{{count} quizzes updated}}",
+  "@syncResultQuizzesUpdated": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "syncResultQuestionsUpdated": "{count, plural, =1{1 question updated} other{{count} questions updated}}",
+  "@syncResultQuestionsUpdated": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "syncResultSrs": "{count, plural, =1{1 SRS entry updated} other{{count} SRS entries updated}}",
   "@syncResultSrs": {
     "placeholders": {

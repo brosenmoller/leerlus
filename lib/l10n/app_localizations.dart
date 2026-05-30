@@ -1592,6 +1592,24 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 question added} other{{count} questions added}}'**
   String syncResultQuestions(int count);
 
+  /// No description provided for @syncResultFoldersUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 folder updated} other{{count} folders updated}}'**
+  String syncResultFoldersUpdated(int count);
+
+  /// No description provided for @syncResultQuizzesUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 quiz updated} other{{count} quizzes updated}}'**
+  String syncResultQuizzesUpdated(int count);
+
+  /// No description provided for @syncResultQuestionsUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 question updated} other{{count} questions updated}}'**
+  String syncResultQuestionsUpdated(int count);
+
   /// No description provided for @syncResultSrs.
   ///
   /// In en, this message translates to:

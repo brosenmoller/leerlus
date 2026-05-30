@@ -31,6 +31,9 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
   }
 
   Future<void> _openAddScreen() async {
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+    }
     final result = await Navigator.push<Map<String, dynamic>>(
       context,
       MaterialPageRoute(
@@ -109,7 +112,7 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
               if (_scrollController.hasClients) {
                 _scrollController.animateTo(
                   _scrollController.position.maxScrollExtent,
-                  duration: const Duration(milliseconds: 400),
+                  duration: const Duration(milliseconds: 220),
                   curve: Curves.easeOut,
                 );
               }

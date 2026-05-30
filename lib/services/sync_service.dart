@@ -502,11 +502,39 @@ class SyncService {
     final remoteQuestionIds =
         remoteManifest.questions.map((e) => e.id).toSet();
 
-    final toSendFolderIds =
-        localFolderIds.difference(remoteFolderIds).toList();
-    final toSendQuizIds = localQuizIds.difference(remoteQuizIds).toList();
-    final toSendQuestionIds =
-        localQuestionIds.difference(remoteQuestionIds).toList();
+    // Items present on both sides but with different content hashes need updating.
+    // Initiator wins: only push changes outward; don't fetch updates for existing items.
+    final remoteHashById = {
+      for (final e in remoteManifest.folders) e.id: e.contentHash,
+      for (final e in remoteManifest.quizzes) e.id: e.contentHash,
+      for (final e in remoteManifest.questions) e.id: e.contentHash,
+    };
+    final localHashById = {
+      for (final e in localManifest.folders) e.id: e.contentHash,
+      for (final e in localManifest.quizzes) e.id: e.contentHash,
+      for (final e in localManifest.questions) e.id: e.contentHash,
+    };
+
+    List<String> changedIds(Set<String> both) => both
+        .where((id) {
+          final local = localHashById[id];
+          final remote = remoteHashById[id];
+          return local != null && remote != null && local != remote;
+        })
+        .toList();
+
+    final toSendFolderIds = [
+      ...localFolderIds.difference(remoteFolderIds),
+      ...changedIds(localFolderIds.intersection(remoteFolderIds)),
+    ];
+    final toSendQuizIds = [
+      ...localQuizIds.difference(remoteQuizIds),
+      ...changedIds(localQuizIds.intersection(remoteQuizIds)),
+    ];
+    final toSendQuestionIds = [
+      ...localQuestionIds.difference(remoteQuestionIds),
+      ...changedIds(localQuestionIds.intersection(remoteQuestionIds)),
+    ];
 
     final toFetchFolderIds =
         remoteFolderIds.difference(localFolderIds).toList();
@@ -666,15 +694,36 @@ class SyncService {
 
     return SyncManifest(
       folders: foldersRows
-          .map((f) => SyncEntry(id: f.id, createdAt: f.createdAt))
+          .map((f) => SyncEntry(
+                id: f.id,
+                createdAt: f.createdAt,
+                contentHash:
+                    '${f.title}|${f.parentFolderId ?? ''}|${f.imagePath ?? ''}',
+              ))
           .toList(),
       quizzes: quizzesRows
-          .map((q) => SyncEntry(id: q.id, createdAt: q.createdAt))
+          .map((q) => SyncEntry(
+                id: q.id,
+                createdAt: q.createdAt,
+                contentHash:
+                    '${q.title}|${q.folderId ?? ''}|${q.imagePath ?? ''}|${q.languageCode ?? ''}',
+              ))
           .toList(),
       questions: questionsRows
           .map((q) => SyncEntry(
-              id: q.id,
-              createdAt: DateTime.fromMillisecondsSinceEpoch(0)))
+                id: q.id,
+                createdAt: DateTime.fromMillisecondsSinceEpoch(0),
+                contentHash: [
+                  q.questionText,
+                  q.questionVariants ?? '',
+                  q.answerType,
+                  q.answerConfig,
+                  q.explanation ?? '',
+                  q.imagePath ?? '',
+                  q.imagePathVariants ?? '',
+                  q.occlusionConfig ?? '',
+                ].join('|'),
+              ))
           .toList(),
       srsKeys: srsKeys,
       favoriteSyncIds: favIds,
@@ -733,6 +782,22 @@ class SyncService {
 
       if (q.imagePath != null) imageFilenames.add(p.basename(q.imagePath!));
 
+      // Collect all image variant basenames
+      List<String>? imageVariants;
+      if (q.imagePathVariants != null) {
+        final paths = List<String>.from(
+            jsonDecode(q.imagePathVariants!) as List);
+        imageVariants = paths.map((path) {
+          final name = p.basename(path);
+          imageFilenames.add(name);
+          return name;
+        }).toList();
+      }
+
+      // Normalize occlusionConfig path keys to basenames
+      final normalizedOcclusion = _normalizeOcclusionConfig(
+          q.occlusionConfig, q.answerType, imageFilenames);
+
       questionsJson.add({
         'id': q.id,
         'questionText': q.questionText,
@@ -744,6 +809,8 @@ class SyncService {
         'explanation': q.explanation,
         'imageName':
             q.imagePath != null ? p.basename(q.imagePath!) : null,
+        'imageVariants': ?imageVariants,
+        'occlusionConfig': ?normalizedOcclusion,
       });
     }
 
@@ -818,10 +885,54 @@ class SyncService {
     return result;
   }
 
+  /// Normalizes occlusionConfig path keys to basenames for network transfer.
+  /// For flashcard questions the keys are 'front'/'back' (not paths) — skip them.
+  Map<String, dynamic>? _normalizeOcclusionConfig(
+    String? occlusionConfigJson,
+    String answerType,
+    Set<String> imageFilenames,
+  ) {
+    if (occlusionConfigJson == null) return null;
+    final config =
+        Map<String, dynamic>.from(jsonDecode(occlusionConfigJson) as Map);
+    if (config['v'] != 2) return config;
+    final perImage =
+        Map<String, dynamic>.from(config['perImage'] as Map);
+    if (answerType == 'flashcard') return config;
+    final normalized = <String, dynamic>{};
+    for (final entry in perImage.entries) {
+      final name = p.basename(entry.key);
+      imageFilenames.add(name);
+      normalized[name] = entry.value;
+    }
+    return {'v': 2, 'perImage': normalized};
+  }
+
+  /// Localizes occlusionConfig basename keys back to full paths after receiving.
+  Map<String, dynamic>? _localizeOcclusionConfig(
+    dynamic occlusionConfigRaw,
+    String answerType,
+    String imgDir,
+  ) {
+    if (occlusionConfigRaw == null) return null;
+    final config =
+        Map<String, dynamic>.from(occlusionConfigRaw as Map);
+    if (config['v'] != 2) return config;
+    final perImage =
+        Map<String, dynamic>.from(config['perImage'] as Map);
+    if (answerType == 'flashcard') return config;
+    final localized = <String, dynamic>{};
+    for (final entry in perImage.entries) {
+      localized[p.join(imgDir, entry.key)] = entry.value;
+    }
+    return {'v': 2, 'perImage': localized};
+  }
+
   // ── Import ───────────────────────────────────────────────────
 
   Future<SyncResult> _importPayload(SyncPayload payload) async {
     int foldersAdded = 0, quizzesAdded = 0, questionsAdded = 0;
+    int foldersUpdated = 0, quizzesUpdated = 0, questionsUpdated = 0;
     int srsUpdated = 0, favoritesAdded = 0;
 
     final imgDir = await _getImagesDir();
@@ -832,11 +943,6 @@ class SyncService {
       // 1. Questions (no dependencies)
       for (final qJson in payload.questions) {
         final id = qJson['id'] as String;
-        final existing = await _db!.getQuestionById(id);
-        if (existing != null) {
-          questionIdMap[id] = existing.id;
-          continue;
-        }
 
         final answerType = qJson['answerType'] as String;
         final configRaw =
@@ -857,6 +963,45 @@ class SyncService {
           if (safe.isNotEmpty) imagePath = p.join(imgDir, safe);
         }
 
+        // Localize imagePathVariants basenames to full paths
+        final imageVariantsRaw = qJson['imageVariants'] as List?;
+        String? imagePathVariants;
+        if (imageVariantsRaw != null) {
+          final localPaths = imageVariantsRaw
+              .map((n) => p.join(imgDir, p.basename(n as String)))
+              .toList();
+          imagePathVariants = jsonEncode(localPaths);
+        }
+
+        // Localize occlusionConfig path keys
+        final occlusionRaw = qJson['occlusionConfig'];
+        String? occlusionConfig;
+        if (occlusionRaw != null) {
+          final localized =
+              _localizeOcclusionConfig(occlusionRaw, answerType, imgDir);
+          if (localized != null) occlusionConfig = jsonEncode(localized);
+        }
+
+        final existing = await _db!.getQuestionById(id);
+        if (existing != null) {
+          await _db!.updateQuestion(QuestionsCompanion(
+            id: Value(id),
+            questionText: Value(questionText),
+            questionVariants: (variants != null && variants.length > 1)
+                ? Value(jsonEncode(variants))
+                : const Value<String?>(null),
+            answerType: Value(answerType),
+            answerConfig: Value(jsonEncode(localConfig)),
+            explanation: Value(qJson['explanation'] as String?),
+            imagePath: Value(imagePath),
+            imagePathVariants: Value(imagePathVariants),
+            occlusionConfig: Value(occlusionConfig),
+          ));
+          questionIdMap[id] = existing.id;
+          questionsUpdated++;
+          continue;
+        }
+
         final newId = await _db!.insertQuestion(QuestionsCompanion(
           id: Value(id),
           questionText: Value(questionText),
@@ -867,25 +1012,35 @@ class SyncService {
           answerConfig: Value(jsonEncode(localConfig)),
           explanation: Value(qJson['explanation'] as String?),
           imagePath: Value(imagePath),
+          imagePathVariants: Value(imagePathVariants),
+          occlusionConfig: Value(occlusionConfig),
         ));
         questionIdMap[id] = newId;
         questionsAdded++;
       }
 
-      // 2. Folders — first pass: insert without parent
+      // 2. Folders — first pass: insert or update without parent
       for (final fJson in payload.folders) {
         final id = fJson['id'] as String;
-        final existing = await _db!.getFolderById(id);
-        if (existing != null) {
-          folderIdMap[id] = existing.id;
-          continue;
-        }
 
         String? imagePath;
         final imgName = fJson['imageName'] as String?;
         if (imgName != null) {
           final safe = p.basename(imgName);
           if (safe.isNotEmpty) imagePath = p.join(imgDir, safe);
+        }
+
+        final existing = await _db!.getFolderById(id);
+        if (existing != null) {
+          await _db!.updateFolder(FoldersCompanion(
+            id: Value(id),
+            parentFolderId: Value(fJson['parentId'] as String?),
+            title: Value(fJson['title'] as String),
+            imagePath: Value(imagePath),
+          ));
+          folderIdMap[id] = existing.id;
+          foldersUpdated++;
+          continue;
         }
 
         final newId = await _db!.insertFolder(FoldersCompanion(
@@ -913,21 +1068,31 @@ class SyncService {
         final id = qzJson['id'] as String;
         String quizLocalId;
 
+        final folderId = qzJson['folderId'] as String?;
+        final folderLocalId = folderId != null
+            ? (folderIdMap[folderId] ??
+                (await _db!.getFolderById(folderId))?.id)
+            : null;
+
+        String? imagePath;
+        final imgName = qzJson['imageName'] as String?;
+        if (imgName != null) {
+          final safe = p.basename(imgName);
+          if (safe.isNotEmpty) imagePath = p.join(imgDir, safe);
+        }
+
         final existing = await _db!.getQuizById(id);
         if (existing != null) {
+          await _db!.updateQuiz(QuizzesCompanion(
+            id: Value(id),
+            folderId: Value(folderLocalId),
+            title: Value(qzJson['title'] as String),
+            imagePath: Value(imagePath),
+            languageCode: Value(qzJson['languageCode'] as String?),
+          ));
           quizLocalId = existing.id;
+          quizzesUpdated++;
         } else {
-          final folderId = qzJson['folderId'] as String?;
-          final folderLocalId =
-              folderId != null ? folderIdMap[folderId] : null;
-
-          String? imagePath;
-          final imgName = qzJson['imageName'] as String?;
-          if (imgName != null) {
-            final safe = p.basename(imgName);
-            if (safe.isNotEmpty) imagePath = p.join(imgDir, safe);
-          }
-
           quizLocalId = await _db!.insertQuiz(QuizzesCompanion(
             id: Value(id),
             folderId: Value(folderLocalId),
@@ -1007,6 +1172,9 @@ class SyncService {
       foldersAdded: foldersAdded,
       quizzesAdded: quizzesAdded,
       questionsAdded: questionsAdded,
+      foldersUpdated: foldersUpdated,
+      quizzesUpdated: quizzesUpdated,
+      questionsUpdated: questionsUpdated,
       srsUpdated: srsUpdated,
       favoritesAdded: favoritesAdded,
     );
