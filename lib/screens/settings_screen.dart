@@ -413,6 +413,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   _SrsSliderRow(
+                    key: ValueKey('easyMin_${_srs.easyMinIntervalDays}'),
+                    label: l10n.srsAlgoEasyMinInterval,
+                    initialValue: _srs.easyMinIntervalDays.toDouble(),
+                    min: 0,
+                    max: 7,
+                    divisions: 7,
+                    formatValue: (v) => v.round() == 0
+                        ? l10n.srsAlgoEasyMinOff
+                        : l10n.srsAlgoDays(v.round()),
+                    description: l10n.srsAlgoEasyMinIntervalDesc,
+                    onChangeEnd: (v) =>
+                        _saveSrs(_srs.copyWith(easyMinIntervalDays: v.round())),
+                  ),
+                  _SrsSliderRow(
                     key: ValueKey('initial_${_srs.initialEase}'),
                     label: l10n.srsAlgoInitialEase,
                     initialValue: _srs.initialEase,
@@ -428,14 +442,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _SrsSliderRow(
                     key: ValueKey('maxInterval_${_srs.maxIntervalDays}'),
                     label: l10n.srsAlgoMaxInterval,
-                    initialValue: _srs.maxIntervalDays.toDouble(),
-                    min: 30,
-                    max: 365,
-                    divisions: 67,
-                    formatValue: (v) => l10n.srsAlgoDays(v.round()),
+                    initialValue: (_srs.maxIntervalDays / 365.0 * 4).round() / 4.0,
+                    min: 0.25,
+                    max: 3.0,
+                    divisions: 11,
+                    formatValue: (v) {
+                      if (v < 1.0) return l10n.srsAlgoMonths((v * 12).round());
+                      final wholeYears = v.truncate();
+                      final months = ((v - wholeYears) * 12).round();
+                      if (months == 0) return l10n.srsAlgoYears(wholeYears);
+                      return '${l10n.srsAlgoYears(wholeYears)} ${l10n.srsAlgoMonths(months)}';
+                    },
                     description: l10n.srsAlgoMaxIntervalDesc,
                     onChangeEnd: (v) =>
-                        _saveSrs(_srs.copyWith(maxIntervalDays: v.round())),
+                        _saveSrs(_srs.copyWith(maxIntervalDays: (v * 365).round())),
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),

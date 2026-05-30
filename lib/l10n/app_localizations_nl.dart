@@ -108,6 +108,16 @@ class AppLocalizationsNl extends AppLocalizations {
       'Hoeveel de gemaksfactor stijgt bij \"Makkelijk\".';
 
   @override
+  String get srsAlgoEasyMinInterval => 'Makkelijk - min. interval';
+
+  @override
+  String get srsAlgoEasyMinIntervalDesc =>
+      'Minimale interval bij \"Makkelijk\". Voorkomt dat kleine intervallen vermenigvuldigen tot uren in plaats van dagen. Zet op Uit om te deactiveren.';
+
+  @override
+  String get srsAlgoEasyMinOff => 'Uit';
+
+  @override
   String get srsAlgoInitialEase => 'Beginfactor gemak';
 
   @override
@@ -124,6 +134,16 @@ class AppLocalizationsNl extends AppLocalizations {
   @override
   String srsAlgoDays(int count) {
     return '$count dagen';
+  }
+
+  @override
+  String srsAlgoMonths(int count) {
+    return '$count mnd';
+  }
+
+  @override
+  String srsAlgoYears(int count) {
+    return '$count jr';
   }
 
   @override

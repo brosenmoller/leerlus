@@ -35,11 +35,26 @@
   "srsAlgoGoodDesc": "Hoeveel de gemaksfactor verschuift bij \"Goed\". Standaard 0 blijft neutraal.",
   "srsAlgoEasyBonus": "Makkelijk - gemaksbonus",
   "srsAlgoEasyDesc": "Hoeveel de gemaksfactor stijgt bij \"Makkelijk\".",
+  "srsAlgoEasyMinInterval": "Makkelijk - min. interval",
+  "srsAlgoEasyMinIntervalDesc": "Minimale interval bij \"Makkelijk\". Voorkomt dat kleine intervallen vermenigvuldigen tot uren in plaats van dagen. Zet op Uit om te deactiveren.",
+  "srsAlgoEasyMinOff": "Uit",
   "srsAlgoInitialEase": "Beginfactor gemak",
   "srsAlgoInitialEaseDesc": "Startfactor voor nieuw toegevoegde kaarten.",
   "srsAlgoMaxInterval": "Max. interval",
   "srsAlgoMaxIntervalDesc": "Langste interval waarvoor een kaart ingepland kan worden.",
   "srsAlgoDays": "{count} dagen",
+  "srsAlgoMonths": "{count} mnd",
+  "@srsAlgoMonths": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "srsAlgoYears": "{count} jr",
+  "@srsAlgoYears": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "@srsAlgoDays": {
     "placeholders": {
       "count": { "type": "int" }

@@ -106,6 +106,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get srsAlgoEasyDesc => 'How much the ease factor rises on \"Easy\".';
 
   @override
+  String get srsAlgoEasyMinInterval => 'Easy - min. interval';
+
+  @override
+  String get srsAlgoEasyMinIntervalDesc =>
+      'Minimum next-review interval when pressing Easy. Prevents small intervals from multiplying into hours instead of days. Set to Off to disable.';
+
+  @override
+  String get srsAlgoEasyMinOff => 'Off';
+
+  @override
   String get srsAlgoInitialEase => 'Initial ease factor';
 
   @override
@@ -122,6 +132,16 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String srsAlgoDays(int count) {
     return '$count days';
+  }
+
+  @override
+  String srsAlgoMonths(int count) {
+    return '$count mo';
+  }
+
+  @override
+  String srsAlgoYears(int count) {
+    return '$count yr';
   }
 
   @override

@@ -101,6 +101,10 @@ class UserQuestionData extends HiveObject {
           break;
       }
       intervalSeconds = (intervalSeconds * easeFactor).clamp(0, maxSecs);
+      if (quality == SrsQuality.easy && settings.easyMinIntervalDays > 0) {
+        final easyMinSecs = settings.easyMinIntervalDays * 24.0 * 3600;
+        if (intervalSeconds < easyMinSecs) intervalSeconds = easyMinSecs;
+      }
     }
 
     nextReview = now.add(intervalDuration);

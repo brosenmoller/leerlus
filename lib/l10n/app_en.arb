@@ -35,11 +35,26 @@
   "srsAlgoGoodDesc": "How much the ease factor shifts on \"Good\". Default 0 keeps it neutral.",
   "srsAlgoEasyBonus": "Easy - ease bonus",
   "srsAlgoEasyDesc": "How much the ease factor rises on \"Easy\".",
+  "srsAlgoEasyMinInterval": "Easy - min. interval",
+  "srsAlgoEasyMinIntervalDesc": "Minimum next-review interval when pressing Easy. Prevents small intervals from multiplying into hours instead of days. Set to Off to disable.",
+  "srsAlgoEasyMinOff": "Off",
   "srsAlgoInitialEase": "Initial ease factor",
   "srsAlgoInitialEaseDesc": "Starting ease factor for newly enrolled cards.",
   "srsAlgoMaxInterval": "Max interval",
   "srsAlgoMaxIntervalDesc": "Longest interval a card can be scheduled.",
   "srsAlgoDays": "{count} days",
+  "srsAlgoMonths": "{count} mo",
+  "@srsAlgoMonths": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "srsAlgoYears": "{count} yr",
+  "@srsAlgoYears": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "@srsAlgoDays": {
     "placeholders": {
       "count": { "type": "int" }

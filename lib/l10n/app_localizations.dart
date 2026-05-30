@@ -284,6 +284,24 @@ abstract class AppLocalizations {
   /// **'How much the ease factor rises on \"Easy\".'**
   String get srsAlgoEasyDesc;
 
+  /// No description provided for @srsAlgoEasyMinInterval.
+  ///
+  /// In en, this message translates to:
+  /// **'Easy - min. interval'**
+  String get srsAlgoEasyMinInterval;
+
+  /// No description provided for @srsAlgoEasyMinIntervalDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum next-review interval when pressing Easy. Prevents small intervals from multiplying into hours instead of days. Set to Off to disable.'**
+  String get srsAlgoEasyMinIntervalDesc;
+
+  /// No description provided for @srsAlgoEasyMinOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get srsAlgoEasyMinOff;
+
   /// No description provided for @srsAlgoInitialEase.
   ///
   /// In en, this message translates to:
@@ -313,6 +331,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} days'**
   String srsAlgoDays(int count);
+
+  /// No description provided for @srsAlgoMonths.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} mo'**
+  String srsAlgoMonths(int count);
+
+  /// No description provided for @srsAlgoYears.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} yr'**
+  String srsAlgoYears(int count);
 
   /// No description provided for @srsAlgoResetDefaults.
   ///
