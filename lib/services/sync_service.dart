@@ -15,6 +15,7 @@ import 'package:leerlus/models/user_question_data.dart';
 import 'package:leerlus/services/favorites_service.dart';
 import 'package:leerlus/services/question_service.dart';
 import 'package:leerlus/services/srs_service.dart';
+import 'package:leerlus/services/statistics_service.dart';
 import 'package:leerlus/services/streak_service.dart';
 import 'package:leerlus/services/sync_discovery_service.dart';
 import 'package:drift/drift.dart' show Value;
@@ -371,12 +372,13 @@ class SyncService {
       // Merge delete counts into the push result so the acceptor's done-screen
       // reflects both what was added and what was removed.
       _acceptorResult = SyncResult(
-        foldersAdded:      _acceptorResult?.foldersAdded      ?? 0,
-        quizzesAdded:      _acceptorResult?.quizzesAdded      ?? 0,
-        questionsAdded:    _acceptorResult?.questionsAdded    ?? 0,
-        srsUpdated:        _acceptorResult?.srsUpdated        ?? 0,
-        favoritesAdded:    _acceptorResult?.favoritesAdded    ?? 0,
-        imagesFailedCount: _acceptorResult?.imagesFailedCount ?? 0,
+        foldersAdded:       _acceptorResult?.foldersAdded       ?? 0,
+        quizzesAdded:       _acceptorResult?.quizzesAdded       ?? 0,
+        questionsAdded:     _acceptorResult?.questionsAdded     ?? 0,
+        srsUpdated:         _acceptorResult?.srsUpdated         ?? 0,
+        favoritesAdded:     _acceptorResult?.favoritesAdded     ?? 0,
+        imagesFailedCount:  _acceptorResult?.imagesFailedCount  ?? 0,
+        statisticsUpdated:  _acceptorResult?.statisticsUpdated  ?? false,
         foldersDeleted:    fDel,
         quizzesDeleted:    qzDel,
         questionsDeleted:  qsDel,
@@ -862,6 +864,7 @@ class SyncService {
       favoriteSyncIds: favIds,
       imageFilenames: imageFilenames.toList(),
       streakData: streakDataJson,
+      statisticsData: StatisticsService().exportForSync(),
     );
   }
 
@@ -1168,6 +1171,14 @@ class SyncService {
       );
     }
 
+    // Statistics — merge by max-per-bucket strategy.
+    bool statsWereMerged = false;
+    final remoteStats = payload.statisticsData;
+    if (remoteStats != null) {
+      await StatisticsService().mergeFromSync(remoteStats);
+      statsWereMerged = true;
+    }
+
     return SyncResult(
       foldersAdded: foldersAdded,
       quizzesAdded: quizzesAdded,
@@ -1177,6 +1188,7 @@ class SyncService {
       questionsUpdated: questionsUpdated,
       srsUpdated: srsUpdated,
       favoritesAdded: favoritesAdded,
+      statisticsUpdated: statsWereMerged,
     );
   }
 

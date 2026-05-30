@@ -11,6 +11,7 @@ import 'package:leerlus/services/notification_service.dart';
 import 'package:leerlus/services/question_service.dart' show QuestionService;
 import 'package:leerlus/services/settings_service.dart';
 import 'package:leerlus/services/srs_service.dart' show SrsService;
+import 'package:leerlus/services/statistics_service.dart';
 import 'package:leerlus/services/streak_service.dart';
 import 'package:leerlus/utils/app_storage.dart';
 
@@ -36,6 +37,7 @@ void main() async {
   await settingsService.init();
   await notificationService.init();
   await streakService.init();
+  await StatisticsService().init();
 
   // Restore scheduled reminder after app restart.
   if (streakService.streakEnabled && streakService.notifsEnabled) {

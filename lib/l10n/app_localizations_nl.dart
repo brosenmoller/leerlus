@@ -1198,4 +1198,53 @@ class AppLocalizationsNl extends AppLocalizations {
   @override
   String get saveOrphanImagesContent =>
       'De opgeslagen wijzigingen hebben afbeeldingen verwijderd die nergens anders worden gebruikt.';
+
+  @override
+  String get statsTitle => 'Statistieken';
+
+  @override
+  String get statsToday => 'Vandaag';
+
+  @override
+  String get statsAllTime => 'Totaal';
+
+  @override
+  String get statsTotalAnswered => 'Vragen beantwoord';
+
+  @override
+  String get statsTotalSessions => 'Sessies voltooid';
+
+  @override
+  String get statsAccuracy => 'Nauwkeurigheid';
+
+  @override
+  String get statsBestDay => 'Beste dag';
+
+  @override
+  String get statsActivity7Days => 'Activiteit (7 dagen)';
+
+  @override
+  String get statsAnswerTypes => 'Per antwoordtype';
+
+  @override
+  String get statsSrs => 'SRS kwaliteit';
+
+  @override
+  String get statsFunFacts => 'Weetjes';
+
+  @override
+  String get statsMostActiveDay => 'Meest actieve dag';
+
+  @override
+  String get statsUniqueQuestions => 'Unieke vragen geoefend';
+
+  @override
+  String get statsPerfectSessions => 'Perfecte sessies';
+
+  @override
+  String get statsNoData =>
+      'Nog geen activiteit. Start een quiz om je statistieken te zien!';
+
+  @override
+  String get syncResultStatisticsUpdated => 'Statistieken gesynchroniseerd';
 }

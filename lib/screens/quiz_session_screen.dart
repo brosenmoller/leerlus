@@ -2,6 +2,7 @@
 import 'package:leerlus/l10n/app_localizations.dart';
 import 'package:leerlus/models/quiz_data.dart';
 import 'package:leerlus/services/question_service.dart';
+import 'package:leerlus/services/statistics_service.dart';
 import 'package:leerlus/services/streak_service.dart';
 import 'package:leerlus/screens/question_display/question_display_screen.dart';
 import 'package:leerlus/models/question_data.dart';
@@ -49,6 +50,10 @@ class _QuizSessionScreenState extends State<QuizSessionScreen> {
       });
     } else {
       final streakEvent = await StreakService().recordActivity();
+      await StatisticsService().recordSessionComplete(false);
+      if (correctAnswers == totalQuestions) {
+        await StatisticsService().recordPerfectSession();
+      }
       if (!mounted) return;
       Navigator.pushReplacement(
         context,

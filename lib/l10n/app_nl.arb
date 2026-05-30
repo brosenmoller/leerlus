@@ -509,5 +509,22 @@
       "count": { "type": "int" }
     }
   },
-  "occlusionTypeChangeContinue": "Toch wisselen"
+  "occlusionTypeChangeContinue": "Toch wisselen",
+
+  "statsTitle": "Statistieken",
+  "statsToday": "Vandaag",
+  "statsAllTime": "Totaal",
+  "statsTotalAnswered": "Vragen beantwoord",
+  "statsTotalSessions": "Sessies voltooid",
+  "statsAccuracy": "Nauwkeurigheid",
+  "statsBestDay": "Beste dag",
+  "statsActivity7Days": "Activiteit (7 dagen)",
+  "statsAnswerTypes": "Per antwoordtype",
+  "statsSrs": "SRS kwaliteit",
+  "statsFunFacts": "Weetjes",
+  "statsMostActiveDay": "Meest actieve dag",
+  "statsUniqueQuestions": "Unieke vragen geoefend",
+  "statsPerfectSessions": "Perfecte sessies",
+  "statsNoData": "Nog geen activiteit. Start een quiz om je statistieken te zien!",
+  "syncResultStatisticsUpdated": "Statistieken gesynchroniseerd"
 }

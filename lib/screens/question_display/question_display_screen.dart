@@ -8,6 +8,7 @@ import 'package:leerlus/screens/question_display/answer_area.dart';
 import 'package:leerlus/screens/question_display/continue_button.dart';
 import 'package:leerlus/screens/question_display/srs_buttons.dart';
 import 'package:leerlus/services/settings_service.dart';
+import 'package:leerlus/services/statistics_service.dart';
 
 class QuestionDisplayScreen extends StatefulWidget {
   final QuestionData question;
@@ -56,6 +57,8 @@ class _QuestionDisplayScreenState extends State<QuestionDisplayScreen>
   }
 
   void _handleAnswer(bool isCorrect) {
+    StatisticsService().recordAnswer(
+      widget.question.answerType.name, isCorrect, widget.spacedRepetitionMode);
     setState(() {
       answerState = isCorrect ? AnswerState.correct : AnswerState.incorrect;
     });

@@ -1,5 +1,0 @@
-x Bug it alsways shows hard sync complete text
-- Statistics screen
-- Sort questions on created date
-- Easy SRS option doesn't scale fast enough
-- Maybe increase Max card length to default 1 year max 3 years

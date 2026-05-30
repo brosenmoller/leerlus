@@ -3,6 +3,7 @@ import 'package:leerlus/l10n/app_localizations.dart';
 import 'package:leerlus/models/question_data.dart';
 import 'package:leerlus/models/user_question_data.dart' show SrsQuality;
 import 'package:leerlus/services/srs_service.dart';
+import 'package:leerlus/services/statistics_service.dart';
 import 'package:leerlus/services/streak_service.dart';
 import 'package:leerlus/screens/question_display/question_display_screen.dart';
 import 'package:leerlus/screens/srs_completion_screen.dart';
@@ -34,6 +35,10 @@ class _SrsSessionScreenState extends State<SrsSessionScreen> {
       setState(() => currentIndex++);
     } else {
       final streakEvent = await StreakService().recordActivity();
+      await StatisticsService().recordSessionComplete(true);
+      if (correctAnswers == widget.questions.length) {
+        await StatisticsService().recordPerfectSession();
+      }
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
@@ -66,8 +71,10 @@ class _SrsSessionScreenState extends State<SrsSessionScreen> {
       spacedRepetitionMode: true,
       onContinue: (wasCorrect, quality) async {
         if (quality != null) {
+          await StatisticsService().recordSrsQuality(quality);
           await _srsService.updateAfterAnswer(question, quality);
         } else if (!wasCorrect) {
+          await StatisticsService().recordSrsQuality(SrsQuality.again);
           await _srsService.updateAfterAnswer(question, SrsQuality.again);
         }
         _nextQuestion(wasCorrect);

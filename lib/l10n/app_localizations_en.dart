@@ -1192,4 +1192,53 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get saveOrphanImagesContent =>
       'Saving removed images that are no longer referenced anywhere.';
+
+  @override
+  String get statsTitle => 'Statistics';
+
+  @override
+  String get statsToday => 'Today';
+
+  @override
+  String get statsAllTime => 'All Time';
+
+  @override
+  String get statsTotalAnswered => 'Questions answered';
+
+  @override
+  String get statsTotalSessions => 'Sessions completed';
+
+  @override
+  String get statsAccuracy => 'Accuracy';
+
+  @override
+  String get statsBestDay => 'Best day';
+
+  @override
+  String get statsActivity7Days => '7-Day Activity';
+
+  @override
+  String get statsAnswerTypes => 'By Answer Type';
+
+  @override
+  String get statsSrs => 'SRS Quality';
+
+  @override
+  String get statsFunFacts => 'Fun Facts';
+
+  @override
+  String get statsMostActiveDay => 'Most active day';
+
+  @override
+  String get statsUniqueQuestions => 'Unique questions practiced';
+
+  @override
+  String get statsPerfectSessions => 'Perfect sessions';
+
+  @override
+  String get statsNoData =>
+      'No activity recorded yet. Start a quiz to see your stats!';
+
+  @override
+  String get syncResultStatisticsUpdated => 'Statistics synced';
 }

@@ -7,6 +7,7 @@ import 'package:leerlus/screens/settings_screen.dart';
 import 'package:leerlus/screens/favorites_screen.dart';
 import 'package:leerlus/services/streak_service.dart';
 import 'package:leerlus/screens/srs_overview/srs_overview_screen.dart';
+import 'package:leerlus/screens/statistics_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final AppDatabase db;
@@ -148,6 +149,14 @@ class HomeScreen extends StatelessWidget {
             ),
             actions: [
               IconButton(
+                icon: Icon(Icons.bar_chart_rounded, color: colorScheme.onPrimary),
+                tooltip: l10n.statsTitle,
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const StatisticsScreen()),
+                ),
+              ),
+              IconButton(
                 icon: Icon(Icons.settings, color: colorScheme.onPrimary),
                 tooltip: l10n.settingsTooltip,
                 onPressed: () => Navigator.push(
@@ -179,7 +188,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
                 child: Align(
-                  alignment: Alignment.centerRight,
+                  alignment: Alignment.bottomRight,
                   child: Padding(
                     padding: const EdgeInsets.only(right: 24, bottom: 32),
                     child: Icon(

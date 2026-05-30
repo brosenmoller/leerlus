@@ -614,5 +614,22 @@
     }
   },
   "saveOrphanImagesTitle": "Remove unused images?",
-  "saveOrphanImagesContent": "Saving removed images that are no longer referenced anywhere."
+  "saveOrphanImagesContent": "Saving removed images that are no longer referenced anywhere.",
+
+  "statsTitle": "Statistics",
+  "statsToday": "Today",
+  "statsAllTime": "All Time",
+  "statsTotalAnswered": "Questions answered",
+  "statsTotalSessions": "Sessions completed",
+  "statsAccuracy": "Accuracy",
+  "statsBestDay": "Best day",
+  "statsActivity7Days": "7-Day Activity",
+  "statsAnswerTypes": "By Answer Type",
+  "statsSrs": "SRS Quality",
+  "statsFunFacts": "Fun Facts",
+  "statsMostActiveDay": "Most active day",
+  "statsUniqueQuestions": "Unique questions practiced",
+  "statsPerfectSessions": "Perfect sessions",
+  "statsNoData": "No activity recorded yet. Start a quiz to see your stats!",
+  "syncResultStatisticsUpdated": "Statistics synced"
 }

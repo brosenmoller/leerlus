@@ -1927,6 +1927,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Saving removed images that are no longer referenced anywhere.'**
   String get saveOrphanImagesContent;
+
+  /// No description provided for @statsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Statistics'**
+  String get statsTitle;
+
+  /// No description provided for @statsToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get statsToday;
+
+  /// No description provided for @statsAllTime.
+  ///
+  /// In en, this message translates to:
+  /// **'All Time'**
+  String get statsAllTime;
+
+  /// No description provided for @statsTotalAnswered.
+  ///
+  /// In en, this message translates to:
+  /// **'Questions answered'**
+  String get statsTotalAnswered;
+
+  /// No description provided for @statsTotalSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Sessions completed'**
+  String get statsTotalSessions;
+
+  /// No description provided for @statsAccuracy.
+  ///
+  /// In en, this message translates to:
+  /// **'Accuracy'**
+  String get statsAccuracy;
+
+  /// No description provided for @statsBestDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Best day'**
+  String get statsBestDay;
+
+  /// No description provided for @statsActivity7Days.
+  ///
+  /// In en, this message translates to:
+  /// **'7-Day Activity'**
+  String get statsActivity7Days;
+
+  /// No description provided for @statsAnswerTypes.
+  ///
+  /// In en, this message translates to:
+  /// **'By Answer Type'**
+  String get statsAnswerTypes;
+
+  /// No description provided for @statsSrs.
+  ///
+  /// In en, this message translates to:
+  /// **'SRS Quality'**
+  String get statsSrs;
+
+  /// No description provided for @statsFunFacts.
+  ///
+  /// In en, this message translates to:
+  /// **'Fun Facts'**
+  String get statsFunFacts;
+
+  /// No description provided for @statsMostActiveDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Most active day'**
+  String get statsMostActiveDay;
+
+  /// No description provided for @statsUniqueQuestions.
+  ///
+  /// In en, this message translates to:
+  /// **'Unique questions practiced'**
+  String get statsUniqueQuestions;
+
+  /// No description provided for @statsPerfectSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Perfect sessions'**
+  String get statsPerfectSessions;
+
+  /// No description provided for @statsNoData.
+  ///
+  /// In en, this message translates to:
+  /// **'No activity recorded yet. Start a quiz to see your stats!'**
+  String get statsNoData;
+
+  /// No description provided for @syncResultStatisticsUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Statistics synced'**
+  String get syncResultStatisticsUpdated;
 }
 
 class _AppLocalizationsDelegate

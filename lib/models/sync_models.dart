@@ -88,6 +88,8 @@ class SyncPayload {
   final List<String> imageFilenames;
   /// Nullable for backward-compat: absent when receiving from an older client.
   final Map<String, dynamic>? streakData;
+  /// Nullable for backward-compat: absent when receiving from an older client.
+  final Map<String, dynamic>? statisticsData;
 
   const SyncPayload({
     required this.folders,
@@ -97,6 +99,7 @@ class SyncPayload {
     required this.favoriteSyncIds,
     required this.imageFilenames,
     this.streakData,
+    this.statisticsData,
   });
 
   Map<String, dynamic> toJson() => {
@@ -107,6 +110,7 @@ class SyncPayload {
         'favoriteSyncIds': favoriteSyncIds,
         'imageFilenames': imageFilenames,
         if (streakData != null) 'streakData': streakData,
+        if (statisticsData != null) 'statisticsData': statisticsData,
       };
 
   factory SyncPayload.fromJson(Map<String, dynamic> json) => SyncPayload(
@@ -129,6 +133,9 @@ class SyncPayload {
         streakData: json['streakData'] != null
             ? Map<String, dynamic>.from(json['streakData'] as Map)
             : null,
+        statisticsData: json['statisticsData'] != null
+            ? Map<String, dynamic>.from(json['statisticsData'] as Map)
+            : null,
       );
 }
 
@@ -148,6 +155,7 @@ class SyncResult {
   /// True when this result is for the hard-sync initiator. Deletions in that
   /// case happened on the remote device, not locally, so the UI suppresses them.
   final bool isHardSync;
+  final bool statisticsUpdated;
 
   const SyncResult({
     this.foldersAdded = 0,
@@ -163,6 +171,7 @@ class SyncResult {
     this.questionsDeleted = 0,
     this.imagesFailedCount = 0,
     this.isHardSync = false,
+    this.statisticsUpdated = false,
   });
 
   SyncResult withImagesFailed(int count) => SyncResult(
@@ -179,6 +188,7 @@ class SyncResult {
     questionsDeleted: questionsDeleted,
     imagesFailedCount: count,
     isHardSync: isHardSync,
+    statisticsUpdated: statisticsUpdated,
   );
 
   bool get isEmpty =>

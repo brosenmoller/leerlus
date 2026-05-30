@@ -666,6 +666,9 @@ class _SyncScreenState extends State<SyncScreen> {
                       if (r.srsUpdated > 0)
                         _ResultRow(Icons.auto_awesome_outlined,
                             l10n.syncResultSrs(r.srsUpdated)),
+                      if (r.statisticsUpdated)
+                        _ResultRow(Icons.bar_chart_rounded,
+                            l10n.syncResultStatisticsUpdated),
                       if (r.foldersDeleted > 0)
                         _ResultRow(Icons.folder_delete_outlined,
                             l10n.syncResultFoldersDeleted(r.foldersDeleted)),
