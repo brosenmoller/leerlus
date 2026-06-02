@@ -160,6 +160,8 @@
   "srsStillDue": "Nog te herhalen",
   "srsQuestionsDue": "{count, plural, =1{1 vraag te herhalen} other{{count} vragen te herhalen}}",
   "srsBackToSpacedRepetition": "Terug naar Spaced Repetition",
+  "srsReviewAll": "Alles herhalen",
+  "srsAllDueTitle": "Alle te herhalen vragen",
   "srsHowWellKnew": "Hoe goed kende je dit?",
   "srsAgain": "Opnieuw",
   "srsHard": "Moeilijk",

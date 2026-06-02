@@ -403,6 +403,12 @@ class AppLocalizationsNl extends AppLocalizations {
   String get srsBackToSpacedRepetition => 'Terug naar Spaced Repetition';
 
   @override
+  String get srsReviewAll => 'Alles herhalen';
+
+  @override
+  String get srsAllDueTitle => 'Alle te herhalen vragen';
+
+  @override
   String get srsHowWellKnew => 'Hoe goed kende je dit?';
 
   @override

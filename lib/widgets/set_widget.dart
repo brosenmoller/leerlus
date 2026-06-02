@@ -75,8 +75,22 @@ class _SetWidgetState extends State<SetWidget> {
   }
 
   void _submit() {
-    if (_entered.isEmpty) return;
     final config = widget.question.setConfig!;
+
+    final inputText = _inputController.text.trim();
+    if (inputText.isNotEmpty) {
+      final testRemaining = List<String>.from(config.answers);
+      final isMatch = SetConfig.claimMatch(inputText, testRemaining) != null;
+      final alreadyEntered = _entered.any(
+        (e) => e.toLowerCase() == inputText.toLowerCase(),
+      );
+      if (isMatch && !alreadyEntered) {
+        _entered.add(inputText);
+        _inputController.clear();
+      }
+    }
+
+    if (_entered.isEmpty) return;
     final remaining = List<String>.from(config.answers);
 
     final matches = <String?>[

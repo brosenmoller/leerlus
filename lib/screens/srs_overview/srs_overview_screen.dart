@@ -93,7 +93,21 @@ class _SrsOverviewScreenState extends State<SrsOverviewScreen> {
 
     final colorScheme = Theme.of(context).colorScheme;
 
+    final allDueQuestions = entries
+        .expand((e) => e.dueQuestions)
+        .toList()
+      ..shuffle();
+
     return Scaffold(
+      floatingActionButton: allDueQuestions.isNotEmpty
+          ? FloatingActionButton.extended(
+              onPressed: () => _start(context, allDueQuestions, l10n.srsAllDueTitle),
+              icon: const Icon(Icons.play_arrow_rounded),
+              label: Text(l10n.srsReviewAll),
+              backgroundColor: colorScheme.error,
+              foregroundColor: colorScheme.onError,
+            )
+          : null,
       body: CustomScrollView(
         slivers: [
           SliverAppBar(

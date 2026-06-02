@@ -710,6 +710,18 @@ abstract class AppLocalizations {
   /// **'Back to Spaced Repetition'**
   String get srsBackToSpacedRepetition;
 
+  /// No description provided for @srsReviewAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Review all'**
+  String get srsReviewAll;
+
+  /// No description provided for @srsAllDueTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'All due questions'**
+  String get srsAllDueTitle;
+
   /// No description provided for @srsHowWellKnew.
   ///
   /// In en, this message translates to:

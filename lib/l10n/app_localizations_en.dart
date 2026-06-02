@@ -399,6 +399,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get srsBackToSpacedRepetition => 'Back to Spaced Repetition';
 
   @override
+  String get srsReviewAll => 'Review all';
+
+  @override
+  String get srsAllDueTitle => 'All due questions';
+
+  @override
   String get srsHowWellKnew => 'How well did you know this?';
 
   @override
