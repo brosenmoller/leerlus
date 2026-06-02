@@ -38,9 +38,17 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, Folder> {
       type: DriftSqlType.dateTime,
       requiredDuringInsert: false,
       defaultValue: currentDateAndTime);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      clientDefault: () => DateTime.now());
   @override
   List<GeneratedColumn> get $columns =>
-      [id, parentFolderId, title, imagePath, createdAt];
+      [id, parentFolderId, title, imagePath, createdAt, updatedAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -76,6 +84,10 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, Folder> {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
     }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    }
     return context;
   }
 
@@ -95,6 +107,8 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, Folder> {
           .read(DriftSqlType.string, data['${effectivePrefix}image_path']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
     );
   }
 
@@ -110,12 +124,14 @@ class Folder extends DataClass implements Insertable<Folder> {
   final String title;
   final String? imagePath;
   final DateTime createdAt;
+  final DateTime updatedAt;
   const Folder(
       {required this.id,
       this.parentFolderId,
       required this.title,
       this.imagePath,
-      required this.createdAt});
+      required this.createdAt,
+      required this.updatedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -128,6 +144,7 @@ class Folder extends DataClass implements Insertable<Folder> {
       map['image_path'] = Variable<String>(imagePath);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
 
@@ -142,6 +159,7 @@ class Folder extends DataClass implements Insertable<Folder> {
           ? const Value.absent()
           : Value(imagePath),
       createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
     );
   }
 
@@ -154,6 +172,7 @@ class Folder extends DataClass implements Insertable<Folder> {
       title: serializer.fromJson<String>(json['title']),
       imagePath: serializer.fromJson<String?>(json['imagePath']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
   @override
@@ -165,6 +184,7 @@ class Folder extends DataClass implements Insertable<Folder> {
       'title': serializer.toJson<String>(title),
       'imagePath': serializer.toJson<String?>(imagePath),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
 
@@ -173,7 +193,8 @@ class Folder extends DataClass implements Insertable<Folder> {
           Value<String?> parentFolderId = const Value.absent(),
           String? title,
           Value<String?> imagePath = const Value.absent(),
-          DateTime? createdAt}) =>
+          DateTime? createdAt,
+          DateTime? updatedAt}) =>
       Folder(
         id: id ?? this.id,
         parentFolderId:
@@ -181,6 +202,7 @@ class Folder extends DataClass implements Insertable<Folder> {
         title: title ?? this.title,
         imagePath: imagePath.present ? imagePath.value : this.imagePath,
         createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
       );
   Folder copyWithCompanion(FoldersCompanion data) {
     return Folder(
@@ -191,6 +213,7 @@ class Folder extends DataClass implements Insertable<Folder> {
       title: data.title.present ? data.title.value : this.title,
       imagePath: data.imagePath.present ? data.imagePath.value : this.imagePath,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
 
@@ -201,14 +224,15 @@ class Folder extends DataClass implements Insertable<Folder> {
           ..write('parentFolderId: $parentFolderId, ')
           ..write('title: $title, ')
           ..write('imagePath: $imagePath, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode =>
-      Object.hash(id, parentFolderId, title, imagePath, createdAt);
+      Object.hash(id, parentFolderId, title, imagePath, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -217,7 +241,8 @@ class Folder extends DataClass implements Insertable<Folder> {
           other.parentFolderId == this.parentFolderId &&
           other.title == this.title &&
           other.imagePath == this.imagePath &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
 }
 
 class FoldersCompanion extends UpdateCompanion<Folder> {
@@ -226,6 +251,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
   final Value<String> title;
   final Value<String?> imagePath;
   final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
   final Value<int> rowid;
   const FoldersCompanion({
     this.id = const Value.absent(),
@@ -233,6 +259,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
     this.title = const Value.absent(),
     this.imagePath = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   FoldersCompanion.insert({
@@ -241,6 +268,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
     required String title,
     this.imagePath = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         title = Value(title);
@@ -250,6 +278,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
     Expression<String>? title,
     Expression<String>? imagePath,
     Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -258,6 +287,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
       if (title != null) 'title': title,
       if (imagePath != null) 'image_path': imagePath,
       if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -268,6 +298,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
       Value<String>? title,
       Value<String?>? imagePath,
       Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt,
       Value<int>? rowid}) {
     return FoldersCompanion(
       id: id ?? this.id,
@@ -275,6 +306,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
       title: title ?? this.title,
       imagePath: imagePath ?? this.imagePath,
       createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -297,6 +329,9 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -311,6 +346,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
           ..write('title: $title, ')
           ..write('imagePath: $imagePath, ')
           ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -358,9 +394,17 @@ class $QuizzesTable extends Quizzes with TableInfo<$QuizzesTable, Quiz> {
   late final GeneratedColumn<String> languageCode = GeneratedColumn<String>(
       'language_code', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      clientDefault: () => DateTime.now());
   @override
   List<GeneratedColumn> get $columns =>
-      [id, folderId, title, imagePath, createdAt, languageCode];
+      [id, folderId, title, imagePath, createdAt, languageCode, updatedAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -400,6 +444,10 @@ class $QuizzesTable extends Quizzes with TableInfo<$QuizzesTable, Quiz> {
           languageCode.isAcceptableOrUnknown(
               data['language_code']!, _languageCodeMeta));
     }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    }
     return context;
   }
 
@@ -421,6 +469,8 @@ class $QuizzesTable extends Quizzes with TableInfo<$QuizzesTable, Quiz> {
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       languageCode: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}language_code']),
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
     );
   }
 
@@ -437,13 +487,15 @@ class Quiz extends DataClass implements Insertable<Quiz> {
   final String? imagePath;
   final DateTime createdAt;
   final String? languageCode;
+  final DateTime updatedAt;
   const Quiz(
       {required this.id,
       this.folderId,
       required this.title,
       this.imagePath,
       required this.createdAt,
-      this.languageCode});
+      this.languageCode,
+      required this.updatedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -459,6 +511,7 @@ class Quiz extends DataClass implements Insertable<Quiz> {
     if (!nullToAbsent || languageCode != null) {
       map['language_code'] = Variable<String>(languageCode);
     }
+    map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
 
@@ -476,6 +529,7 @@ class Quiz extends DataClass implements Insertable<Quiz> {
       languageCode: languageCode == null && nullToAbsent
           ? const Value.absent()
           : Value(languageCode),
+      updatedAt: Value(updatedAt),
     );
   }
 
@@ -489,6 +543,7 @@ class Quiz extends DataClass implements Insertable<Quiz> {
       imagePath: serializer.fromJson<String?>(json['imagePath']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       languageCode: serializer.fromJson<String?>(json['languageCode']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
   @override
@@ -501,6 +556,7 @@ class Quiz extends DataClass implements Insertable<Quiz> {
       'imagePath': serializer.toJson<String?>(imagePath),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'languageCode': serializer.toJson<String?>(languageCode),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
 
@@ -510,7 +566,8 @@ class Quiz extends DataClass implements Insertable<Quiz> {
           String? title,
           Value<String?> imagePath = const Value.absent(),
           DateTime? createdAt,
-          Value<String?> languageCode = const Value.absent()}) =>
+          Value<String?> languageCode = const Value.absent(),
+          DateTime? updatedAt}) =>
       Quiz(
         id: id ?? this.id,
         folderId: folderId.present ? folderId.value : this.folderId,
@@ -519,6 +576,7 @@ class Quiz extends DataClass implements Insertable<Quiz> {
         createdAt: createdAt ?? this.createdAt,
         languageCode:
             languageCode.present ? languageCode.value : this.languageCode,
+        updatedAt: updatedAt ?? this.updatedAt,
       );
   Quiz copyWithCompanion(QuizzesCompanion data) {
     return Quiz(
@@ -530,6 +588,7 @@ class Quiz extends DataClass implements Insertable<Quiz> {
       languageCode: data.languageCode.present
           ? data.languageCode.value
           : this.languageCode,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
 
@@ -541,14 +600,15 @@ class Quiz extends DataClass implements Insertable<Quiz> {
           ..write('title: $title, ')
           ..write('imagePath: $imagePath, ')
           ..write('createdAt: $createdAt, ')
-          ..write('languageCode: $languageCode')
+          ..write('languageCode: $languageCode, ')
+          ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, folderId, title, imagePath, createdAt, languageCode);
+  int get hashCode => Object.hash(
+      id, folderId, title, imagePath, createdAt, languageCode, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -558,7 +618,8 @@ class Quiz extends DataClass implements Insertable<Quiz> {
           other.title == this.title &&
           other.imagePath == this.imagePath &&
           other.createdAt == this.createdAt &&
-          other.languageCode == this.languageCode);
+          other.languageCode == this.languageCode &&
+          other.updatedAt == this.updatedAt);
 }
 
 class QuizzesCompanion extends UpdateCompanion<Quiz> {
@@ -568,6 +629,7 @@ class QuizzesCompanion extends UpdateCompanion<Quiz> {
   final Value<String?> imagePath;
   final Value<DateTime> createdAt;
   final Value<String?> languageCode;
+  final Value<DateTime> updatedAt;
   final Value<int> rowid;
   const QuizzesCompanion({
     this.id = const Value.absent(),
@@ -576,6 +638,7 @@ class QuizzesCompanion extends UpdateCompanion<Quiz> {
     this.imagePath = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.languageCode = const Value.absent(),
+    this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   QuizzesCompanion.insert({
@@ -585,6 +648,7 @@ class QuizzesCompanion extends UpdateCompanion<Quiz> {
     this.imagePath = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.languageCode = const Value.absent(),
+    this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         title = Value(title);
@@ -595,6 +659,7 @@ class QuizzesCompanion extends UpdateCompanion<Quiz> {
     Expression<String>? imagePath,
     Expression<DateTime>? createdAt,
     Expression<String>? languageCode,
+    Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -604,6 +669,7 @@ class QuizzesCompanion extends UpdateCompanion<Quiz> {
       if (imagePath != null) 'image_path': imagePath,
       if (createdAt != null) 'created_at': createdAt,
       if (languageCode != null) 'language_code': languageCode,
+      if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -615,6 +681,7 @@ class QuizzesCompanion extends UpdateCompanion<Quiz> {
       Value<String?>? imagePath,
       Value<DateTime>? createdAt,
       Value<String?>? languageCode,
+      Value<DateTime>? updatedAt,
       Value<int>? rowid}) {
     return QuizzesCompanion(
       id: id ?? this.id,
@@ -623,6 +690,7 @@ class QuizzesCompanion extends UpdateCompanion<Quiz> {
       imagePath: imagePath ?? this.imagePath,
       createdAt: createdAt ?? this.createdAt,
       languageCode: languageCode ?? this.languageCode,
+      updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -648,6 +716,9 @@ class QuizzesCompanion extends UpdateCompanion<Quiz> {
     if (languageCode.present) {
       map['language_code'] = Variable<String>(languageCode.value);
     }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -663,6 +734,7 @@ class QuizzesCompanion extends UpdateCompanion<Quiz> {
           ..write('imagePath: $imagePath, ')
           ..write('createdAt: $createdAt, ')
           ..write('languageCode: $languageCode, ')
+          ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -728,6 +800,14 @@ class $QuestionsTable extends Questions
   late final GeneratedColumn<String> occlusionConfig = GeneratedColumn<String>(
       'occlusion_config', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      clientDefault: () => DateTime.now());
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -738,7 +818,8 @@ class $QuestionsTable extends Questions
         explanation,
         imagePath,
         imagePathVariants,
-        occlusionConfig
+        occlusionConfig,
+        updatedAt
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -807,6 +888,10 @@ class $QuestionsTable extends Questions
           occlusionConfig.isAcceptableOrUnknown(
               data['occlusion_config']!, _occlusionConfigMeta));
     }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    }
     return context;
   }
 
@@ -834,6 +919,8 @@ class $QuestionsTable extends Questions
           DriftSqlType.string, data['${effectivePrefix}image_path_variants']),
       occlusionConfig: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}occlusion_config']),
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
     );
   }
 
@@ -853,6 +940,7 @@ class Question extends DataClass implements Insertable<Question> {
   final String? imagePath;
   final String? imagePathVariants;
   final String? occlusionConfig;
+  final DateTime updatedAt;
   const Question(
       {required this.id,
       required this.questionText,
@@ -862,7 +950,8 @@ class Question extends DataClass implements Insertable<Question> {
       this.explanation,
       this.imagePath,
       this.imagePathVariants,
-      this.occlusionConfig});
+      this.occlusionConfig,
+      required this.updatedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -885,6 +974,7 @@ class Question extends DataClass implements Insertable<Question> {
     if (!nullToAbsent || occlusionConfig != null) {
       map['occlusion_config'] = Variable<String>(occlusionConfig);
     }
+    map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
 
@@ -909,6 +999,7 @@ class Question extends DataClass implements Insertable<Question> {
       occlusionConfig: occlusionConfig == null && nullToAbsent
           ? const Value.absent()
           : Value(occlusionConfig),
+      updatedAt: Value(updatedAt),
     );
   }
 
@@ -926,6 +1017,7 @@ class Question extends DataClass implements Insertable<Question> {
       imagePathVariants:
           serializer.fromJson<String?>(json['imagePathVariants']),
       occlusionConfig: serializer.fromJson<String?>(json['occlusionConfig']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
   @override
@@ -941,6 +1033,7 @@ class Question extends DataClass implements Insertable<Question> {
       'imagePath': serializer.toJson<String?>(imagePath),
       'imagePathVariants': serializer.toJson<String?>(imagePathVariants),
       'occlusionConfig': serializer.toJson<String?>(occlusionConfig),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
 
@@ -953,7 +1046,8 @@ class Question extends DataClass implements Insertable<Question> {
           Value<String?> explanation = const Value.absent(),
           Value<String?> imagePath = const Value.absent(),
           Value<String?> imagePathVariants = const Value.absent(),
-          Value<String?> occlusionConfig = const Value.absent()}) =>
+          Value<String?> occlusionConfig = const Value.absent(),
+          DateTime? updatedAt}) =>
       Question(
         id: id ?? this.id,
         questionText: questionText ?? this.questionText,
@@ -970,6 +1064,7 @@ class Question extends DataClass implements Insertable<Question> {
         occlusionConfig: occlusionConfig.present
             ? occlusionConfig.value
             : this.occlusionConfig,
+        updatedAt: updatedAt ?? this.updatedAt,
       );
   Question copyWithCompanion(QuestionsCompanion data) {
     return Question(
@@ -994,6 +1089,7 @@ class Question extends DataClass implements Insertable<Question> {
       occlusionConfig: data.occlusionConfig.present
           ? data.occlusionConfig.value
           : this.occlusionConfig,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
 
@@ -1008,7 +1104,8 @@ class Question extends DataClass implements Insertable<Question> {
           ..write('explanation: $explanation, ')
           ..write('imagePath: $imagePath, ')
           ..write('imagePathVariants: $imagePathVariants, ')
-          ..write('occlusionConfig: $occlusionConfig')
+          ..write('occlusionConfig: $occlusionConfig, ')
+          ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
@@ -1023,7 +1120,8 @@ class Question extends DataClass implements Insertable<Question> {
       explanation,
       imagePath,
       imagePathVariants,
-      occlusionConfig);
+      occlusionConfig,
+      updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1036,7 +1134,8 @@ class Question extends DataClass implements Insertable<Question> {
           other.explanation == this.explanation &&
           other.imagePath == this.imagePath &&
           other.imagePathVariants == this.imagePathVariants &&
-          other.occlusionConfig == this.occlusionConfig);
+          other.occlusionConfig == this.occlusionConfig &&
+          other.updatedAt == this.updatedAt);
 }
 
 class QuestionsCompanion extends UpdateCompanion<Question> {
@@ -1049,6 +1148,7 @@ class QuestionsCompanion extends UpdateCompanion<Question> {
   final Value<String?> imagePath;
   final Value<String?> imagePathVariants;
   final Value<String?> occlusionConfig;
+  final Value<DateTime> updatedAt;
   final Value<int> rowid;
   const QuestionsCompanion({
     this.id = const Value.absent(),
@@ -1060,6 +1160,7 @@ class QuestionsCompanion extends UpdateCompanion<Question> {
     this.imagePath = const Value.absent(),
     this.imagePathVariants = const Value.absent(),
     this.occlusionConfig = const Value.absent(),
+    this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   QuestionsCompanion.insert({
@@ -1072,6 +1173,7 @@ class QuestionsCompanion extends UpdateCompanion<Question> {
     this.imagePath = const Value.absent(),
     this.imagePathVariants = const Value.absent(),
     this.occlusionConfig = const Value.absent(),
+    this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         questionText = Value(questionText),
@@ -1087,6 +1189,7 @@ class QuestionsCompanion extends UpdateCompanion<Question> {
     Expression<String>? imagePath,
     Expression<String>? imagePathVariants,
     Expression<String>? occlusionConfig,
+    Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1099,6 +1202,7 @@ class QuestionsCompanion extends UpdateCompanion<Question> {
       if (imagePath != null) 'image_path': imagePath,
       if (imagePathVariants != null) 'image_path_variants': imagePathVariants,
       if (occlusionConfig != null) 'occlusion_config': occlusionConfig,
+      if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1113,6 +1217,7 @@ class QuestionsCompanion extends UpdateCompanion<Question> {
       Value<String?>? imagePath,
       Value<String?>? imagePathVariants,
       Value<String?>? occlusionConfig,
+      Value<DateTime>? updatedAt,
       Value<int>? rowid}) {
     return QuestionsCompanion(
       id: id ?? this.id,
@@ -1124,6 +1229,7 @@ class QuestionsCompanion extends UpdateCompanion<Question> {
       imagePath: imagePath ?? this.imagePath,
       imagePathVariants: imagePathVariants ?? this.imagePathVariants,
       occlusionConfig: occlusionConfig ?? this.occlusionConfig,
+      updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1158,6 +1264,9 @@ class QuestionsCompanion extends UpdateCompanion<Question> {
     if (occlusionConfig.present) {
       map['occlusion_config'] = Variable<String>(occlusionConfig.value);
     }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1176,6 +1285,7 @@ class QuestionsCompanion extends UpdateCompanion<Question> {
           ..write('imagePath: $imagePath, ')
           ..write('imagePathVariants: $imagePathVariants, ')
           ..write('occlusionConfig: $occlusionConfig, ')
+          ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1443,6 +1553,7 @@ typedef $$FoldersTableCreateCompanionBuilder = FoldersCompanion Function({
   required String title,
   Value<String?> imagePath,
   Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
   Value<int> rowid,
 });
 typedef $$FoldersTableUpdateCompanionBuilder = FoldersCompanion Function({
@@ -1451,6 +1562,7 @@ typedef $$FoldersTableUpdateCompanionBuilder = FoldersCompanion Function({
   Value<String> title,
   Value<String?> imagePath,
   Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
   Value<int> rowid,
 });
 
@@ -1478,6 +1590,9 @@ class $$FoldersTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
 }
 
 class $$FoldersTableOrderingComposer
@@ -1504,6 +1619,9 @@ class $$FoldersTableOrderingComposer
 
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
 }
 
 class $$FoldersTableAnnotationComposer
@@ -1529,6 +1647,9 @@ class $$FoldersTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 }
 
 class $$FoldersTableTableManager extends RootTableManager<
@@ -1559,6 +1680,7 @@ class $$FoldersTableTableManager extends RootTableManager<
             Value<String> title = const Value.absent(),
             Value<String?> imagePath = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               FoldersCompanion(
@@ -1567,6 +1689,7 @@ class $$FoldersTableTableManager extends RootTableManager<
             title: title,
             imagePath: imagePath,
             createdAt: createdAt,
+            updatedAt: updatedAt,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -1575,6 +1698,7 @@ class $$FoldersTableTableManager extends RootTableManager<
             required String title,
             Value<String?> imagePath = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               FoldersCompanion.insert(
@@ -1583,6 +1707,7 @@ class $$FoldersTableTableManager extends RootTableManager<
             title: title,
             imagePath: imagePath,
             createdAt: createdAt,
+            updatedAt: updatedAt,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
@@ -1611,6 +1736,7 @@ typedef $$QuizzesTableCreateCompanionBuilder = QuizzesCompanion Function({
   Value<String?> imagePath,
   Value<DateTime> createdAt,
   Value<String?> languageCode,
+  Value<DateTime> updatedAt,
   Value<int> rowid,
 });
 typedef $$QuizzesTableUpdateCompanionBuilder = QuizzesCompanion Function({
@@ -1620,6 +1746,7 @@ typedef $$QuizzesTableUpdateCompanionBuilder = QuizzesCompanion Function({
   Value<String?> imagePath,
   Value<DateTime> createdAt,
   Value<String?> languageCode,
+  Value<DateTime> updatedAt,
   Value<int> rowid,
 });
 
@@ -1670,6 +1797,9 @@ class $$QuizzesTableFilterComposer
   ColumnFilters<String> get languageCode => $composableBuilder(
       column: $table.languageCode, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
   Expression<bool> quizQuestionsRefs(
       Expression<bool> Function($$QuizQuestionsTableFilterComposer f) f) {
     final $$QuizQuestionsTableFilterComposer composer = $composerBuilder(
@@ -1719,6 +1849,9 @@ class $$QuizzesTableOrderingComposer
   ColumnOrderings<String> get languageCode => $composableBuilder(
       column: $table.languageCode,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
 }
 
 class $$QuizzesTableAnnotationComposer
@@ -1747,6 +1880,9 @@ class $$QuizzesTableAnnotationComposer
 
   GeneratedColumn<String> get languageCode => $composableBuilder(
       column: $table.languageCode, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
   Expression<T> quizQuestionsRefs<T extends Object>(
       Expression<T> Function($$QuizQuestionsTableAnnotationComposer a) f) {
@@ -1799,6 +1935,7 @@ class $$QuizzesTableTableManager extends RootTableManager<
             Value<String?> imagePath = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<String?> languageCode = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               QuizzesCompanion(
@@ -1808,6 +1945,7 @@ class $$QuizzesTableTableManager extends RootTableManager<
             imagePath: imagePath,
             createdAt: createdAt,
             languageCode: languageCode,
+            updatedAt: updatedAt,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -1817,6 +1955,7 @@ class $$QuizzesTableTableManager extends RootTableManager<
             Value<String?> imagePath = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<String?> languageCode = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               QuizzesCompanion.insert(
@@ -1826,6 +1965,7 @@ class $$QuizzesTableTableManager extends RootTableManager<
             imagePath: imagePath,
             createdAt: createdAt,
             languageCode: languageCode,
+            updatedAt: updatedAt,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
@@ -1882,6 +2022,7 @@ typedef $$QuestionsTableCreateCompanionBuilder = QuestionsCompanion Function({
   Value<String?> imagePath,
   Value<String?> imagePathVariants,
   Value<String?> occlusionConfig,
+  Value<DateTime> updatedAt,
   Value<int> rowid,
 });
 typedef $$QuestionsTableUpdateCompanionBuilder = QuestionsCompanion Function({
@@ -1894,6 +2035,7 @@ typedef $$QuestionsTableUpdateCompanionBuilder = QuestionsCompanion Function({
   Value<String?> imagePath,
   Value<String?> imagePathVariants,
   Value<String?> occlusionConfig,
+  Value<DateTime> updatedAt,
   Value<int> rowid,
 });
 
@@ -1955,6 +2097,9 @@ class $$QuestionsTableFilterComposer
   ColumnFilters<String> get occlusionConfig => $composableBuilder(
       column: $table.occlusionConfig,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
 
   Expression<bool> quizQuestionsRefs(
       Expression<bool> Function($$QuizQuestionsTableFilterComposer f) f) {
@@ -2018,6 +2163,9 @@ class $$QuestionsTableOrderingComposer
   ColumnOrderings<String> get occlusionConfig => $composableBuilder(
       column: $table.occlusionConfig,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
 }
 
 class $$QuestionsTableAnnotationComposer
@@ -2055,6 +2203,9 @@ class $$QuestionsTableAnnotationComposer
 
   GeneratedColumn<String> get occlusionConfig => $composableBuilder(
       column: $table.occlusionConfig, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
   Expression<T> quizQuestionsRefs<T extends Object>(
       Expression<T> Function($$QuizQuestionsTableAnnotationComposer a) f) {
@@ -2110,6 +2261,7 @@ class $$QuestionsTableTableManager extends RootTableManager<
             Value<String?> imagePath = const Value.absent(),
             Value<String?> imagePathVariants = const Value.absent(),
             Value<String?> occlusionConfig = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               QuestionsCompanion(
@@ -2122,6 +2274,7 @@ class $$QuestionsTableTableManager extends RootTableManager<
             imagePath: imagePath,
             imagePathVariants: imagePathVariants,
             occlusionConfig: occlusionConfig,
+            updatedAt: updatedAt,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -2134,6 +2287,7 @@ class $$QuestionsTableTableManager extends RootTableManager<
             Value<String?> imagePath = const Value.absent(),
             Value<String?> imagePathVariants = const Value.absent(),
             Value<String?> occlusionConfig = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               QuestionsCompanion.insert(
@@ -2146,6 +2300,7 @@ class $$QuestionsTableTableManager extends RootTableManager<
             imagePath: imagePath,
             imagePathVariants: imagePathVariants,
             occlusionConfig: occlusionConfig,
+            updatedAt: updatedAt,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

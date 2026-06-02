@@ -281,4 +281,40 @@ class StatisticsService {
     final lp = (_box.get(_kTotalPerfectSessions) as int?) ?? 0;
     if (rp > lp) await _box.put(_kTotalPerfectSessions, rp);
   }
+
+  /// Replaces local statistics with the remote snapshot exactly (hard sync).
+  /// Unlike [mergeFromSync] this discards any local-only data so this device
+  /// mirrors the initiator.
+  Future<void> replaceFromSync(Map<String, dynamic> remote) async {
+    // Clear everything exportForSync would have produced.
+    final dayKeys = _box.keys
+        .whereType<String>()
+        .where((k) => k.startsWith('stats_day_'))
+        .toList();
+    for (final k in dayKeys) {
+      await _box.delete(k);
+    }
+    await _box.delete(_kAnswerTypeCounts);
+    await _box.delete(_kSrsQuality);
+    await _box.delete(_kTotalPerfectSessions);
+
+    // Import the remote snapshot verbatim.
+    final remoteDailyRaw =
+        (remote['dailyData'] as Map?)?.cast<String, dynamic>() ?? {};
+    for (final entry in remoteDailyRaw.entries) {
+      final day = Map<String, int>.from((entry.value as Map)
+          .map((k, v) => MapEntry(k as String, (v as num).toInt())));
+      await _box.put(entry.key, day);
+    }
+    if (remote['answerTypeCounts'] != null) {
+      await _box.put(_kAnswerTypeCounts, remote['answerTypeCounts']);
+    }
+    if (remote['srsQuality'] != null) {
+      await _box.put(_kSrsQuality, remote['srsQuality']);
+    }
+    if (remote['totalPerfectSessions'] != null) {
+      await _box.put(_kTotalPerfectSessions,
+          (remote['totalPerfectSessions'] as num).toInt());
+    }
+  }
 }

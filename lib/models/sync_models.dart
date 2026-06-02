@@ -25,18 +25,31 @@ class SyncEntry {
   final DateTime createdAt;
   final String? contentHash;
 
-  const SyncEntry({required this.id, required this.createdAt, this.contentHash});
+  /// Last local modification time, used by sync for last-write-wins.
+  /// Nullable for backward-compat: absent when received from an older client.
+  final DateTime? updatedAt;
+
+  const SyncEntry({
+    required this.id,
+    required this.createdAt,
+    this.contentHash,
+    this.updatedAt,
+  });
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'createdAt': createdAt.toIso8601String(),
         if (contentHash != null) 'contentHash': contentHash,
+        if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
       };
 
   factory SyncEntry.fromJson(Map<String, dynamic> json) => SyncEntry(
         id: json['id'] as String,
         createdAt: DateTime.parse(json['createdAt'] as String),
         contentHash: json['contentHash'] as String?,
+        updatedAt: json['updatedAt'] != null
+            ? DateTime.tryParse(json['updatedAt'] as String)
+            : null,
       );
 }
 
@@ -173,6 +186,27 @@ class SyncResult {
     this.isHardSync = false,
     this.statisticsUpdated = false,
   });
+
+  SyncResult copyWith({
+    int? srsUpdated,
+    bool? statisticsUpdated,
+  }) =>
+      SyncResult(
+        foldersAdded: foldersAdded,
+        quizzesAdded: quizzesAdded,
+        questionsAdded: questionsAdded,
+        foldersUpdated: foldersUpdated,
+        quizzesUpdated: quizzesUpdated,
+        questionsUpdated: questionsUpdated,
+        srsUpdated: srsUpdated ?? this.srsUpdated,
+        favoritesAdded: favoritesAdded,
+        foldersDeleted: foldersDeleted,
+        quizzesDeleted: quizzesDeleted,
+        questionsDeleted: questionsDeleted,
+        imagesFailedCount: imagesFailedCount,
+        isHardSync: isHardSync,
+        statisticsUpdated: statisticsUpdated ?? this.statisticsUpdated,
+      );
 
   SyncResult withImagesFailed(int count) => SyncResult(
     foldersAdded: foldersAdded,

@@ -238,6 +238,32 @@ class StreakService {
     _refreshNotifier();
   }
 
+  /// Overwrites local streak state to exactly match the remote (hard sync).
+  /// Unlike [mergeFromSync] this may *lower* the count or highest streak — the
+  /// intent is to make this device mirror the initiator.
+  Future<void> overwriteFromSync({
+    required int remoteCount,
+    required String? remoteLastDate,
+    required int remoteFreezesUsed,
+    required String? remoteWeekAnchor,
+    required int remoteHighestStreak,
+  }) async {
+    await _box.put(_kStreakCount, remoteCount);
+    if (remoteLastDate != null) {
+      await _box.put(_kLastActivity, remoteLastDate);
+    } else {
+      await _box.delete(_kLastActivity);
+    }
+    await _box.put(_kFreezesUsed, remoteFreezesUsed);
+    if (remoteWeekAnchor != null) {
+      await _box.put(_kWeekAnchor, remoteWeekAnchor);
+    } else {
+      await _box.delete(_kWeekAnchor);
+    }
+    await _box.put(_kHighestStreak, remoteHighestStreak);
+    _refreshNotifier();
+  }
+
   Future<void> resetStreak() async {
     await _box.put(_kStreakCount, 0);
     await _box.delete(_kLastActivity);

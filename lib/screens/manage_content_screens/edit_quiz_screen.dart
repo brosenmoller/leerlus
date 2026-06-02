@@ -150,6 +150,7 @@ class _EditQuizScreenState extends State<EditQuizScreen> {
         title: Value(title),
         imagePath: Value(imagePath),
         languageCode: Value(languageCode),
+        updatedAt: Value(DateTime.now()),
       ));
     }
     await QuestionService().refresh();

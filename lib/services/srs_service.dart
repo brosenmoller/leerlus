@@ -114,6 +114,16 @@ class SrsService {
     }
   }
 
+  /// Replaces all SRS data with [entries] exactly (hard sync overwrite).
+  /// Unlike [upsertUserData] this drops any local entries not present in
+  /// [entries], so this device mirrors the initiator.
+  Future<void> replaceAllFromSync(Iterable<UserQuestionData> entries) async {
+    await _box.clear();
+    for (final e in entries) {
+      await _box.put(e.questionId, e);
+    }
+  }
+
   /// Get next due question in a quiz
   QuestionData? getNextDueQuestionInQuiz(String quizId) {
     final quiz = _questionService.getQuiz(quizId);

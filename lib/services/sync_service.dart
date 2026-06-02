@@ -220,6 +220,9 @@ class SyncService {
       }
       final data = Map<String, dynamic>.from(jsonDecode(bodyStr) as Map);
       final senderPort = data['senderPort'] as int?;
+      // Hard sync: the initiator forces its state onto us, so overwrite our
+      // streak / statistics / SRS instead of merging.
+      final hardSync = data['hardSync'] as bool? ?? false;
       final connInfo =
           req.context['shelf.io.connection_info'] as HttpConnectionInfo?;
       final senderIp = connInfo?.remoteAddress.address;
@@ -235,11 +238,19 @@ class SyncService {
         }
       }
 
-      _acceptorResult = (await _importPayload(payload)).withImagesFailed(imagesFailed);
+      _acceptorResult = (await _importPayload(payload, overwriteState: hardSync))
+          .withImagesFailed(imagesFailed);
       _scheduleAcceptorFallback();
       await QuestionService().refresh();
+      // Return our (post-merge) non-content state so the initiator can merge it
+      // back in normal mode. Ignored by the initiator during a hard sync.
       return Response.ok(
-        jsonEncode({'ok': true}),
+        jsonEncode({
+          'ok': true,
+          'streakData': _buildStreakData(),
+          'statisticsData': StatisticsService().exportForSync(),
+          'srsData': _buildSrsData(),
+        }),
         headers: {'content-type': 'application/json'},
       );
     } catch (e) {
@@ -504,8 +515,9 @@ class SyncService {
     final remoteQuestionIds =
         remoteManifest.questions.map((e) => e.id).toSet();
 
-    // Items present on both sides but with different content hashes need updating.
-    // Initiator wins: only push changes outward; don't fetch updates for existing items.
+    // Items present on both sides but with different content hashes need
+    // reconciling. We resolve the direction by last-write-wins: the side whose
+    // copy was modified most recently wins.
     final remoteHashById = {
       for (final e in remoteManifest.folders) e.id: e.contentHash,
       for (final e in remoteManifest.quizzes) e.id: e.contentHash,
@@ -516,33 +528,79 @@ class SyncService {
       for (final e in localManifest.quizzes) e.id: e.contentHash,
       for (final e in localManifest.questions) e.id: e.contentHash,
     };
+    final remoteUpdatedById = {
+      for (final e in remoteManifest.folders) e.id: e.updatedAt,
+      for (final e in remoteManifest.quizzes) e.id: e.updatedAt,
+      for (final e in remoteManifest.questions) e.id: e.updatedAt,
+    };
+    final localUpdatedById = {
+      for (final e in localManifest.folders) e.id: e.updatedAt,
+      for (final e in localManifest.quizzes) e.id: e.updatedAt,
+      for (final e in localManifest.questions) e.id: e.updatedAt,
+    };
 
-    List<String> changedIds(Set<String> both) => both
-        .where((id) {
-          final local = localHashById[id];
-          final remote = remoteHashById[id];
-          return local != null && remote != null && local != remote;
-        })
-        .toList();
+    // For shared-but-differing items: remote strictly newer → pull; otherwise
+    // (local newer, tie, or either timestamp missing) → push. The fallback
+    // preserves the legacy "initiator wins" behavior for ambiguous cases and
+    // for peers running an older client that omits updatedAt.
+    ({List<String> push, List<String> pull}) classifyChanged(
+        Set<String> both) {
+      final push = <String>[];
+      final pull = <String>[];
+      for (final id in both) {
+        final localHash = localHashById[id];
+        final remoteHash = remoteHashById[id];
+        if (localHash == null || remoteHash == null || localHash == remoteHash) {
+          continue;
+        }
+        final localTs = localUpdatedById[id];
+        final remoteTs = remoteUpdatedById[id];
+        if (localTs != null && remoteTs != null && remoteTs.isAfter(localTs)) {
+          pull.add(id);
+        } else {
+          push.add(id);
+        }
+      }
+      return (push: push, pull: pull);
+    }
+
+    final folderChanged =
+        classifyChanged(localFolderIds.intersection(remoteFolderIds));
+    final quizChanged =
+        classifyChanged(localQuizIds.intersection(remoteQuizIds));
+    final questionChanged =
+        classifyChanged(localQuestionIds.intersection(remoteQuestionIds));
 
     final toSendFolderIds = [
       ...localFolderIds.difference(remoteFolderIds),
-      ...changedIds(localFolderIds.intersection(remoteFolderIds)),
+      ...folderChanged.push,
     ];
     final toSendQuizIds = [
       ...localQuizIds.difference(remoteQuizIds),
-      ...changedIds(localQuizIds.intersection(remoteQuizIds)),
+      ...quizChanged.push,
     ];
     final toSendQuestionIds = [
       ...localQuestionIds.difference(remoteQuestionIds),
-      ...changedIds(localQuestionIds.intersection(remoteQuestionIds)),
+      ...questionChanged.push,
     ];
 
-    final toFetchFolderIds =
+    // Items the initiator lacks entirely. Used verbatim by the hard-delete
+    // path, which must only remove remote-only content — never shared items
+    // that merely happen to be newer on the remote.
+    final remoteOnlyFolderIds =
         remoteFolderIds.difference(localFolderIds).toList();
-    final toFetchQuizIds = remoteQuizIds.difference(localQuizIds).toList();
-    final toFetchQuestionIds =
+    final remoteOnlyQuizIds = remoteQuizIds.difference(localQuizIds).toList();
+    final remoteOnlyQuestionIds =
         remoteQuestionIds.difference(localQuestionIds).toList();
+
+    // Normal-mode pull set: remote-only items plus shared items the remote
+    // changed more recently.
+    final toFetchFolderIds = [...remoteOnlyFolderIds, ...folderChanged.pull];
+    final toFetchQuizIds = [...remoteOnlyQuizIds, ...quizChanged.pull];
+    final toFetchQuestionIds = [
+      ...remoteOnlyQuestionIds,
+      ...questionChanged.pull,
+    ];
 
     // Favorites delta (additive union)
     final remoteFavIds = remoteManifest.favoriteSyncIds.toSet();
@@ -550,66 +608,70 @@ class SyncService {
     final toFetchFavIds =
         remoteFavIds.difference(localFavIds).toList();
 
-    // Push local content to remote
-    if (toSendFolderIds.isNotEmpty ||
+    // Push to remote — always, even with no content delta, so streak /
+    // statistics / SRS round-trip in every mode. The response carries the
+    // acceptor's (post-merge) state for us to merge back in normal mode.
+    final hasContentToSend = toSendFolderIds.isNotEmpty ||
         toSendQuizIds.isNotEmpty ||
-        toSendQuestionIds.isNotEmpty) {
-      _progress('Sending local content…');
-      final pushPayload = await _buildPayload(
-        folderIds: toSendFolderIds,
-        quizIds: toSendQuizIds,
-        questionIds: toSendQuestionIds,
-        includeSrs: true,
-        includeFavorites: true,
-      );
-      final pushBody = pushPayload.toJson();
-      pushBody['senderPort'] = _httpPort; // Tell remote where to fetch images
-      final pushResp = await http.post(
-        Uri.parse('$base/sync/push'),
-        headers: {'content-type': 'application/json'},
-        body: jsonEncode(pushBody),
-      ).timeout(const Duration(seconds: 120));
-      if (pushResp.statusCode != 200) {
-        throw SyncException('Remote failed to import content (${pushResp.statusCode})');
-      }
-    } else {
-      // Still push SRS + favorites even if no new content
-      final srsAndFavPayload = await _buildPayload(
-        folderIds: [],
-        quizIds: [],
-        questionIds: [],
-        includeSrs: true,
-        includeFavorites: true,
-      );
-      if (srsAndFavPayload.srsData.isNotEmpty ||
-          srsAndFavPayload.favoriteSyncIds.isNotEmpty) {
-        final pushBody = srsAndFavPayload.toJson();
-        pushBody['senderPort'] = _httpPort;
-        final srsResp = await http.post(
-          Uri.parse('$base/sync/push'),
-          headers: {'content-type': 'application/json'},
-          body: jsonEncode(pushBody),
-        ).timeout(const Duration(seconds: 60));
-        if (srsResp.statusCode != 200) {
-          throw SyncException('Remote failed to import SRS data (${srsResp.statusCode})');
-        }
-      }
+        toSendQuestionIds.isNotEmpty;
+    _progress(hasContentToSend ? 'Sending local content…' : 'Syncing…');
+    final pushPayload = await _buildPayload(
+      folderIds: toSendFolderIds,
+      quizIds: toSendQuizIds,
+      questionIds: toSendQuestionIds,
+      includeSrs: true,
+      includeFavorites: true,
+    );
+    final pushBody = pushPayload.toJson();
+    pushBody['senderPort'] = _httpPort; // Tell remote where to fetch images
+    pushBody['hardSync'] = hardSync; // Acceptor overwrites instead of merging
+    final pushResp = await http.post(
+      Uri.parse('$base/sync/push'),
+      headers: {'content-type': 'application/json'},
+      body: jsonEncode(pushBody),
+    ).timeout(const Duration(seconds: 120));
+    if (pushResp.statusCode != 200) {
+      throw SyncException('Remote failed to import content (${pushResp.statusCode})');
+    }
+
+    // Merge the acceptor's non-content state back into us (normal mode only).
+    // Hard sync is one-directional: we keep our own state.
+    int srsMergedBack = 0;
+    bool statsMergedBack = false;
+    if (!hardSync) {
+      try {
+        final respData =
+            Map<String, dynamic>.from(jsonDecode(pushResp.body) as Map);
+        final streakBack = respData['streakData'] != null
+            ? Map<String, dynamic>.from(respData['streakData'] as Map)
+            : null;
+        final statsBack = respData['statisticsData'] != null
+            ? Map<String, dynamic>.from(respData['statisticsData'] as Map)
+            : null;
+        final srsBack = (respData['srsData'] as List?)
+                ?.map((e) => Map<String, dynamic>.from(e as Map))
+                .toList() ??
+            const <Map<String, dynamic>>[];
+        await _applyStreak(streakBack, overwrite: false);
+        statsMergedBack = await _applyStatistics(statsBack, overwrite: false);
+        srsMergedBack = await _applySrs(srsBack, overwrite: false);
+      } catch (_) {} // Non-fatal — content sync already succeeded.
     }
 
     // Pull remote content (or hard-delete it in override mode)
     SyncResult result = hardSync ? const SyncResult(isHardSync: true) : const SyncResult();
     if (hardSync) {
-      if (toFetchFolderIds.isNotEmpty ||
-          toFetchQuizIds.isNotEmpty ||
-          toFetchQuestionIds.isNotEmpty) {
+      if (remoteOnlyFolderIds.isNotEmpty ||
+          remoteOnlyQuizIds.isNotEmpty ||
+          remoteOnlyQuestionIds.isNotEmpty) {
         _progress('Removing content from ${peer.deviceName}…');
         final hdResp = await http.post(
           Uri.parse('$base/sync/hard-delete'),
           headers: {'content-type': 'application/json'},
           body: jsonEncode({
-            'folderIds': toFetchFolderIds,
-            'quizIds': toFetchQuizIds,
-            'questionIds': toFetchQuestionIds,
+            'folderIds': remoteOnlyFolderIds,
+            'quizIds': remoteOnlyQuizIds,
+            'questionIds': remoteOnlyQuestionIds,
           }),
         ).timeout(const Duration(seconds: 120));
         if (hdResp.statusCode != 200) {
@@ -658,13 +720,24 @@ class SyncService {
         }
 
         _progress('Importing content…');
-        result = (await _importPayload(fetchedPayload)).withImagesFailed(imagesFailed);
+        // Non-content state already round-tripped via the push response above.
+        result = (await _importPayload(fetchedPayload,
+                applyNonContentState: false))
+            .withImagesFailed(imagesFailed);
 
         // Also apply remote favorites we don't have yet
         for (final favId in toFetchFavIds) {
           await FavoritesService().addFavorite(favId);
         }
       }
+    }
+
+    // Reflect the non-content state merged back from the acceptor (normal mode).
+    if (srsMergedBack > 0 || statsMergedBack) {
+      result = result.copyWith(
+        srsUpdated: result.srsUpdated + srsMergedBack,
+        statisticsUpdated: result.statisticsUpdated || statsMergedBack,
+      );
     }
 
     await QuestionService().refresh();
@@ -694,27 +767,38 @@ class SyncService {
 
     final favIds = FavoritesService().getAllFavoriteIds();
 
+    // Quiz hashes include their ordered question membership so that adding,
+    // removing, or reordering questions in a shared quiz is detected as a
+    // change (the quiz's own columns are otherwise untouched by those edits).
+    final quizEntries = <SyncEntry>[];
+    for (final q in quizzesRows) {
+      final memberIds =
+          (await _db!.getQuestionsForQuiz(q.id)).map((e) => e.id).join(',');
+      quizEntries.add(SyncEntry(
+        id: q.id,
+        createdAt: q.createdAt,
+        updatedAt: q.updatedAt,
+        contentHash:
+            '${q.title}|${q.folderId ?? ''}|${q.imagePath ?? ''}|${q.languageCode ?? ''}|$memberIds',
+      ));
+    }
+
     return SyncManifest(
       folders: foldersRows
           .map((f) => SyncEntry(
                 id: f.id,
                 createdAt: f.createdAt,
+                updatedAt: f.updatedAt,
                 contentHash:
                     '${f.title}|${f.parentFolderId ?? ''}|${f.imagePath ?? ''}',
               ))
           .toList(),
-      quizzes: quizzesRows
-          .map((q) => SyncEntry(
-                id: q.id,
-                createdAt: q.createdAt,
-                contentHash:
-                    '${q.title}|${q.folderId ?? ''}|${q.imagePath ?? ''}|${q.languageCode ?? ''}',
-              ))
-          .toList(),
+      quizzes: quizEntries,
       questions: questionsRows
           .map((q) => SyncEntry(
                 id: q.id,
                 createdAt: DateTime.fromMillisecondsSinceEpoch(0),
+                updatedAt: q.updatedAt,
                 contentHash: [
                   q.questionText,
                   q.questionVariants ?? '',
@@ -751,6 +835,7 @@ class SyncService {
         'title': f.title,
         'imageName':
             f.imagePath != null ? p.basename(f.imagePath!) : null,
+        'updatedAt': f.updatedAt.toIso8601String(),
       });
     }
 
@@ -767,6 +852,7 @@ class SyncService {
             quiz.imagePath != null ? p.basename(quiz.imagePath!) : null,
         'languageCode': quiz.languageCode,
         'questionIds': questionsInQuiz.map((q) => q.id).toList(),
+        'updatedAt': quiz.updatedAt.toIso8601String(),
       });
     }
 
@@ -811,8 +897,13 @@ class SyncService {
         'explanation': q.explanation,
         'imageName':
             q.imagePath != null ? p.basename(q.imagePath!) : null,
-        'imageVariants': ?imageVariants,
-        'occlusionConfig': ?normalizedOcclusion,
+        // if-elements (not the `?x` null-aware form) so build_runner's older
+        // bundled analyzer can parse this file during code generation.
+        // ignore: use_null_aware_elements
+        if (imageVariants != null) 'imageVariants': imageVariants,
+        // ignore: use_null_aware_elements
+        if (normalizedOcclusion != null) 'occlusionConfig': normalizedOcclusion,
+        'updatedAt': q.updatedAt.toIso8601String(),
       });
     }
 
@@ -825,36 +916,12 @@ class SyncService {
     }
 
     // SRS data — question IDs are UUID strings directly
-    final srsDataJson = <Map<String, dynamic>>[];
-    if (includeSrs) {
-      for (final data in SrsService().getAllUserData()) {
-        srsDataJson.add({
-          'questionId': data.questionId,
-          'streak': data.streak,
-          'easeFactor': data.easeFactor,
-          'intervalSeconds': data.intervalSeconds,
-          'lastReviewed': data.lastReviewed.toIso8601String(),
-          'nextReview': data.nextReview.toIso8601String(),
-          'spacedRepetitionEnabled': data.spacedRepetitionEnabled,
-        });
-      }
-    }
+    final srsDataJson = includeSrs ? _buildSrsData() : <Map<String, dynamic>>[];
 
     // Favorites
     final favIds = includeFavorites
         ? FavoritesService().getAllFavoriteIds()
         : <String>[];
-
-    // Streak — always included so peers can merge by highest count.
-    // Per-device settings (notifs, enabled toggle) are intentionally excluded.
-    final streak = StreakService();
-    final streakDataJson = <String, dynamic>{
-      'streakCount': streak.currentStreak,
-      'highestStreak': streak.highestStreak,
-      'lastActivityDate': streak.lastActivityDate,
-      'freezesUsedThisWeek': streak.freezesUsedThisWeek,
-      'weekAnchor': streak.weekAnchor,
-    };
 
     return SyncPayload(
       folders: foldersJson,
@@ -863,9 +930,40 @@ class SyncService {
       srsData: srsDataJson,
       favoriteSyncIds: favIds,
       imageFilenames: imageFilenames.toList(),
-      streakData: streakDataJson,
+      // Streak — always included so peers can merge/overwrite. Per-device
+      // settings (notifs, enabled toggle) are intentionally excluded.
+      streakData: _buildStreakData(),
       statisticsData: StatisticsService().exportForSync(),
     );
+  }
+
+  /// Serializes the local streak state for a sync payload / push response.
+  Map<String, dynamic> _buildStreakData() {
+    final streak = StreakService();
+    return {
+      'streakCount': streak.currentStreak,
+      'highestStreak': streak.highestStreak,
+      'lastActivityDate': streak.lastActivityDate,
+      'freezesUsedThisWeek': streak.freezesUsedThisWeek,
+      'weekAnchor': streak.weekAnchor,
+    };
+  }
+
+  /// Serializes all local SRS entries for a sync payload / push response.
+  List<Map<String, dynamic>> _buildSrsData() {
+    final out = <Map<String, dynamic>>[];
+    for (final data in SrsService().getAllUserData()) {
+      out.add({
+        'questionId': data.questionId,
+        'streak': data.streak,
+        'easeFactor': data.easeFactor,
+        'intervalSeconds': data.intervalSeconds,
+        'lastReviewed': data.lastReviewed.toIso8601String(),
+        'nextReview': data.nextReview.toIso8601String(),
+        'spacedRepetitionEnabled': data.spacedRepetitionEnabled,
+      });
+    }
+    return out;
   }
 
   Map<String, dynamic> _normalizeConfigImagePaths(
@@ -933,7 +1031,22 @@ class SyncService {
 
   // ── Import ───────────────────────────────────────────────────
 
-  Future<SyncResult> _importPayload(SyncPayload payload) async {
+  /// Parses an ISO-8601 `updatedAt` value from a payload map; null when absent
+  /// (older client) or unparseable.
+  static DateTime? _parseTs(dynamic value) =>
+      value is String ? DateTime.tryParse(value) : null;
+
+  /// Imports content (+ favorites) from [payload].
+  ///
+  /// When [applyNonContentState] is true, also applies streak / statistics /
+  /// SRS — in merge mode (highest/newer wins) by default, or in overwrite mode
+  /// (mirror the sender) when [overwriteState] is true. The pull path passes
+  /// false because that state round-trips via the push response instead.
+  Future<SyncResult> _importPayload(
+    SyncPayload payload, {
+    bool applyNonContentState = true,
+    bool overwriteState = false,
+  }) async {
     int foldersAdded = 0, quizzesAdded = 0, questionsAdded = 0;
     int foldersUpdated = 0, quizzesUpdated = 0, questionsUpdated = 0;
     int srsUpdated = 0, favoritesAdded = 0;
@@ -985,8 +1098,14 @@ class SyncService {
           if (localized != null) occlusionConfig = jsonEncode(localized);
         }
 
+        final incomingTs = _parseTs(qJson['updatedAt']);
         final existing = await _db!.getQuestionById(id);
         if (existing != null) {
+          questionIdMap[id] = existing.id;
+          // Last-write-wins: keep the local copy when it is strictly newer.
+          if (incomingTs != null && existing.updatedAt.isAfter(incomingTs)) {
+            continue;
+          }
           await _db!.updateQuestion(QuestionsCompanion(
             id: Value(id),
             questionText: Value(questionText),
@@ -999,8 +1118,9 @@ class SyncService {
             imagePath: Value(imagePath),
             imagePathVariants: Value(imagePathVariants),
             occlusionConfig: Value(occlusionConfig),
+            updatedAt:
+                incomingTs != null ? Value(incomingTs) : const Value.absent(),
           ));
-          questionIdMap[id] = existing.id;
           questionsUpdated++;
           continue;
         }
@@ -1017,12 +1137,17 @@ class SyncService {
           imagePath: Value(imagePath),
           imagePathVariants: Value(imagePathVariants),
           occlusionConfig: Value(occlusionConfig),
+          updatedAt:
+              incomingTs != null ? Value(incomingTs) : const Value.absent(),
         ));
         questionIdMap[id] = newId;
         questionsAdded++;
       }
 
-      // 2. Folders — first pass: insert or update without parent
+      // 2. Folders — first pass: insert (without parent) or update in place.
+      // Existing folders get their parent set directly here; newly inserted
+      // folders are wired up in the second pass.
+      final newFolderIds = <String>{};
       for (final fJson in payload.folders) {
         final id = fJson['id'] as String;
 
@@ -1033,15 +1158,22 @@ class SyncService {
           if (safe.isNotEmpty) imagePath = p.join(imgDir, safe);
         }
 
+        final incomingTs = _parseTs(fJson['updatedAt']);
         final existing = await _db!.getFolderById(id);
         if (existing != null) {
+          folderIdMap[id] = existing.id;
+          // Last-write-wins: keep the local copy when it is strictly newer.
+          if (incomingTs != null && existing.updatedAt.isAfter(incomingTs)) {
+            continue;
+          }
           await _db!.updateFolder(FoldersCompanion(
             id: Value(id),
             parentFolderId: Value(fJson['parentId'] as String?),
             title: Value(fJson['title'] as String),
             imagePath: Value(imagePath),
+            updatedAt:
+                incomingTs != null ? Value(incomingTs) : const Value.absent(),
           ));
-          folderIdMap[id] = existing.id;
           foldersUpdated++;
           continue;
         }
@@ -1050,17 +1182,25 @@ class SyncService {
           id: Value(id),
           title: Value(fJson['title'] as String),
           imagePath: Value(imagePath),
+          updatedAt:
+              incomingTs != null ? Value(incomingTs) : const Value.absent(),
         ));
         folderIdMap[id] = newId;
+        newFolderIds.add(id);
         foldersAdded++;
       }
-      // Second pass: wire up parent relationships
+      // Second pass: wire up parents for newly inserted folders. Resolve the
+      // parent via the import map, falling back to a DB lookup so a new folder
+      // nested under a pre-existing (unchanged, not-in-payload) parent is not
+      // orphaned to the root.
       for (final fJson in payload.folders) {
         final id = fJson['id'] as String;
+        if (!newFolderIds.contains(id)) continue;
         final parentId = fJson['parentId'] as String?;
         if (parentId == null) continue;
         final localId = folderIdMap[id];
-        final parentLocalId = folderIdMap[parentId];
+        final parentLocalId =
+            folderIdMap[parentId] ?? (await _db!.getFolderById(parentId))?.id;
         if (localId != null && parentLocalId != null) {
           await _db!.updateFolderParentId(localId, parentLocalId);
         }
@@ -1084,17 +1224,26 @@ class SyncService {
           if (safe.isNotEmpty) imagePath = p.join(imgDir, safe);
         }
 
+        final incomingTs = _parseTs(qzJson['updatedAt']);
         final existing = await _db!.getQuizById(id);
+        // Incoming wins unless the local copy is strictly newer.
+        final bool quizIncomingWins = existing == null ||
+            !(incomingTs != null && existing.updatedAt.isAfter(incomingTs));
         if (existing != null) {
-          await _db!.updateQuiz(QuizzesCompanion(
-            id: Value(id),
-            folderId: Value(folderLocalId),
-            title: Value(qzJson['title'] as String),
-            imagePath: Value(imagePath),
-            languageCode: Value(qzJson['languageCode'] as String?),
-          ));
           quizLocalId = existing.id;
-          quizzesUpdated++;
+          if (quizIncomingWins) {
+            await _db!.updateQuiz(QuizzesCompanion(
+              id: Value(id),
+              folderId: Value(folderLocalId),
+              title: Value(qzJson['title'] as String),
+              imagePath: Value(imagePath),
+              languageCode: Value(qzJson['languageCode'] as String?),
+              updatedAt: incomingTs != null
+                  ? Value(incomingTs)
+                  : const Value.absent(),
+            ));
+            quizzesUpdated++;
+          }
         } else {
           quizLocalId = await _db!.insertQuiz(QuizzesCompanion(
             id: Value(id),
@@ -1102,11 +1251,14 @@ class SyncService {
             title: Value(qzJson['title'] as String),
             imagePath: Value(imagePath),
             languageCode: Value(qzJson['languageCode'] as String?),
+            updatedAt:
+                incomingTs != null ? Value(incomingTs) : const Value.absent(),
           ));
           quizzesAdded++;
         }
 
-        int order = 0;
+        // Resolve the sender's full ordered membership to local question IDs.
+        final orderedLocalIds = <String>[];
         for (final qId
             in (qzJson['questionIds'] as List).map((e) => e as String)) {
           var qLocalId = questionIdMap[qId];
@@ -1116,33 +1268,22 @@ class SyncService {
             final localQ = await _db!.getQuestionById(qId);
             if (localQ != null) qLocalId = localQ.id;
           }
-          if (qLocalId == null) continue;
-          await _db!.insertJunctionRowSafe(quizLocalId, qLocalId, order++);
+          if (qLocalId != null) orderedLocalIds.add(qLocalId);
+        }
+
+        if (quizIncomingWins) {
+          // Full replace — propagates additions, reorders, and removals.
+          await _db!.replaceQuizJunctions(quizLocalId, orderedLocalIds);
+        } else {
+          // Local quiz is newer: keep its membership/order, but additively wire
+          // up any brand-new questions so they aren't orphaned.
+          int order = 0;
+          for (final qLocalId in orderedLocalIds) {
+            await _db!.insertJunctionRowSafe(quizLocalId, qLocalId, order++);
+          }
         }
       }
     });
-
-    // SRS (outside transaction — Hive)
-    for (final srsJson in payload.srsData) {
-      final questionId = srsJson['questionId'] as String;
-
-      // Verify question exists locally before storing SRS data
-      final question = await _db!.getQuestionById(questionId);
-      if (question == null) continue;
-
-      final incoming = UserQuestionData(
-        questionId: questionId,
-        streak: (srsJson['streak'] as num).toInt(),
-        easeFactor: (srsJson['easeFactor'] as num).toDouble(),
-        intervalSeconds: (srsJson['intervalSeconds'] as num).toDouble(),
-        spacedRepetitionEnabled: srsJson['spacedRepetitionEnabled'] as bool,
-        lastReviewed:
-            DateTime.parse(srsJson['lastReviewed'] as String),
-        nextReview: DateTime.parse(srsJson['nextReview'] as String),
-      );
-      await SrsService().upsertUserData(incoming);
-      if (incoming.spacedRepetitionEnabled) srsUpdated++;
-    }
 
     // Favorites (outside transaction — Hive)
     // Only add favorites whose quiz was actually imported (prevents broken refs).
@@ -1156,27 +1297,13 @@ class SyncService {
       }
     }
 
-    // Streak — merge by "highest streak wins"; per-device settings not touched.
-    final remoteStreak = payload.streakData;
-    if (remoteStreak != null) {
-      await StreakService().mergeFromSync(
-        remoteCount:
-            (remoteStreak['streakCount'] as num?)?.toInt() ?? 0,
-        remoteLastDate: remoteStreak['lastActivityDate'] as String?,
-        remoteFreezesUsed:
-            (remoteStreak['freezesUsedThisWeek'] as num?)?.toInt() ?? 0,
-        remoteWeekAnchor: remoteStreak['weekAnchor'] as String?,
-        remoteHighestStreak:
-            (remoteStreak['highestStreak'] as num?)?.toInt() ?? 0,
-      );
-    }
-
-    // Statistics — merge by max-per-bucket strategy.
+    // Non-content state (streak / statistics / SRS).
     bool statsWereMerged = false;
-    final remoteStats = payload.statisticsData;
-    if (remoteStats != null) {
-      await StatisticsService().mergeFromSync(remoteStats);
-      statsWereMerged = true;
+    if (applyNonContentState) {
+      srsUpdated = await _applySrs(payload.srsData, overwrite: overwriteState);
+      await _applyStreak(payload.streakData, overwrite: overwriteState);
+      statsWereMerged =
+          await _applyStatistics(payload.statisticsData, overwrite: overwriteState);
     }
 
     return SyncResult(
@@ -1190,6 +1317,76 @@ class SyncService {
       favoritesAdded: favoritesAdded,
       statisticsUpdated: statsWereMerged,
     );
+  }
+
+  // ── Non-content state apply (merge vs overwrite) ─────────────
+  // Merge mode (normal sync): highest streak / newer review / max stats win.
+  // Overwrite mode (hard sync): this device is forced to mirror the sender.
+
+  Future<void> _applyStreak(Map<String, dynamic>? streakData,
+      {required bool overwrite}) async {
+    if (streakData == null) return;
+    final count = (streakData['streakCount'] as num?)?.toInt() ?? 0;
+    final lastDate = streakData['lastActivityDate'] as String?;
+    final freezes = (streakData['freezesUsedThisWeek'] as num?)?.toInt() ?? 0;
+    final weekAnchor = streakData['weekAnchor'] as String?;
+    final highest = (streakData['highestStreak'] as num?)?.toInt() ?? 0;
+    if (overwrite) {
+      await StreakService().overwriteFromSync(
+        remoteCount: count,
+        remoteLastDate: lastDate,
+        remoteFreezesUsed: freezes,
+        remoteWeekAnchor: weekAnchor,
+        remoteHighestStreak: highest,
+      );
+    } else {
+      await StreakService().mergeFromSync(
+        remoteCount: count,
+        remoteLastDate: lastDate,
+        remoteFreezesUsed: freezes,
+        remoteWeekAnchor: weekAnchor,
+        remoteHighestStreak: highest,
+      );
+    }
+  }
+
+  Future<bool> _applyStatistics(Map<String, dynamic>? statsData,
+      {required bool overwrite}) async {
+    if (statsData == null) return false;
+    if (overwrite) {
+      await StatisticsService().replaceFromSync(statsData);
+    } else {
+      await StatisticsService().mergeFromSync(statsData);
+    }
+    return true;
+  }
+
+  /// Applies incoming SRS entries (skipping ones whose question is absent
+  /// locally). Returns the number of SRS-enabled entries applied.
+  Future<int> _applySrs(List<Map<String, dynamic>> srsData,
+      {required bool overwrite}) async {
+    final entries = <UserQuestionData>[];
+    for (final srsJson in srsData) {
+      final questionId = srsJson['questionId'] as String;
+      if (await _db!.getQuestionById(questionId) == null) continue;
+      entries.add(UserQuestionData(
+        questionId: questionId,
+        streak: (srsJson['streak'] as num).toInt(),
+        easeFactor: (srsJson['easeFactor'] as num).toDouble(),
+        intervalSeconds: (srsJson['intervalSeconds'] as num).toDouble(),
+        spacedRepetitionEnabled: srsJson['spacedRepetitionEnabled'] as bool,
+        lastReviewed: DateTime.parse(srsJson['lastReviewed'] as String),
+        nextReview: DateTime.parse(srsJson['nextReview'] as String),
+      ));
+    }
+    if (overwrite) {
+      await SrsService().replaceAllFromSync(entries);
+    } else {
+      for (final e in entries) {
+        await SrsService().upsertUserData(e);
+      }
+    }
+    return entries.where((e) => e.spacedRepetitionEnabled).length;
   }
 
   Map<String, dynamic> _localizeConfigImagePaths(

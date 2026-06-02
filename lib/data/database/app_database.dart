@@ -34,7 +34,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -52,6 +52,24 @@ class AppDatabase extends _$AppDatabase {
         await m.createAll();
       } else if (from < 9) {
         await m.addColumn(questions, questions.occlusionConfig);
+      }
+      if (from >= 8 && from < 10) {
+        // updatedAt for last-write-wins sync. SQLite's ALTER TABLE ADD COLUMN
+        // forbids an expression default (strftime), so add the column with a
+        // constant default and backfill existing rows from created_at. New rows
+        // get their timestamp from the column's clientDefault at insert time.
+        // Guarded by a column-existence check so the migration is idempotent
+        // (safe to re-run after an earlier interrupted/failed upgrade attempt).
+        for (final table in const ['folders', 'quizzes', 'questions']) {
+          final cols = await customSelect('PRAGMA table_info($table)').get();
+          final hasUpdatedAt =
+              cols.any((row) => row.data['name'] == 'updated_at');
+          if (!hasUpdatedAt) {
+            await customStatement(
+                'ALTER TABLE $table ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0');
+            await customStatement('UPDATE $table SET updated_at = created_at');
+          }
+        }
       }
     },
   );
@@ -486,7 +504,14 @@ class AppDatabase extends _$AppDatabase {
       ..where((t) =>
           t.quizId.equals(quizId) & t.questionId.equals(questionId)))
         .write(QuizQuestionsCompanion(sortOrder: Value(newIndex)));
+    await _touchQuiz(quizId);
   }
+
+  /// Bumps a quiz's [updatedAt] so membership/order changes are detected by
+  /// last-write-wins sync. No-op if the quiz no longer exists.
+  Future<void> _touchQuiz(String quizId) =>
+      (update(quizzes)..where((t) => t.id.equals(quizId)))
+          .write(QuizzesCompanion(updatedAt: Value(DateTime.now())));
 
   Future<String> insertQuestion(QuestionsCompanion question) async {
     final id = question.id.present ? question.id.value : const Uuid().v4();
@@ -513,6 +538,7 @@ class AppDatabase extends _$AppDatabase {
           sortOrder: Value(maxOrder + 1),
         ),
       );
+      await _touchQuiz(quizId);
       return questionId;
     });
   }
@@ -521,6 +547,13 @@ class AppDatabase extends _$AppDatabase {
       update(questions).replace(entry);
 
   Future<void> deleteQuestion(String id) async {
+    // Bump updatedAt on every quiz that referenced this question so the
+    // membership change wins last-write-wins during sync.
+    final refs = await (select(quizQuestions)
+      ..where((t) => t.questionId.equals(id))).get();
+    for (final quizId in refs.map((r) => r.quizId).toSet()) {
+      await _touchQuiz(quizId);
+    }
     await (delete(quizQuestions)..where((t) => t.questionId.equals(id))).go();
     await (delete(questions)..where((t) => t.id.equals(id))).go();
   }
@@ -542,11 +575,17 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> moveFolderToParent(String folderId, String? newParentId) =>
       (update(folders)..where((t) => t.id.equals(folderId)))
-          .write(FoldersCompanion(parentFolderId: Value(newParentId)));
+          .write(FoldersCompanion(
+            parentFolderId: Value(newParentId),
+            updatedAt: Value(DateTime.now()),
+          ));
 
   Future<void> moveQuizToFolder(String quizId, String? newFolderId) =>
       (update(quizzes)..where((t) => t.id.equals(quizId)))
-          .write(QuizzesCompanion(folderId: Value(newFolderId)));
+          .write(QuizzesCompanion(
+            folderId: Value(newFolderId),
+            updatedAt: Value(DateTime.now()),
+          ));
 
   Future<Set<String>> getFolderSubtreeIds(String folderId) =>
       _collectFolderSubtree(folderId);
@@ -568,6 +607,26 @@ class AppDatabase extends _$AppDatabase {
         ),
         mode: InsertMode.insertOrIgnore,
       );
+
+  /// Replaces a quiz's entire question membership with [orderedQuestionIds]
+  /// (in order). Used by sync when the incoming quiz wins last-write-wins, so
+  /// additions, reorders, and removals all propagate. Does not touch the
+  /// question rows themselves — only the junction table.
+  Future<void> replaceQuizJunctions(
+      String quizId, List<String> orderedQuestionIds) async {
+    await (delete(quizQuestions)..where((t) => t.quizId.equals(quizId))).go();
+    int order = 0;
+    for (final qId in orderedQuestionIds) {
+      await into(quizQuestions).insert(
+        QuizQuestionsCompanion.insert(
+          quizId: quizId,
+          questionId: qId,
+          sortOrder: Value(order++),
+        ),
+        mode: InsertMode.insertOrIgnore,
+      );
+    }
+  }
 
   // ─── Image reference helpers ──────────────────────────────────
 

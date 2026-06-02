@@ -110,6 +110,7 @@ class _EditFolderScreenState extends State<EditFolderScreen> {
         parentFolderId: Value(existing.parentFolderId),
         title: Value(title),
         imagePath: Value(imagePath),
+        updatedAt: Value(DateTime.now()),
       ));
     }
     await QuestionService().refresh();

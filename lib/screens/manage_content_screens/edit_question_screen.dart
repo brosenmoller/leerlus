@@ -1064,6 +1064,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
       imagePath: Value(finalImagePath),
       imagePathVariants: Value(finalVariantsJson),
       occlusionConfig: Value(occlusionConfigJson),
+      updatedAt: Value(DateTime.now()),
     );
 
     final String questionId;
@@ -1162,6 +1163,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
       answerConfig: Value(mainConfig),
       explanation: Value(explanation.isEmpty ? null : explanation),
       occlusionConfig: Value(occlusionConfigJson),
+      updatedAt: Value(DateTime.now()),
     );
 
     if (widget.isEditing) {

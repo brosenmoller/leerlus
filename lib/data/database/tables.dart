@@ -7,6 +7,12 @@ class Folders extends Table {
   TextColumn get title => text()();
   TextColumn get imagePath => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  // Bumped on every local edit/move; used by sync for last-write-wins.
+  // clientDefault (not withDefault): drift supplies the value from Dart on
+  // every insert, so the column needs no SQL expression default. SQLite's
+  // ALTER TABLE ADD COLUMN forbids expression defaults, so this is required to
+  // let the v10 migration add the column to existing databases.
+  DateTimeColumn get updatedAt => dateTime().clientDefault(() => DateTime.now())();
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -22,6 +28,12 @@ class Quizzes extends Table {
   // Optional BCP-47 language tag for the quiz content (e.g. 'en', 'nl', 'de').
   // Null means the quiz is language-neutral / applicable to all languages.
   TextColumn get languageCode => text().nullable()();
+  // Bumped on every local edit/move; used by sync for last-write-wins.
+  // clientDefault (not withDefault): drift supplies the value from Dart on
+  // every insert, so the column needs no SQL expression default. SQLite's
+  // ALTER TABLE ADD COLUMN forbids expression defaults, so this is required to
+  // let the v10 migration add the column to existing databases.
+  DateTimeColumn get updatedAt => dateTime().clientDefault(() => DateTime.now())();
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -42,6 +54,12 @@ class Questions extends Table {
   // JSON blob storing OcclusionData (hidden areas + highlight shapes).
   // Null means no occlusion configured for this question.
   TextColumn get occlusionConfig => text().nullable()();
+  // Bumped on every local edit; used by sync for last-write-wins.
+  // clientDefault (not withDefault): drift supplies the value from Dart on
+  // every insert, so the column needs no SQL expression default. SQLite's
+  // ALTER TABLE ADD COLUMN forbids expression defaults, so this is required to
+  // let the v10 migration add the column to existing databases.
+  DateTimeColumn get updatedAt => dateTime().clientDefault(() => DateTime.now())();
   @override
   Set<Column> get primaryKey => {id};
 }
