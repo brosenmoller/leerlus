@@ -9,10 +9,19 @@ import 'package:leerlus/models/question_data.dart';
 import 'package:leerlus/screens/quiz_completion_screen.dart';
 
 class QuizSessionScreen extends StatefulWidget {
-  final QuizData quizData;
+  final QuizData? quizData;
+  final List<QuestionData>? overrideQuestions;
+  final String? sessionTitle;
   final bool shuffle;
 
-  const QuizSessionScreen({super.key, required this.quizData, this.shuffle = true});
+  const QuizSessionScreen({
+    super.key,
+    this.quizData,
+    this.overrideQuestions,
+    this.sessionTitle,
+    this.shuffle = true,
+  }) : assert(quizData != null || overrideQuestions != null,
+            'Provide either quizData or overrideQuestions');
 
   @override
   State<QuizSessionScreen> createState() =>
@@ -31,7 +40,9 @@ class _QuizSessionScreenState extends State<QuizSessionScreen> {
   void initState() {
     super.initState();
 
-    questions = service.getQuestionsForQuiz(widget.quizData.id);
+    questions = widget.overrideQuestions != null
+        ? List.of(widget.overrideQuestions!)
+        : service.getQuestionsForQuiz(widget.quizData!.id);
     totalQuestions = questions.length;
 
     if (widget.shuffle) {
@@ -59,7 +70,7 @@ class _QuizSessionScreenState extends State<QuizSessionScreen> {
         context,
         MaterialPageRoute(
           builder: (_) => QuizCompletionScreen(
-            quizName: widget.quizData.title,
+            quizName: widget.quizData?.title ?? widget.sessionTitle ?? '',
             correctAnswers: correctAnswers,
             totalQuestions: totalQuestions,
             quizData: widget.quizData,

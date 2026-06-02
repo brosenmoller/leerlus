@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:leerlus/l10n/app_localizations.dart';
 import 'package:leerlus/models/folder_data.dart';
+import 'package:leerlus/models/question_data.dart';
 import 'package:leerlus/screens/global_search_screen.dart';
 import 'package:leerlus/screens/quiz_session_screen.dart';
 import 'package:leerlus/services/question_service.dart';
@@ -15,6 +16,31 @@ class FolderBrowserScreen extends StatelessWidget {
   FolderBrowserScreen({super.key, this.folder});
 
   final QuestionService _service = QuestionService();
+
+  List<QuestionData> _collectAllQuestions(String folderId) {
+    final result = <QuestionData>[];
+    for (final quiz in _service.getQuizzesInFolder(folderId)) {
+      result.addAll(_service.getQuestionsForQuiz(quiz.id));
+    }
+    for (final sub in _service.getSubfolders(folderId)) {
+      result.addAll(_collectAllQuestions(sub.id));
+    }
+    return result;
+  }
+
+  void _playAll(BuildContext context, FolderData sub, String title) {
+    final questions = _collectAllQuestions(sub.id);
+    if (questions.isEmpty) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => QuizSessionScreen(
+          overrideQuestions: questions,
+          sessionTitle: title,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -130,6 +156,7 @@ class FolderBrowserScreen extends StatelessWidget {
                                     FolderBrowserScreen(folder: sub),
                               ),
                             ),
+                            onPlayAll: () => _playAll(context, sub, sub.title),
                           );
                         },
                         childCount: subfolders.length,

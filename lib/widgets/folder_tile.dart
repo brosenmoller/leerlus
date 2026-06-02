@@ -22,8 +22,14 @@ Color _colorForTitle(String title) {
 class FolderTile extends StatefulWidget {
   final FolderData folder;
   final VoidCallback onTap;
+  final VoidCallback? onPlayAll;
 
-  const FolderTile({super.key, required this.folder, required this.onTap});
+  const FolderTile({
+    super.key,
+    required this.folder,
+    required this.onTap,
+    this.onPlayAll,
+  });
 
   @override
   State<FolderTile> createState() => _FolderTileState();
@@ -97,6 +103,28 @@ class _FolderTileState extends State<FolderTile> {
                       ),
                     ),
                   ),
+
+                  // Play-all button
+                  if (widget.onPlayAll != null)
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: GestureDetector(
+                        onTap: widget.onPlayAll,
+                        child: Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            color: Colors.black45,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Icon(
+                            Icons.play_arrow_rounded,
+                            color: Colors.white70,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    ),
 
                   // Content
                   Padding(
