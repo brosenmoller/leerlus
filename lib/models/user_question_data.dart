@@ -61,6 +61,10 @@ class UserQuestionData extends HiveObject {
     final maxSecs = settings.maxIntervalDays * 24.0 * 3600;
 
     if (streak == 0) {
+      // A genuinely-new card has never been answered (intervalSeconds == 0).
+      // Once it has been failed in learning, intervalSeconds is already > 0, so
+      // "easy" should not jump back to the full new-card interval.
+      final isFreshCard = intervalSeconds == 0;
       switch (quality) {
         case SrsQuality.again:
           intervalSeconds = const Duration(minutes: 1).inSeconds.toDouble();
@@ -72,7 +76,16 @@ class UserQuestionData extends HiveObject {
           intervalSeconds = const Duration(minutes: 10).inSeconds.toDouble();
           break;
         case SrsQuality.easy:
-          intervalSeconds = const Duration(days: 7).inSeconds.toDouble();
+          if (isFreshCard) {
+            intervalSeconds = const Duration(days: 7).inSeconds.toDouble();
+          } else {
+            // Card was failed during learning; graduate to the easy minimum
+            // rather than the full new-card interval.
+            final easyMinSecs = settings.easyMinIntervalDays > 0
+                ? settings.easyMinIntervalDays * 24.0 * 3600
+                : const Duration(days: 1).inSeconds.toDouble();
+            intervalSeconds = easyMinSecs;
+          }
           break;
       }
       if (quality != SrsQuality.again) streak++;
