@@ -4,6 +4,7 @@ import 'package:leerlus/utils/text_field_selection_fix.dart';
 
 class MultipleChoiceSection extends StatelessWidget {
   final List<TextEditingController> optionControllers;
+  final List<FocusNode> focusNodes;
   final Set<int> correctIndices;
   final bool multipleCorrectEnabled;
   final bool showCorrectCount;
@@ -16,6 +17,7 @@ class MultipleChoiceSection extends StatelessWidget {
   const MultipleChoiceSection({
     super.key,
     required this.optionControllers,
+    required this.focusNodes,
     required this.correctIndices,
     required this.multipleCorrectEnabled,
     required this.showCorrectCount,
@@ -77,6 +79,7 @@ class MultipleChoiceSection extends StatelessWidget {
                 Expanded(
                   child: TextFormField(
                     controller: e.value,
+                    focusNode: focusNodes[i],
                     onTap: collapseSelectionOnTap(e.value),
                     decoration: InputDecoration(
                       labelText: l10n.optionN(i + 1),

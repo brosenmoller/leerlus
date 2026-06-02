@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:leerlus/l10n/app_localizations.dart';
 import 'package:leerlus/data/database/app_database.dart';
 import 'package:drift/drift.dart' show Value;
@@ -98,6 +99,13 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
 
   // Original image paths captured at init (edit mode only) for orphan detection on save.
   late final Set<String> _originalImagePaths;
+
+  // Focus nodes — kept in sync with their corresponding controller lists.
+  late final FocusNode _questionFocusNode;
+  late final List<FocusNode> _optionFocusNodes;
+  late final List<FocusNode> _acceptedAnswerFocusNodes;
+  late final List<FocusNode> _sortingFocusNodes;
+  late final List<FocusNode> _setFocusNodes;
 
   bool get _hasChanges => _isDirty;
 
@@ -286,6 +294,18 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
       _originalImagePaths = {};
     }
 
+    _questionFocusNode = FocusNode();
+    _optionFocusNodes = List.generate(_optionControllers.length, (_) => FocusNode());
+    _acceptedAnswerFocusNodes = List.generate(_acceptedAnswerControllers.length, (_) => FocusNode());
+    _sortingFocusNodes = List.generate(_sortingControllers.length, (_) => FocusNode());
+    _setFocusNodes = List.generate(_setControllers.length, (_) => FocusNode());
+
+    if (_answerType != 'flashcard') {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _questionFocusNode.requestFocus();
+      });
+    }
+
     _questionController.addListener(_markDirty);
     _explanationController.addListener(_markDirty);
     for (final c in _optionControllers) { c.addListener(_markDirty); }
@@ -306,13 +326,22 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
     _flashcardBackTextController.dispose();
     for (final c in _sortingControllers) c.dispose();
     for (final c in _setControllers) c.dispose();
+    _questionFocusNode.dispose();
+    for (final fn in _optionFocusNodes) fn.dispose();
+    for (final fn in _acceptedAnswerFocusNodes) fn.dispose();
+    for (final fn in _sortingFocusNodes) fn.dispose();
+    for (final fn in _setFocusNodes) fn.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return UnsavedChangesGuard(
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyS, control: true): _save,
+      },
+      child: UnsavedChangesGuard(
       hasChanges: _hasChanges,
       message: l10n.unsavedChangesQuestion,
       child: Scaffold(
@@ -331,6 +360,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                   if (_answerType != 'flashcard') ...[
                     TextFormField(
                       controller: _questionController,
+                      focusNode: _questionFocusNode,
                       onTap: collapseSelectionOnTap(_questionController),
                       decoration: InputDecoration(
                         labelText: l10n.questionLabel,
@@ -351,6 +381,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                   if (_answerType == 'multipleChoice')
                     MultipleChoiceSection(
                       optionControllers: _optionControllers,
+                      focusNodes: _optionFocusNodes,
                       correctIndices: _correctIndices,
                       multipleCorrectEnabled: _multipleCorrectEnabled,
                       showCorrectCount: _showCorrectCount,
@@ -371,11 +402,19 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                       }),
                       onAddOption: () {
                         final c = TextEditingController();
+                        final fn = FocusNode();
                         c.addListener(_markDirty);
-                        setState(() => _optionControllers.add(c));
+                        setState(() {
+                          _optionControllers.add(c);
+                          _optionFocusNodes.add(fn);
+                        });
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) fn.requestFocus();
+                        });
                       },
                       onRemoveOption: (i) => setState(() {
                         _optionControllers.removeAt(i).dispose();
+                        _optionFocusNodes.removeAt(i).dispose();
                         _correctIndices = _correctIndices
                             .where((idx) => idx != i)
                             .map((idx) => idx > i ? idx - 1 : idx)
@@ -408,13 +447,22 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                   if (_answerType == 'typed')
                     TypedAnswerSection(
                       controllers: _acceptedAnswerControllers,
+                      focusNodes: _acceptedAnswerFocusNodes,
                       onAddVariant: () {
                         final c = TextEditingController();
+                        final fn = FocusNode();
                         c.addListener(_markDirty);
-                        setState(() => _acceptedAnswerControllers.add(c));
+                        setState(() {
+                          _acceptedAnswerControllers.add(c);
+                          _acceptedAnswerFocusNodes.add(fn);
+                        });
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) fn.requestFocus();
+                        });
                       },
                       onRemoveVariant: (index) => setState(() {
                         _acceptedAnswerControllers.removeAt(index).dispose();
+                        _acceptedAnswerFocusNodes.removeAt(index).dispose();
                         _isDirty = true;
                       }),
                     ),
@@ -455,13 +503,22 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                   if (_answerType == 'set')
                     SetSection(
                       answerControllers: _setControllers,
+                      focusNodes: _setFocusNodes,
                       onAddAnswer: () {
                         final c = TextEditingController();
+                        final fn = FocusNode();
                         c.addListener(_markDirty);
-                        setState(() => _setControllers.add(c));
+                        setState(() {
+                          _setControllers.add(c);
+                          _setFocusNodes.add(fn);
+                        });
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) fn.requestFocus();
+                        });
                       },
                       onRemoveAnswer: (i) => setState(() {
                         _setControllers.removeAt(i).dispose();
+                        _setFocusNodes.removeAt(i).dispose();
                         _isDirty = true;
                       }),
                     ),
@@ -469,6 +526,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                   if (_answerType == 'sorting')
                     SortingSection(
                       itemControllers: _sortingControllers,
+                      focusNodes: _sortingFocusNodes,
                       showPreFilled: _sortingShowPreFilled,
                       onShowPreFilledChanged: (v) => setState(() {
                         _sortingShowPreFilled = v;
@@ -476,11 +534,19 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                       }),
                       onAddItem: () {
                         final c = TextEditingController();
+                        final fn = FocusNode();
                         c.addListener(_markDirty);
-                        setState(() => _sortingControllers.add(c));
+                        setState(() {
+                          _sortingControllers.add(c);
+                          _sortingFocusNodes.add(fn);
+                        });
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) fn.requestFocus();
+                        });
                       },
                       onRemoveItem: (i) => setState(() {
                         _sortingControllers.removeAt(i).dispose();
+                        _sortingFocusNodes.removeAt(i).dispose();
                         _isDirty = true;
                       }),
                     ),
@@ -535,7 +601,8 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildImageVariantsEditor() {

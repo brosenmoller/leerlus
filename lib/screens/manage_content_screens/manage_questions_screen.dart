@@ -21,12 +21,14 @@ class ManageQuestionsScreen extends StatefulWidget {
 
 class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
   final _scrollController = ScrollController();
+  final _fabFocusNode = FocusNode();
   String? _highlightId;
   bool _pendingScrollToEnd = false;
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _fabFocusNode.dispose();
     super.dispose();
   }
 
@@ -71,6 +73,9 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
     Future.delayed(const Duration(milliseconds: 1800), () {
       if (mounted) setState(() => _highlightId = null);
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _fabFocusNode.requestFocus();
+    });
   }
 
   @override
@@ -89,6 +94,7 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        focusNode: _fabFocusNode,
         icon: const Icon(Icons.add),
         label: Text(l10n.addQuestion),
         onPressed: _openAddScreen,

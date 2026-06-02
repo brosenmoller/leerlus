@@ -4,6 +4,7 @@ import 'package:leerlus/utils/text_field_selection_fix.dart';
 
 class SortingSection extends StatelessWidget {
   final List<TextEditingController> itemControllers;
+  final List<FocusNode> focusNodes;
   final bool showPreFilled;
   final ValueChanged<bool> onShowPreFilledChanged;
   final VoidCallback onAddItem;
@@ -12,6 +13,7 @@ class SortingSection extends StatelessWidget {
   const SortingSection({
     super.key,
     required this.itemControllers,
+    required this.focusNodes,
     required this.showPreFilled,
     required this.onShowPreFilledChanged,
     required this.onAddItem,
@@ -73,6 +75,7 @@ class SortingSection extends StatelessWidget {
                 Expanded(
                   child: TextFormField(
                     controller: e.value,
+                    focusNode: focusNodes[i],
                     onTap: collapseSelectionOnTap(e.value),
                     decoration: InputDecoration(
                       labelText: l10n.sortingItemN(i + 1),

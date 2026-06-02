@@ -4,12 +4,14 @@ import 'package:leerlus/utils/text_field_selection_fix.dart';
 
 class TypedAnswerSection extends StatelessWidget {
   final List<TextEditingController> controllers;
+  final List<FocusNode> focusNodes;
   final VoidCallback onAddVariant;
   final ValueChanged<int> onRemoveVariant;
 
   const TypedAnswerSection({
     super.key,
     required this.controllers,
+    required this.focusNodes,
     required this.onAddVariant,
     required this.onRemoveVariant,
   });
@@ -31,6 +33,7 @@ class TypedAnswerSection extends StatelessWidget {
                 Expanded(
                   child: TextFormField(
                     controller: e.value,
+                    focusNode: focusNodes[e.key],
                     onTap: collapseSelectionOnTap(e.value),
                     decoration: InputDecoration(
                       labelText: l10n.acceptedAnswerN(e.key + 1),
