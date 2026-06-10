@@ -64,11 +64,13 @@ class _FlashcardWidgetState extends State<FlashcardWidget>
     final config = widget.question.flashcardConfig!;
 
     final frontText = _sidesSwapped ? config.backText : config.frontText;
-    final frontImagePath =
-        _sidesSwapped ? config.backImagePath : config.frontImagePath;
+    final frontImagePath = _sidesSwapped
+        ? config.backImagePath
+        : config.frontImagePath;
     final backText = _sidesSwapped ? config.frontText : config.backText;
-    final backImagePath =
-        _sidesSwapped ? config.frontImagePath : config.backImagePath;
+    final backImagePath = _sidesSwapped
+        ? config.frontImagePath
+        : config.backImagePath;
     final frontLabel = _sidesSwapped ? 'Back' : 'Front';
     final backLabel = _sidesSwapped ? 'Front' : 'Back';
     final frontOcclusion =
@@ -86,28 +88,39 @@ class _FlashcardWidgetState extends State<FlashcardWidget>
             onAnswered: (quality) =>
                 widget.onSrsAnswered?.call(quality) ?? widget.onAnswered(true),
           )
-        : Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              OutlinedButton.icon(
-                onPressed: widget.locked ? null : () => widget.onAnswered(false),
-                icon: const Icon(Icons.close, color: Colors.red),
-                label: const Text('Incorrect',
-                    style: TextStyle(color: Colors.red)),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.red),
-                ),
+        : Center(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: widget.locked
+                        ? null
+                        : () => widget.onAnswered(false),
+                    icon: const Icon(Icons.close, color: Colors.red),
+                    label: const Text(
+                      'Incorrect',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.red),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  FilledButton.icon(
+                    onPressed: widget.locked
+                        ? null
+                        : () => widget.onAnswered(true),
+                    icon: const Icon(Icons.check),
+                    label: const Text('Correct'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.green.shade600,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 16),
-              FilledButton.icon(
-                onPressed: widget.locked ? null : () => widget.onAnswered(true),
-                icon: const Icon(Icons.check),
-                label: const Text('Correct'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.green.shade600,
-                ),
-              ),
-            ],
+            ),
           );
 
     return Padding(
@@ -201,6 +214,60 @@ class _FlashcardWidgetState extends State<FlashcardWidget>
   }
 }
 
+/// Centered text that shrinks its font to fit the available height (down to
+/// [minFontSize]). If the text still overflows at the minimum size, it becomes
+/// vertically scrollable instead of being clipped.
+class _AutoScaleText extends StatelessWidget {
+  final String text;
+  final TextStyle? style;
+
+  /// Font won't shrink below this before falling back to scrolling.
+  static const double minFontSize = 16;
+
+  const _AutoScaleText({required this.text, this.style});
+
+  @override
+  Widget build(BuildContext context) {
+    final baseStyle = style ?? const TextStyle();
+    final baseFontSize = baseStyle.fontSize ?? 14;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        double measuredHeight(double size) {
+          final tp = TextPainter(
+            text: TextSpan(
+              text: text,
+              style: baseStyle.copyWith(fontSize: size),
+            ),
+            textDirection: TextDirection.ltr,
+            textAlign: TextAlign.center,
+          )..layout(maxWidth: constraints.maxWidth);
+          return tp.height;
+        }
+
+        // Shrink one step at a time until it fits or we hit the floor.
+        double fontSize = baseFontSize;
+        while (fontSize > minFontSize &&
+            measuredHeight(fontSize) > constraints.maxHeight) {
+          fontSize = max(minFontSize, fontSize - 1);
+        }
+
+        final textWidget = Text(
+          text,
+          style: baseStyle.copyWith(fontSize: fontSize),
+          textAlign: TextAlign.center,
+        );
+
+        // Still too tall even at the smallest size → let the user scroll.
+        if (measuredHeight(fontSize) > constraints.maxHeight) {
+          return SingleChildScrollView(child: textWidget);
+        }
+        return Center(child: textWidget);
+      },
+    );
+  }
+}
+
 class _CardFace extends StatelessWidget {
   final String label;
   final String? text;
@@ -251,20 +318,14 @@ class _CardFace extends StatelessWidget {
                             occlusionData: occlusionData!,
                             revealed: false,
                           )
-                        : AppImage(
-                            path: imagePath,
-                            fit: BoxFit.contain,
-                          ),
+                        : AppImage(path: imagePath, fit: BoxFit.contain),
                   ),
                 )
               else if (text != null)
                 Expanded(
-                  child: Center(
-                    child: Text(
-                      text!,
-                      style: theme.textTheme.titleLarge,
-                      textAlign: TextAlign.center,
-                    ),
+                  child: _AutoScaleText(
+                    text: text!,
+                    style: theme.textTheme.titleLarge,
                   ),
                 ),
               if (imagePath != null && text != null) ...[
@@ -282,7 +343,9 @@ class _CardFace extends StatelessWidget {
                     child: Text(
                       'Tap to flip',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.4,
+                        ),
                       ),
                     ),
                   ),
