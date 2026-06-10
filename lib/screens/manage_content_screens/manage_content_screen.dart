@@ -1,7 +1,9 @@
-﻿import 'dart:io';
+﻿import 'dart:convert';
+import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:leerlus/l10n/app_localizations.dart';
 import 'package:leerlus/data/database/app_database.dart';
 import 'package:leerlus/screens/content_packs_screen.dart';
@@ -15,10 +17,37 @@ import 'package:share_plus/share_plus.dart';
 
 /// Root management screen. Handles import/export and renders the
 /// root folder contents via [ManageFolderScreen].
-class ManageContentScreen extends StatelessWidget {
+class ManageContentScreen extends StatefulWidget {
   final AppDatabase db;
 
   const ManageContentScreen({super.key, required this.db});
+
+  @override
+  State<ManageContentScreen> createState() => _ManageContentScreenState();
+}
+
+class _ManageContentScreenState extends State<ManageContentScreen> {
+  AppDatabase get db => widget.db;
+
+  /// Whether any content packs are listed in the asset index. Null while loading.
+  bool? _hasPacks;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHasPacks();
+  }
+
+  Future<void> _loadHasPacks() async {
+    bool has = false;
+    try {
+      final raw = await rootBundle.loadString('assets/content_packs/index.json');
+      has = (jsonDecode(raw) as List).isNotEmpty;
+    } catch (_) {
+      has = false;
+    }
+    if (mounted) setState(() => _hasPacks = has);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,14 +56,15 @@ class ManageContentScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(l10n.manageContentTitle),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.collections_bookmark_outlined),
-            tooltip: l10n.contentPacksTooltip,
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => ContentPacksScreen(db: db)),
+          if (_hasPacks == true)
+            IconButton(
+              icon: const Icon(Icons.collections_bookmark_outlined),
+              tooltip: l10n.contentPacksTooltip,
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => ContentPacksScreen(db: db)),
+              ),
             ),
-          ),
           IconButton(
             icon: const Icon(Icons.upload_file),
             tooltip: l10n.importJsonTooltip,
