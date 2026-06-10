@@ -93,10 +93,9 @@ class _SrsOverviewScreenState extends State<SrsOverviewScreen> {
 
     final colorScheme = Theme.of(context).colorScheme;
 
-    final allDueQuestions = entries
-        .expand((e) => e.dueQuestions)
-        .toList()
-      ..shuffle();
+    // Order is randomized by SrsSessionScreen (see scrambleQuestions), which
+    // also keeps chained flashcards apart, so no shuffle is needed here.
+    final allDueQuestions = entries.expand((e) => e.dueQuestions).toList();
 
     return Scaffold(
       floatingActionButton: allDueQuestions.isNotEmpty
