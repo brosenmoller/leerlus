@@ -254,7 +254,7 @@ class _MultipleChoiceWidgetState extends State<MultipleChoiceWidget> {
         if (_resolvedImagePath != null)
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: QuestionImage(
                 path: _resolvedImagePath!,
                 maxHeight: double.infinity,
