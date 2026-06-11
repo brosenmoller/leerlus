@@ -205,6 +205,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchNoResults => 'No results found.';
 
   @override
+  String get searchQuestionsHint => 'Search questions…';
+
+  @override
   String get streakSectionTitle => 'Streak';
 
   @override

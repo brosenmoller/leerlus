@@ -9,6 +9,7 @@ import 'package:leerlus/data/database/app_database.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:leerlus/models/answer_configs.dart' show FlashcardConfig, ImageClickConfig, MultipleChoiceConfig, SetConfig, SortingConfig, TypedAnswerConfig;
 import 'package:leerlus/services/question_service.dart';
+import 'package:leerlus/services/srs_service.dart';
 import 'package:leerlus/utils/text_field_selection_fix.dart';
 import 'package:leerlus/widgets/app_image.dart';
 import 'package:leerlus/widgets/image_browser_dialog.dart';
@@ -1182,6 +1183,10 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
 
     await QuestionService().refresh();
 
+    if (!widget.isEditing) {
+      await SrsService().enrollIfQuizEnabled(widget.quizId, questionId);
+    }
+
     if (widget.isEditing && mounted) {
       final finalUserPaths = <String>{
         if (AppDatabase.isUserImagePath(finalImagePath)) finalImagePath!,
@@ -1266,12 +1271,13 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
       updatedAt: Value(DateTime.now()),
     );
 
+    String? mainId;
     if (widget.isEditing) {
       await (widget.db.update(widget.db.questions)
         ..where((t) => t.id.equals(widget.question!.id)))
           .write(mainCompanion);
     } else {
-      await widget.db.insertQuestionIntoQuiz(
+      mainId = await widget.db.insertQuestionIntoQuiz(
         quizId: widget.quizId,
         question: mainCompanion,
       );
@@ -1298,6 +1304,11 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
     );
 
     await QuestionService().refresh();
+
+    if (mainId != null) {
+      await SrsService().enrollIfQuizEnabled(widget.quizId, mainId);
+    }
+    await SrsService().enrollIfQuizEnabled(widget.quizId, reversedId);
 
     if (widget.isEditing && mounted) {
       final finalUserPaths = <String>{

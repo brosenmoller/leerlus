@@ -207,6 +207,9 @@ class AppLocalizationsNl extends AppLocalizations {
   String get searchNoResults => 'Geen resultaten gevonden.';
 
   @override
+  String get searchQuestionsHint => 'Zoek vragen…';
+
+  @override
   String get streakSectionTitle => 'Streaks';
 
   @override

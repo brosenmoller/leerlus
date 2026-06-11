@@ -464,6 +464,12 @@ abstract class AppLocalizations {
   /// **'No results found.'**
   String get searchNoResults;
 
+  /// No description provided for @searchQuestionsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search questions…'**
+  String get searchQuestionsHint;
+
   /// No description provided for @streakSectionTitle.
   ///
   /// In en, this message translates to:

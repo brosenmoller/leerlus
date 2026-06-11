@@ -4,6 +4,7 @@ import 'package:leerlus/data/database/app_database.dart';
 import 'package:leerlus/screens/manage_content_screens/edit_question_screen.dart';
 import 'package:leerlus/services/question_service.dart';
 import 'package:leerlus/services/srs_service.dart';
+import 'package:leerlus/utils/text_field_selection_fix.dart';
 
 class ManageQuestionsScreen extends StatefulWidget {
   final AppDatabase db;
@@ -22,14 +23,26 @@ class ManageQuestionsScreen extends StatefulWidget {
 class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
   final _scrollController = ScrollController();
   final _fabFocusNode = FocusNode();
+  final _searchController = TextEditingController();
   String? _highlightId;
   bool _pendingScrollToEnd = false;
+  bool _searching = false;
+  String _query = '';
 
   @override
   void dispose() {
     _scrollController.dispose();
     _fabFocusNode.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  void _stopSearch() {
+    setState(() {
+      _searching = false;
+      _query = '';
+      _searchController.clear();
+    });
   }
 
   Future<void> _openAddScreen() async {
@@ -83,15 +96,42 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.quiz.title),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(20),
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(l10n.questionsSubtitle,
-                style: const TextStyle(color: Colors.grey, fontSize: 13)),
-          ),
-        ),
+        title: _searching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                onTap: collapseSelectionOnTap(_searchController),
+                onChanged: (value) => setState(() => _query = value),
+                style: const TextStyle(fontSize: 18),
+                decoration: InputDecoration(
+                  hintText: l10n.searchQuestionsHint,
+                  border: InputBorder.none,
+                ),
+              )
+            : Text(widget.quiz.title),
+        actions: [
+          _searching
+              ? IconButton(
+                  icon: const Icon(Icons.close),
+                  tooltip: l10n.searchTooltip,
+                  onPressed: _stopSearch,
+                )
+              : IconButton(
+                  icon: const Icon(Icons.search),
+                  tooltip: l10n.searchTooltip,
+                  onPressed: () => setState(() => _searching = true),
+                ),
+        ],
+        bottom: _searching
+            ? null
+            : PreferredSize(
+                preferredSize: const Size.fromHeight(20),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(l10n.questionsSubtitle,
+                      style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                ),
+              ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         focusNode: _fabFocusNode,
@@ -110,8 +150,21 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
             return Center(child: Text(l10n.noQuestionsYet));
           }
 
+          final query = _query.toLowerCase().trim();
+          final filtered = query.isEmpty
+              ? questions
+              : questions
+                  .where(
+                      (q) => q.questionText.toLowerCase().contains(query))
+                  .toList();
+
+          if (filtered.isEmpty) {
+            return Center(child: Text(l10n.searchNoResults));
+          }
+
           // Scroll to the end once the newly added question appears in the list.
-          if (_pendingScrollToEnd &&
+          if (query.isEmpty &&
+              _pendingScrollToEnd &&
               questions.any((q) => q.id == _highlightId)) {
             _pendingScrollToEnd = false;
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -132,9 +185,9 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
               child: ListView.builder(
                 controller: _scrollController,
                 padding: const EdgeInsets.only(bottom: 100),
-                itemCount: questions.length,
+                itemCount: filtered.length,
                 itemBuilder: (context, i) {
-                  final question = questions[i];
+                  final question = filtered[i];
                   final isHighlighted = question.id == _highlightId;
                   return ListTile(
                     tileColor: isHighlighted

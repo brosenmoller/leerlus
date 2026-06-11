@@ -55,6 +55,53 @@ class SrsService {
     await _box.put(question.id, userData);
   }
 
+  /// Enroll [questionId] in SRS iff its quiz already has SRS enabled (any other
+  /// question in the quiz is enrolled). Call right after inserting a new question.
+  /// A fresh card is due immediately (nextReview defaults to now).
+  Future<void> enrollIfQuizEnabled(String quizId, String questionId) async {
+    final quiz = _questionService.getQuiz(quizId);
+    if (quiz == null) return;
+    final quizEnabled = quiz.questionIds
+        .where((id) => id != questionId)
+        .any((id) => _box.get(id)?.spacedRepetitionEnabled ?? false);
+    if (!quizEnabled) return;
+
+    final data = _box.get(questionId) ??
+        UserQuestionData(
+          questionId: questionId,
+          easeFactor: SettingsService().srsSettings.initialEase,
+        );
+    data.spacedRepetitionEnabled = true;
+    await _box.put(questionId, data);
+  }
+
+  /// Back-fill: ensure every question in an SRS-enabled quiz is itself enrolled.
+  /// A quiz counts as SRS-enabled if any of its questions is enrolled. Idempotent
+  /// and cheap (in-memory reads; only writes questions that actually change), so it
+  /// is safe to run on every startup. Returns the number of questions newly enrolled.
+  Future<int> reconcileQuizEnrollment() async {
+    int changed = 0;
+    for (final quiz in _questionService.getAllQuizzes()) {
+      final ids = quiz.questionIds;
+      final quizEnabled =
+          ids.any((id) => _box.get(id)?.spacedRepetitionEnabled ?? false);
+      if (!quizEnabled) continue;
+      for (final id in ids) {
+        final data = _box.get(id);
+        if (data != null && data.spacedRepetitionEnabled) continue;
+        final entry = data ??
+            UserQuestionData(
+              questionId: id,
+              easeFactor: SettingsService().srsSettings.initialEase,
+            );
+        entry.spacedRepetitionEnabled = true;
+        await _box.put(id, entry);
+        changed++;
+      }
+    }
+    return changed;
+  }
+
   /// Puts the Updated User Data into Hive
   Future<void> updateUserData(UserQuestionData userData) async {
     await _box.put(userData.questionId, userData);

@@ -83,6 +83,7 @@
   "searchTooltip": "Search",
   "searchHint": "Search folders & quizzes…",
   "searchNoResults": "No results found.",
+  "searchQuestionsHint": "Search questions…",
 
   "streakSectionTitle": "Streak",
   "streakEnabledToggle": "Enable streak tracking",

@@ -429,6 +429,8 @@ class AppDatabase extends _$AppDatabase {
 
   Future<List<Quiz>> getAllQuizzes() => select(quizzes).get();
 
+  Stream<List<Quiz>> watchAllQuizzes() => select(quizzes).watch();
+
   Stream<List<Quiz>> watchQuizzesInFolder(String? folderId) {
     if (folderId == null) {
       return (select(quizzes)..where((t) => t.folderId.isNull())).watch();

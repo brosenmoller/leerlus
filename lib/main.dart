@@ -33,6 +33,8 @@ void main() async {
 
   await srsService.init();
   await questionService.init(db);
+  // Back-fill SRS enrollment for questions added to already-enabled quizzes.
+  await srsService.reconcileQuizEnrollment();
   await favoritesService.init();
   await settingsService.init();
   await notificationService.init();

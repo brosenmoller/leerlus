@@ -83,6 +83,7 @@
   "searchTooltip": "Zoeken",
   "searchHint": "Zoek mappen & quizzen…",
   "searchNoResults": "Geen resultaten gevonden.",
+  "searchQuestionsHint": "Zoek vragen…",
 
   "streakSectionTitle": "Streaks",
   "streakEnabledToggle": "Streak bijhouden",

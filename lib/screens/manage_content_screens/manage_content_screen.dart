@@ -10,7 +10,9 @@ import 'package:leerlus/screens/content_packs_screen.dart';
 import 'package:leerlus/screens/manage_content_screens/edit_folder_screen.dart';
 import 'package:leerlus/screens/manage_content_screens/edit_quiz_screen.dart';
 import 'package:leerlus/screens/manage_content_screens/manage_folder_screen.dart';
+import 'package:leerlus/screens/manage_content_screens/manage_questions_screen.dart';
 import 'package:leerlus/services/question_service.dart';
+import 'package:leerlus/utils/text_field_selection_fix.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -32,10 +34,28 @@ class _ManageContentScreenState extends State<ManageContentScreen> {
   /// Whether any content packs are listed in the asset index. Null while loading.
   bool? _hasPacks;
 
+  final _searchController = TextEditingController();
+  bool _searching = false;
+  String _query = '';
+
   @override
   void initState() {
     super.initState();
     _loadHasPacks();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _stopSearch() {
+    setState(() {
+      _searching = false;
+      _query = '';
+      _searchController.clear();
+    });
   }
 
   Future<void> _loadHasPacks() async {
@@ -54,57 +74,172 @@ class _ManageContentScreenState extends State<ManageContentScreen> {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.manageContentTitle),
-        actions: [
-          if (_hasPacks == true)
-            IconButton(
-              icon: const Icon(Icons.collections_bookmark_outlined),
-              tooltip: l10n.contentPacksTooltip,
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => ContentPacksScreen(db: db)),
-              ),
-            ),
-          IconButton(
-            icon: const Icon(Icons.upload_file),
-            tooltip: l10n.importJsonTooltip,
-            onPressed: () => _importJson(context),
-          ),
-          IconButton(
-            icon: const Icon(Icons.download),
-            tooltip: l10n.exportJsonTooltip,
-            onPressed: () => _exportJson(context),
-          ),
-        ],
+        title: _searching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                onTap: collapseSelectionOnTap(_searchController),
+                onChanged: (value) => setState(() => _query = value),
+                style: const TextStyle(fontSize: 18),
+                decoration: InputDecoration(
+                  hintText: l10n.searchHint,
+                  border: InputBorder.none,
+                ),
+              )
+            : Text(l10n.manageContentTitle),
+        actions: _searching
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  tooltip: l10n.searchTooltip,
+                  onPressed: _stopSearch,
+                ),
+              ]
+            : [
+                IconButton(
+                  icon: const Icon(Icons.search),
+                  tooltip: l10n.searchTooltip,
+                  onPressed: () => setState(() => _searching = true),
+                ),
+                if (_hasPacks == true)
+                  IconButton(
+                    icon: const Icon(Icons.collections_bookmark_outlined),
+                    tooltip: l10n.contentPacksTooltip,
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => ContentPacksScreen(db: db)),
+                    ),
+                  ),
+                IconButton(
+                  icon: const Icon(Icons.upload_file),
+                  tooltip: l10n.importJsonTooltip,
+                  onPressed: () => _importJson(context),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.download),
+                  tooltip: l10n.exportJsonTooltip,
+                  onPressed: () => _exportJson(context),
+                ),
+              ],
       ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          FloatingActionButton.extended(
-            heroTag: 'root_add_folder',
-            icon: const Icon(Icons.create_new_folder_outlined),
-            label: Text(l10n.addFolder),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => EditFolderScreen(db: db)),
+      floatingActionButton: _searching
+          ? null
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                FloatingActionButton.extended(
+                  heroTag: 'root_add_folder',
+                  icon: const Icon(Icons.create_new_folder_outlined),
+                  label: Text(l10n.addFolder),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => EditFolderScreen(db: db)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                FloatingActionButton.extended(
+                  heroTag: 'root_add_quiz',
+                  icon: const Icon(Icons.quiz_outlined),
+                  label: Text(l10n.addQuiz),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => EditQuizScreen(db: db)),
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton.extended(
-            heroTag: 'root_add_quiz',
-            icon: const Icon(Icons.quiz_outlined),
-            label: Text(l10n.addQuiz),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => EditQuizScreen(db: db)),
-            ),
-          ),
-        ],
-      ),
       // Reuse the folder contents view — null folder = root level
-      body: FolderContentsBody(db: db, folder: null),
+      body: _query.trim().isEmpty
+          ? FolderContentsBody(db: db, folder: null)
+          : _buildSearchResults(l10n),
     );
+  }
+
+  // ── Folder & quiz search results ────────────────────────────────
+
+  /// Flat, case-insensitive search across every folder and quiz in the app.
+  /// Tapping a folder opens its management screen; tapping a quiz opens its
+  /// question management screen.
+  Widget _buildSearchResults(AppLocalizations l10n) {
+    final query = _query.toLowerCase().trim();
+    return StreamBuilder<List<Folder>>(
+      stream: db.watchAllFolders(),
+      builder: (context, folderSnap) {
+        return StreamBuilder<List<Quiz>>(
+          stream: db.watchAllQuizzes(),
+          builder: (context, quizSnap) {
+            if (!folderSnap.hasData || !quizSnap.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final folders = folderSnap.data!
+                .where((f) => f.title.toLowerCase().contains(query))
+                .toList()
+              ..sort((a, b) => a.title.compareTo(b.title));
+            final quizzes = quizSnap.data!
+                .where((q) => q.title.toLowerCase().contains(query))
+                .toList()
+              ..sort((a, b) => a.title.compareTo(b.title));
+
+            if (folders.isEmpty && quizzes.isEmpty) {
+              return Center(child: Text(l10n.searchNoResults));
+            }
+
+            return Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 800),
+                child: ListView(
+                  padding: const EdgeInsets.only(bottom: 100),
+                  children: [
+                    if (folders.isNotEmpty) ...[
+                      _SearchSectionHeader(label: l10n.foldersSection),
+                      ...folders.map((f) => ListTile(
+                            leading: const CircleAvatar(
+                                child: Icon(Icons.folder_outlined)),
+                            title: Text(f.title),
+                            subtitle: _parentSubtitle(f.parentFolderId),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    ManageFolderScreen(db: db, folder: f),
+                              ),
+                            ),
+                          )),
+                    ],
+                    if (quizzes.isNotEmpty) ...[
+                      _SearchSectionHeader(label: l10n.quizzesSection),
+                      ...quizzes.map((quiz) => ListTile(
+                            leading: const CircleAvatar(
+                                child: Icon(Icons.quiz_outlined)),
+                            title: Text(quiz.title),
+                            subtitle: _parentSubtitle(quiz.folderId),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    ManageQuestionsScreen(db: db, quiz: quiz),
+                              ),
+                            ),
+                          )),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Subtitle showing the parent folder's title, or null at the root.
+  Widget? _parentSubtitle(String? parentFolderId) {
+    if (parentFolderId == null) return null;
+    final title = QuestionService().getFolder(parentFolderId)?.title;
+    return title != null ? Text(title) : null;
   }
 
   // ── .lus export ─────────────────────────────────────────────────
@@ -165,5 +300,25 @@ class _ManageContentScreenState extends State<ManageContentScreen> {
         );
       }
     }
+  }
+}
+
+/// Section header used in the folder/quiz search results list.
+class _SearchSectionHeader extends StatelessWidget {
+  final String label;
+  const _SearchSectionHeader({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Text(
+        label,
+        style: Theme.of(context)
+            .textTheme
+            .labelMedium
+            ?.copyWith(color: Colors.grey, letterSpacing: 1),
+      ),
+    );
   }
 }
