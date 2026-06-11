@@ -57,9 +57,12 @@ class StreakService {
   static const _kWeekAnchor = 'streak_week_anchor';
   static const _kStreakEnabled = 'streak_enabled';
   static const _kLastFreezeDate = 'streak_last_freeze_date';
+  static const _kFreezeDates = 'streak_freeze_dates';
   static const _kNotifsEnabled = 'streak_notifs_enabled';
   static const _kNotifsHour = 'streak_notifs_hour';
   static const _kNotifsMinute = 'streak_notifs_minute';
+  static const _kNotifsSound = 'streak_notifs_sound';
+  static const _kNotifsVibration = 'streak_notifs_vibration';
 
   static const _notifTitle = 'Leerlus';
   static const _notifBody = "Don't forget to study — keep your streak alive!";
@@ -84,6 +87,19 @@ class StreakService {
   bool get notifsEnabled => (_box.get(_kNotifsEnabled) as bool?) ?? false;
   int get notifsHour => (_box.get(_kNotifsHour) as int?) ?? 20;
   int get notifsMinute => (_box.get(_kNotifsMinute) as int?) ?? 0;
+  bool get notifsSound => (_box.get(_kNotifsSound) as bool?) ?? false;
+  bool get notifsVibration => (_box.get(_kNotifsVibration) as bool?) ?? false;
+
+  /// All days a freeze bridged a missed day, as 'YYYY-MM-DD' strings.
+  List<String> get freezeDates =>
+      (_box.get(_kFreezeDates) as List?)?.cast<String>() ?? const [];
+
+  /// Freeze days normalized to date-only [DateTime]s — for calendar display.
+  Set<DateTime> freezeDaySet() => freezeDates
+      .map(DateTime.tryParse)
+      .whereType<DateTime>()
+      .map((d) => DateTime(d.year, d.month, d.day))
+      .toSet();
 
   // ── Init ───────────────────────────────────────────────────────────────────
 
@@ -149,6 +165,12 @@ class StreakService {
         // Enough freezes to cover all missed days.
         await _box.put(_kFreezesUsed, freezesUsedThisWeek + missedDays);
         await _box.put(_kLastFreezeDate, _dateStr(today.subtract(const Duration(days: 1))));
+        // Record every bridged day (lastActivity+1 .. today-1) for the calendar.
+        final bridged = <String>{...freezeDates};
+        for (int i = 1; i <= missedDays; i++) {
+          bridged.add(_dateStr(lastDt.add(Duration(days: i))));
+        }
+        await _box.put(_kFreezeDates, bridged.toList());
         newStreak = currentStreak + 1;
         event = StreakEvent.freezeUsed;
       } else {
@@ -194,6 +216,16 @@ class StreakService {
   Future<void> setNotifTime(int hour, int minute) async {
     await _box.put(_kNotifsHour, hour);
     await _box.put(_kNotifsMinute, minute);
+    if (notifsEnabled && streakEnabled) await _reschedule();
+  }
+
+  Future<void> setNotifsSound(bool v) async {
+    await _box.put(_kNotifsSound, v);
+    if (notifsEnabled && streakEnabled) await _reschedule();
+  }
+
+  Future<void> setNotifsVibration(bool v) async {
+    await _box.put(_kNotifsVibration, v);
     if (notifsEnabled && streakEnabled) await _reschedule();
   }
 
@@ -264,6 +296,34 @@ class StreakService {
     _refreshNotifier();
   }
 
+  /// Unions remote freeze days into the local set (used in normal sync merge).
+  Future<void> mergeFreezeDates(List<String> remote) async {
+    if (remote.isEmpty) return;
+    final merged = <String>{...freezeDates, ...remote}.toList()..sort();
+    await _box.put(_kFreezeDates, merged);
+    _refreshNotifier();
+  }
+
+  /// Replaces the local freeze days with the remote set (used in hard sync).
+  Future<void> setFreezeDates(List<String> dates) async {
+    await _box.put(_kFreezeDates, (<String>{...dates}.toList()..sort()));
+    _refreshNotifier();
+  }
+
+  /// Drops any freeze day that is also a studied day — actually working that
+  /// day means it was never missed, so the freeze is void (study wins). Used
+  /// after a sync merges in the other device's activity.
+  Future<void> removeFreezeDates(Set<DateTime> studiedDays) async {
+    if (freezeDates.isEmpty || studiedDays.isEmpty) return;
+    final studied =
+        studiedDays.map((d) => _dateStr(DateTime(d.year, d.month, d.day))).toSet();
+    final remaining = freezeDates.where((d) => !studied.contains(d)).toList();
+    if (remaining.length != freezeDates.length) {
+      await _box.put(_kFreezeDates, remaining);
+      _refreshNotifier();
+    }
+  }
+
   Future<void> resetStreak() async {
     await _box.put(_kStreakCount, 0);
     await _box.delete(_kLastActivity);
@@ -295,6 +355,8 @@ class StreakService {
         minute: notifsMinute,
         title: _notifTitle,
         body: _notifBody,
+        sound: notifsSound,
+        vibration: notifsVibration,
       );
 
   Future<void> _rescheduleForTomorrow() => NotificationService().rescheduleReminder(
@@ -302,6 +364,8 @@ class StreakService {
         minute: notifsMinute,
         title: _notifTitle,
         body: _notifBody,
+        sound: notifsSound,
+        vibration: notifsVibration,
         forceNextDay: true,
       );
 

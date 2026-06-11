@@ -500,6 +500,66 @@ abstract class AppLocalizations {
   /// **'Reminder time'**
   String get streakNotifsTime;
 
+  /// No description provided for @streakNotifsPermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification permission is required for reminders.'**
+  String get streakNotifsPermissionDenied;
+
+  /// No description provided for @streakNotifsBlockedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications are blocked'**
+  String get streakNotifsBlockedTitle;
+
+  /// No description provided for @streakNotifsBlockedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification permission for Leerlus is turned off in your system settings. Open settings to allow daily reminders.'**
+  String get streakNotifsBlockedBody;
+
+  /// No description provided for @streakNotifsBlockedWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders are on, but notifications are blocked in your system settings. Tap to fix.'**
+  String get streakNotifsBlockedWarning;
+
+  /// No description provided for @streakNotifsOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get streakNotifsOpenSettings;
+
+  /// No description provided for @streakNotifsOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification options'**
+  String get streakNotifsOptions;
+
+  /// No description provided for @streakNotifsSound.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound'**
+  String get streakNotifsSound;
+
+  /// No description provided for @streakNotifsSoundSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Play a sound with the reminder'**
+  String get streakNotifsSoundSubtitle;
+
+  /// No description provided for @streakNotifsVibration.
+  ///
+  /// In en, this message translates to:
+  /// **'Vibration'**
+  String get streakNotifsVibration;
+
+  /// No description provided for @streakNotifsVibrationSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Vibrate the phone with the reminder'**
+  String get streakNotifsVibrationSubtitle;
+
   /// No description provided for @streakResetButton.
   ///
   /// In en, this message translates to:
@@ -583,6 +643,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Restocks on {date}'**
   String streakFreezesRestockOn(String date);
+
+  /// No description provided for @streakCalendarButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar'**
+  String get streakCalendarButton;
+
+  /// No description provided for @streakCalendarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Streak calendar'**
+  String get streakCalendarTitle;
+
+  /// No description provided for @streakCalendarLegendStudied.
+  ///
+  /// In en, this message translates to:
+  /// **'Studied'**
+  String get streakCalendarLegendStudied;
+
+  /// No description provided for @streakCalendarLegendFreeze.
+  ///
+  /// In en, this message translates to:
+  /// **'Freeze'**
+  String get streakCalendarLegendFreeze;
 
   /// No description provided for @favoritesTitle.
   ///

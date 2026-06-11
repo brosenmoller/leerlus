@@ -133,6 +133,21 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
     if (!_isDirty) setState(() => _isDirty = true);
   }
 
+  /// Attaches a listener that marks the form dirty only when the controller's
+  /// *text* actually changes. A TextEditingController also notifies on selection
+  /// and composing-region changes — e.g. when a field gains focus on open, the
+  /// cursor moves from the initial offset to the end of the text — which must
+  /// NOT count as an edit, otherwise an untouched question is flagged as
+  /// modified the moment it opens.
+  void _addTextDirtyListener(TextEditingController c) {
+    var lastText = c.text;
+    c.addListener(() {
+      if (c.text == lastText) return;
+      lastText = c.text;
+      _markDirty();
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -306,14 +321,14 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
       });
     }
 
-    _questionController.addListener(_markDirty);
-    _explanationController.addListener(_markDirty);
-    for (final c in _optionControllers) { c.addListener(_markDirty); }
-    for (final c in _acceptedAnswerControllers) { c.addListener(_markDirty); }
-    _flashcardFrontTextController.addListener(_markDirty);
-    _flashcardBackTextController.addListener(_markDirty);
-    for (final c in _sortingControllers) { c.addListener(_markDirty); }
-    for (final c in _setControllers) { c.addListener(_markDirty); }
+    _addTextDirtyListener(_questionController);
+    _addTextDirtyListener(_explanationController);
+    for (final c in _optionControllers) { _addTextDirtyListener(c); }
+    for (final c in _acceptedAnswerControllers) { _addTextDirtyListener(c); }
+    _addTextDirtyListener(_flashcardFrontTextController);
+    _addTextDirtyListener(_flashcardBackTextController);
+    for (final c in _sortingControllers) { _addTextDirtyListener(c); }
+    for (final c in _setControllers) { _addTextDirtyListener(c); }
   }
 
   @override
@@ -354,9 +369,11 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
             constraints: const BoxConstraints(maxWidth: 680),
             child: Form(
               key: _formKey,
-              child: ListView(
+              child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
-                children: [
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
                   if (_answerType != 'flashcard') ...[
                     TextFormField(
                       controller: _questionController,
@@ -403,7 +420,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                       onAddOption: () {
                         final c = TextEditingController();
                         final fn = FocusNode();
-                        c.addListener(_markDirty);
+                        _addTextDirtyListener(c);
                         setState(() {
                           _optionControllers.add(c);
                           _optionFocusNodes.add(fn);
@@ -451,7 +468,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                       onAddVariant: () {
                         final c = TextEditingController();
                         final fn = FocusNode();
-                        c.addListener(_markDirty);
+                        _addTextDirtyListener(c);
                         setState(() {
                           _acceptedAnswerControllers.add(c);
                           _acceptedAnswerFocusNodes.add(fn);
@@ -507,7 +524,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                       onAddAnswer: () {
                         final c = TextEditingController();
                         final fn = FocusNode();
-                        c.addListener(_markDirty);
+                        _addTextDirtyListener(c);
                         setState(() {
                           _setControllers.add(c);
                           _setFocusNodes.add(fn);
@@ -535,7 +552,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                       onAddItem: () {
                         final c = TextEditingController();
                         final fn = FocusNode();
-                        c.addListener(_markDirty);
+                        _addTextDirtyListener(c);
                         setState(() {
                           _sortingControllers.add(c);
                           _sortingFocusNodes.add(fn);
@@ -596,6 +613,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                     ),
                   ],
                 ],
+                ),
               ),
             ),
           ),
@@ -917,6 +935,21 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
     }
 
     final newOcclusion = _remapOcclusionForTypeSwitch(newType, carryImage);
+
+    // Carry text across the flashcard boundary so it isn't lost on switch.
+    // The question field maps to the flashcard front side; for typed questions
+    // the first accepted answer additionally maps to the flashcard back side.
+    if (newType == 'flashcard' && _answerType != 'flashcard') {
+      _flashcardFrontTextController.text = _questionController.text;
+      if (_answerType == 'typed' && _acceptedAnswerControllers.isNotEmpty) {
+        _flashcardBackTextController.text = _acceptedAnswerControllers.first.text;
+      }
+    } else if (_answerType == 'flashcard' && newType != 'flashcard') {
+      _questionController.text = _flashcardFrontTextController.text;
+      if (newType == 'typed' && _acceptedAnswerControllers.isNotEmpty) {
+        _acceptedAnswerControllers.first.text = _flashcardBackTextController.text;
+      }
+    }
 
     setState(() {
       // Clear old type's image state

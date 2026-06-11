@@ -46,6 +46,8 @@ void main() async {
       minute: streakService.notifsMinute,
       title: 'Leerlus',
       body: "Don't forget to study — keep your streak alive!",
+      sound: streakService.notifsSound,
+      vibration: streakService.notifsVibration,
     );
   }
 

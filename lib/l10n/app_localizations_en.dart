@@ -224,6 +224,40 @@ class AppLocalizationsEn extends AppLocalizations {
   String get streakNotifsTime => 'Reminder time';
 
   @override
+  String get streakNotifsPermissionDenied =>
+      'Notification permission is required for reminders.';
+
+  @override
+  String get streakNotifsBlockedTitle => 'Notifications are blocked';
+
+  @override
+  String get streakNotifsBlockedBody =>
+      'Notification permission for Leerlus is turned off in your system settings. Open settings to allow daily reminders.';
+
+  @override
+  String get streakNotifsBlockedWarning =>
+      'Reminders are on, but notifications are blocked in your system settings. Tap to fix.';
+
+  @override
+  String get streakNotifsOpenSettings => 'Open settings';
+
+  @override
+  String get streakNotifsOptions => 'Notification options';
+
+  @override
+  String get streakNotifsSound => 'Sound';
+
+  @override
+  String get streakNotifsSoundSubtitle => 'Play a sound with the reminder';
+
+  @override
+  String get streakNotifsVibration => 'Vibration';
+
+  @override
+  String get streakNotifsVibrationSubtitle =>
+      'Vibrate the phone with the reminder';
+
+  @override
   String get streakResetButton => 'Reset streak';
 
   @override
@@ -308,6 +342,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String streakFreezesRestockOn(String date) {
     return 'Restocks on $date';
   }
+
+  @override
+  String get streakCalendarButton => 'Calendar';
+
+  @override
+  String get streakCalendarTitle => 'Streak calendar';
+
+  @override
+  String get streakCalendarLegendStudied => 'Studied';
+
+  @override
+  String get streakCalendarLegendFreeze => 'Freeze';
 
   @override
   String get favoritesTitle => 'Favorites';

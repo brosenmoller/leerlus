@@ -39,7 +39,9 @@ class FlashcardSideEditor extends StatelessWidget {
             labelText: textOptionalLabel,
             border: const OutlineInputBorder(),
           ),
-          maxLines: 2,
+          minLines: 2,
+          maxLines: null,
+          keyboardType: TextInputType.multiline,
         ),
         const SizedBox(height: 8),
         ImagePickerField(

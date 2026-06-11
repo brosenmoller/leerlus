@@ -31,7 +31,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late SrsSettings _srs;
   late bool _streakEnabled;
   late bool _notifsEnabled;
+  bool _notifsBlocked = false;
   late TimeOfDay _notifTime;
+  late bool _notifsSound;
+  late bool _notifsVibration;
   late bool _animationsEnabled;
   late final TextEditingController _defaultLangController;
   final FocusNode _defaultLangFocusNode = FocusNode();
@@ -44,6 +47,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _streakEnabled = _streak.streakEnabled;
     _notifsEnabled = _streak.notifsEnabled;
     _notifTime = TimeOfDay(hour: _streak.notifsHour, minute: _streak.notifsMinute);
+    _notifsSound = _streak.notifsSound;
+    _notifsVibration = _streak.notifsVibration;
     _animationsEnabled = _settings.animationsEnabled;
     _defaultLangCode = _settings.defaultQuizLanguageCode;
     _defaultLangController = TextEditingController(
@@ -57,6 +62,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       }
     });
+    _checkNotifPermission();
+  }
+
+  /// Detects the case where reminders are enabled in-app but the OS has
+  /// notifications blocked (so scheduled reminders are silently dropped).
+  Future<void> _checkNotifPermission() async {
+    if (!_notifs.isSupported || !_notifsEnabled) return;
+    final ok = await _notifs.hasPermission();
+    if (mounted && _notifsBlocked != !ok) {
+      setState(() => _notifsBlocked = !ok);
+    }
+  }
+
+  /// Shown when permission was permanently denied or revoked: explains the
+  /// situation and offers to open the system app-settings screen.
+  Future<void> _showNotifBlockedDialog() async {
+    final l10n = AppLocalizations.of(context);
+    final open = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.streakNotifsBlockedTitle),
+        content: Text(l10n.streakNotifsBlockedBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.streakNotifsOpenSettings),
+          ),
+        ],
+      ),
+    );
+    if (open == true) await _notifs.openSettings();
   }
 
   @override
@@ -276,13 +316,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         value: _notifsEnabled,
                         onChanged: (v) async {
                           if (v) {
-                            final granted = await _notifs.requestPermission();
-                            if (!granted) return;
+                            final result = await _notifs.ensurePermission();
+                            if (!mounted) return;
+                            if (result == NotifPermission.permanentlyDenied) {
+                              await _showNotifBlockedDialog();
+                              return;
+                            }
+                            if (result != NotifPermission.granted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content:
+                                      Text(l10n.streakNotifsPermissionDenied),
+                                ),
+                              );
+                              return;
+                            }
                           }
                           await _streak.setNotifsEnabled(v);
-                          if (mounted) setState(() => _notifsEnabled = v);
+                          if (mounted) {
+                            setState(() {
+                              _notifsEnabled = v;
+                              _notifsBlocked = false;
+                            });
+                          }
                         },
                       ),
+                      if (_notifsEnabled && _notifsBlocked)
+                        ListTile(
+                          leading: Icon(
+                            Icons.warning_amber_rounded,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                          title: Text(l10n.streakNotifsBlockedWarning),
+                          onTap: _showNotifBlockedDialog,
+                        ),
                       if (_notifsEnabled)
                         ListTile(
                           title: Text(l10n.streakNotifsTime),
@@ -299,6 +366,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             await _streak.setNotifTime(picked.hour, picked.minute);
                             setState(() => _notifTime = picked);
                           },
+                        ),
+                      if (_notifsEnabled)
+                        Theme(
+                          data: Theme.of(context)
+                              .copyWith(dividerColor: Colors.transparent),
+                          child: ExpansionTile(
+                            tilePadding:
+                                const EdgeInsets.symmetric(horizontal: 16),
+                            leading: const Icon(Icons.notifications_outlined),
+                            title: Text(l10n.streakNotifsOptions),
+                            childrenPadding:
+                                const EdgeInsets.only(bottom: 8),
+                            children: [
+                              SwitchListTile(
+                                title: Text(l10n.streakNotifsSound),
+                                subtitle: Text(l10n.streakNotifsSoundSubtitle),
+                                value: _notifsSound,
+                                onChanged: (v) async {
+                                  await _streak.setNotifsSound(v);
+                                  if (mounted) {
+                                    setState(() => _notifsSound = v);
+                                  }
+                                },
+                              ),
+                              SwitchListTile(
+                                title: Text(l10n.streakNotifsVibration),
+                                subtitle:
+                                    Text(l10n.streakNotifsVibrationSubtitle),
+                                value: _notifsVibration,
+                                onChanged: (v) async {
+                                  await _streak.setNotifsVibration(v);
+                                  if (mounted) {
+                                    setState(() => _notifsVibration = v);
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
                         ),
                       const Divider(indent: 16, endIndent: 16),
                     ],

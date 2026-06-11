@@ -173,6 +173,19 @@ class StatisticsService {
     return bestDay == 0 ? null : bestDay;
   }
 
+  /// All days with at least one answered question, normalized to date-only
+  /// [DateTime]s — used to mark "studied" days on the streak calendar.
+  Set<DateTime> getActiveDays() {
+    final out = <DateTime>{};
+    for (final k in _allDayKeysSorted()) {
+      if ((_readDay(k)[_kAnswered] ?? 0) > 0) {
+        final dt = DateTime.tryParse(k.substring('stats_day_'.length));
+        if (dt != null) out.add(DateTime(dt.year, dt.month, dt.day));
+      }
+    }
+    return out;
+  }
+
   // Always returns exactly 7 entries, oldest first.
   List<Map<String, int>> getLast7DaysData() {
     final result = <Map<String, int>>[];

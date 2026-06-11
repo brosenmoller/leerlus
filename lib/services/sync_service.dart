@@ -946,6 +946,7 @@ class SyncService {
       'lastActivityDate': streak.lastActivityDate,
       'freezesUsedThisWeek': streak.freezesUsedThisWeek,
       'weekAnchor': streak.weekAnchor,
+      'freezeDates': streak.freezeDates,
     };
   }
 
@@ -1304,6 +1305,9 @@ class SyncService {
       await _applyStreak(payload.streakData, overwrite: overwriteState);
       statsWereMerged =
           await _applyStatistics(payload.statisticsData, overwrite: overwriteState);
+      // A study day on either device cancels a freeze for that day (run after
+      // stats merge so both devices' activity is reflected).
+      await StreakService().removeFreezeDates(StatisticsService().getActiveDays());
     }
 
     return SyncResult(
@@ -1331,6 +1335,8 @@ class SyncService {
     final freezes = (streakData['freezesUsedThisWeek'] as num?)?.toInt() ?? 0;
     final weekAnchor = streakData['weekAnchor'] as String?;
     final highest = (streakData['highestStreak'] as num?)?.toInt() ?? 0;
+    final freezeDates =
+        (streakData['freezeDates'] as List?)?.cast<String>() ?? const [];
     if (overwrite) {
       await StreakService().overwriteFromSync(
         remoteCount: count,
@@ -1339,6 +1345,7 @@ class SyncService {
         remoteWeekAnchor: weekAnchor,
         remoteHighestStreak: highest,
       );
+      await StreakService().setFreezeDates(freezeDates);
     } else {
       await StreakService().mergeFromSync(
         remoteCount: count,
@@ -1347,6 +1354,7 @@ class SyncService {
         remoteWeekAnchor: weekAnchor,
         remoteHighestStreak: highest,
       );
+      await StreakService().mergeFreezeDates(freezeDates);
     }
   }
 

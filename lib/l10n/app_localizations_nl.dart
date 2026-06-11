@@ -227,6 +227,41 @@ class AppLocalizationsNl extends AppLocalizations {
   String get streakNotifsTime => 'Herinneringstijd';
 
   @override
+  String get streakNotifsPermissionDenied =>
+      'Meldingsrechten zijn vereist voor herinneringen.';
+
+  @override
+  String get streakNotifsBlockedTitle => 'Meldingen zijn geblokkeerd';
+
+  @override
+  String get streakNotifsBlockedBody =>
+      'Meldingsrechten voor Leerlus staan uit in je systeeminstellingen. Open de instellingen om dagelijkse herinneringen toe te staan.';
+
+  @override
+  String get streakNotifsBlockedWarning =>
+      'Herinneringen staan aan, maar meldingen zijn geblokkeerd in je systeeminstellingen. Tik om op te lossen.';
+
+  @override
+  String get streakNotifsOpenSettings => 'Instellingen openen';
+
+  @override
+  String get streakNotifsOptions => 'Meldingsopties';
+
+  @override
+  String get streakNotifsSound => 'Geluid';
+
+  @override
+  String get streakNotifsSoundSubtitle =>
+      'Speel een geluid af bij de herinnering';
+
+  @override
+  String get streakNotifsVibration => 'Trillen';
+
+  @override
+  String get streakNotifsVibrationSubtitle =>
+      'Laat de telefoon trillen bij de herinnering';
+
+  @override
   String get streakResetButton => 'Streak resetten';
 
   @override
@@ -312,6 +347,18 @@ class AppLocalizationsNl extends AppLocalizations {
   String streakFreezesRestockOn(String date) {
     return 'Wordt bijgevuld op $date';
   }
+
+  @override
+  String get streakCalendarButton => 'Kalender';
+
+  @override
+  String get streakCalendarTitle => 'Reekskalender';
+
+  @override
+  String get streakCalendarLegendStudied => 'Gestudeerd';
+
+  @override
+  String get streakCalendarLegendFreeze => 'Bevriezing';
 
   @override
   String get favoritesTitle => 'Favorieten';

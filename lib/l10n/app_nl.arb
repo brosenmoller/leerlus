@@ -90,6 +90,16 @@
   "streakNotifsToggle": "Dagelijkse herinnering",
   "streakNotifsSubtitle": "Ontvang een melding om je streak te bewaren",
   "streakNotifsTime": "Herinneringstijd",
+  "streakNotifsPermissionDenied": "Meldingsrechten zijn vereist voor herinneringen.",
+  "streakNotifsBlockedTitle": "Meldingen zijn geblokkeerd",
+  "streakNotifsBlockedBody": "Meldingsrechten voor Leerlus staan uit in je systeeminstellingen. Open de instellingen om dagelijkse herinneringen toe te staan.",
+  "streakNotifsBlockedWarning": "Herinneringen staan aan, maar meldingen zijn geblokkeerd in je systeeminstellingen. Tik om op te lossen.",
+  "streakNotifsOpenSettings": "Instellingen openen",
+  "streakNotifsOptions": "Meldingsopties",
+  "streakNotifsSound": "Geluid",
+  "streakNotifsSoundSubtitle": "Speel een geluid af bij de herinnering",
+  "streakNotifsVibration": "Trillen",
+  "streakNotifsVibrationSubtitle": "Laat de telefoon trillen bij de herinnering",
   "streakResetButton": "Streak resetten",
   "streakResetDialogTitle": "Streak resetten?",
   "streakResetDialogContent": "Je huidige streak gaat verloren.",
@@ -137,6 +147,10 @@
       "date": { "type": "String" }
     }
   },
+  "streakCalendarButton": "Kalender",
+  "streakCalendarTitle": "Reekskalender",
+  "streakCalendarLegendStudied": "Gestudeerd",
+  "streakCalendarLegendFreeze": "Bevriezing",
 
   "favoritesTitle": "Favorieten",
   "favoritesEmpty": "Nog geen favoriete quizzen.",

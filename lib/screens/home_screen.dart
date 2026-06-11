@@ -8,6 +8,7 @@ import 'package:leerlus/screens/favorites_screen.dart';
 import 'package:leerlus/services/streak_service.dart';
 import 'package:leerlus/screens/srs_overview/srs_overview_screen.dart';
 import 'package:leerlus/screens/statistics_screen.dart';
+import 'package:leerlus/widgets/streak_calendar.dart';
 
 class HomeScreen extends StatelessWidget {
   final AppDatabase db;
@@ -80,7 +81,16 @@ class HomeScreen extends StatelessWidget {
             ),
           ],
         ),
+        actionsAlignment: MainAxisAlignment.spaceBetween,
         actions: [
+          TextButton.icon(
+            icon: const Icon(Icons.calendar_month_rounded, size: 20),
+            label: Text(l10n.streakCalendarButton),
+            onPressed: () => showDialog(
+              context: ctx,
+              builder: (_) => const StreakCalendarDialog(),
+            ),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(l10n.back),
@@ -120,13 +130,16 @@ class HomeScreen extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              state.usedFreezeYesterday
+                              // Completed today always wins (fire); only show
+                              // ice when today isn't done but a freeze covered
+                              // yesterday.
+                              !state.completedToday && state.usedFreezeYesterday
                                   ? Icons.ac_unit_rounded
                                   : Icons.local_fire_department,
-                              color: state.usedFreezeYesterday
-                                  ? Colors.lightBlue.shade300
-                                  : state.completedToday
-                                      ? Colors.orange
+                              color: state.completedToday
+                                  ? Colors.orange
+                                  : state.usedFreezeYesterday
+                                      ? Colors.lightBlue.shade300
                                       : Colors.white38,
                               size: 20,
                             ),

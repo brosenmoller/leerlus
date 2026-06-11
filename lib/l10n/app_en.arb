@@ -90,6 +90,16 @@
   "streakNotifsToggle": "Daily reminder",
   "streakNotifsSubtitle": "Get a notification to keep your streak",
   "streakNotifsTime": "Reminder time",
+  "streakNotifsPermissionDenied": "Notification permission is required for reminders.",
+  "streakNotifsBlockedTitle": "Notifications are blocked",
+  "streakNotifsBlockedBody": "Notification permission for Leerlus is turned off in your system settings. Open settings to allow daily reminders.",
+  "streakNotifsBlockedWarning": "Reminders are on, but notifications are blocked in your system settings. Tap to fix.",
+  "streakNotifsOpenSettings": "Open settings",
+  "streakNotifsOptions": "Notification options",
+  "streakNotifsSound": "Sound",
+  "streakNotifsSoundSubtitle": "Play a sound with the reminder",
+  "streakNotifsVibration": "Vibration",
+  "streakNotifsVibrationSubtitle": "Vibrate the phone with the reminder",
   "streakResetButton": "Reset streak",
   "streakResetDialogTitle": "Reset streak?",
   "streakResetDialogContent": "Your current streak will be lost.",
@@ -137,6 +147,10 @@
       "date": { "type": "String" }
     }
   },
+  "streakCalendarButton": "Calendar",
+  "streakCalendarTitle": "Streak calendar",
+  "streakCalendarLegendStudied": "Studied",
+  "streakCalendarLegendFreeze": "Freeze",
 
   "favoritesTitle": "Favorites",
   "favoritesEmpty": "No favorite quizzes yet.",
