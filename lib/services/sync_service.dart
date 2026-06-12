@@ -638,6 +638,14 @@ class SyncService {
     // Hard sync is one-directional: we keep our own state.
     int srsMergedBack = 0;
     bool statsMergedBack = false;
+    // The acceptor's SRS state, parsed here but APPLIED AFTER the content pull
+    // below. Applying it now would silently drop entries for questions we are
+    // about to pull: _applySrs skips any entry whose question isn't in the DB
+    // yet, and the pull's _importPayload runs with applyNonContentState:false,
+    // so those questions would end up with content but no SRS entry — later
+    // back-filled by getUserData as a disabled placeholder that then wins the
+    // next sync's last-write-wins merge and disables them on both devices.
+    List<Map<String, dynamic>> srsBack = const <Map<String, dynamic>>[];
     if (!hardSync) {
       try {
         final respData =
@@ -648,13 +656,12 @@ class SyncService {
         final statsBack = respData['statisticsData'] != null
             ? Map<String, dynamic>.from(respData['statisticsData'] as Map)
             : null;
-        final srsBack = (respData['srsData'] as List?)
+        srsBack = (respData['srsData'] as List?)
                 ?.map((e) => Map<String, dynamic>.from(e as Map))
                 .toList() ??
             const <Map<String, dynamic>>[];
         await _applyStreak(streakBack, overwrite: false);
         statsMergedBack = await _applyStatistics(statsBack, overwrite: false);
-        srsMergedBack = await _applySrs(srsBack, overwrite: false);
       } catch (_) {} // Non-fatal — content sync already succeeded.
     }
 
@@ -730,6 +737,12 @@ class SyncService {
           await FavoritesService().addFavorite(favId);
         }
       }
+    }
+
+    // Apply the acceptor's SRS state now that any pulled questions exist
+    // locally (deferred from the push-response handling above).
+    if (!hardSync) {
+      srsMergedBack = await _applySrs(srsBack, overwrite: false);
     }
 
     // Reflect the non-content state merged back from the acceptor (normal mode).

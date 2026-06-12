@@ -1,5 +1,4 @@
-﻿import 'dart:async';
-import 'package:hive/hive.dart';
+﻿import 'package:hive/hive.dart';
 import 'package:leerlus/models/question_data.dart';
 import 'package:leerlus/models/quiz_data.dart';
 import 'package:leerlus/models/user_question_data.dart';
@@ -43,7 +42,12 @@ class SrsService {
         questionId: question.id,
         easeFactor: settings.initialEase,
       );
-      unawaited(_box.put(question.id, userData));
+      // Intentionally NOT persisted. A default placeholder just means "no SRS
+      // data yet"; persisting it (with spacedRepetitionEnabled:false and
+      // lastReviewed:now) used to pollute the box with disabled entries whose
+      // fresh timestamp could win a sync last-write-wins merge and wrongly
+      // disable a question that was enrolled on another device. Callers that
+      // actually change state (enroll/answer) persist explicitly.
     }
     return userData;
   }
@@ -153,12 +157,60 @@ class SrsService {
     await _box.clear();
   }
 
-  /// Upsert SRS data from sync — keeps the entry with the more recent lastReviewed.
+  /// Upsert SRS data from sync, merging it against any local entry.
+  ///
+  /// Resolves the two orthogonal concerns separately:
+  ///  - **Review progress** (streak / ease / interval / schedule): an entry that
+  ///    has actually been reviewed always wins over a never-reviewed one; if both
+  ///    (or neither) carry progress, the more recently reviewed wins. This stops a
+  ///    freshly-enrolled placeholder (lastReviewed = enrollment time, streak 0,
+  ///    interval 0) from clobbering a peer's real review history just because its
+  ///    enrollment timestamp happens to be newer.
+  ///  - **Enrollment** (spacedRepetitionEnabled): plain last-write-wins by
+  ///    lastReviewed, preserving the previous enable/disable sync behaviour.
   Future<void> upsertUserData(UserQuestionData incoming) async {
     final existing = _box.get(incoming.questionId);
-    if (existing == null || incoming.lastReviewed.isAfter(existing.lastReviewed)) {
+    if (existing == null) {
       await _box.put(incoming.questionId, incoming);
+      return;
     }
+    final merged = _mergeSrs(existing, incoming);
+    if (!identical(merged, existing)) {
+      await _box.put(incoming.questionId, merged);
+    }
+  }
+
+  /// Returns the merged entry, or [existing] unchanged when [incoming] adds
+  /// nothing. See [upsertUserData] for the resolution rules.
+  UserQuestionData _mergeSrs(
+      UserQuestionData existing, UserQuestionData incoming) {
+    bool hasProgress(UserQuestionData d) => d.streak > 0 || d.intervalSeconds > 0;
+    final incomingNewer = incoming.lastReviewed.isAfter(existing.lastReviewed);
+
+    final bool scheduleFromIncoming;
+    if (hasProgress(incoming) != hasProgress(existing)) {
+      scheduleFromIncoming = hasProgress(incoming); // the reviewed entry wins
+    } else {
+      scheduleFromIncoming = incomingNewer; // tie/both → last-write-wins
+    }
+    final bool enabled = incomingNewer
+        ? incoming.spacedRepetitionEnabled
+        : existing.spacedRepetitionEnabled;
+
+    if (!scheduleFromIncoming && enabled == existing.spacedRepetitionEnabled) {
+      return existing; // nothing the incoming entry brings changes our copy
+    }
+
+    final schedule = scheduleFromIncoming ? incoming : existing;
+    return UserQuestionData(
+      questionId: existing.questionId,
+      streak: schedule.streak,
+      easeFactor: schedule.easeFactor,
+      intervalSeconds: schedule.intervalSeconds,
+      lastReviewed: schedule.lastReviewed,
+      nextReview: schedule.nextReview,
+      spacedRepetitionEnabled: enabled,
+    );
   }
 
   /// Replaces all SRS data with [entries] exactly (hard sync overwrite).
