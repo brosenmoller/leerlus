@@ -446,6 +446,12 @@
       "count": { "type": "int" }
     }
   },
+  "syncResultFavoritesRemoved": "{count, plural, =1{1 favoriet verwijderd} other{{count} favorieten verwijderd}}",
+  "@syncResultFavoritesRemoved": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "syncResultImagesFailed": "{count, plural, =1{1 afbeelding kon niet worden gesynchroniseerd} other{{count} afbeeldingen konden niet worden gesynchroniseerd}}",
   "@syncResultImagesFailed": {
     "placeholders": {

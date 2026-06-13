@@ -73,3 +73,17 @@ class QuizQuestions extends Table {
   @override
   Set<Column> get primaryKey => {quizId, questionId};
 }
+
+// Records a content deletion so it can propagate during sync instead of the
+// item resurrecting from a peer that still has it. entityType is one of
+// 'folder' | 'quiz' | 'question'. A tombstone only wins over a peer's live
+// copy when its deletedAt is strictly newer than that copy's updatedAt.
+// Favorites are tombstoned separately in Hive (FavoritesService).
+class Tombstones extends Table {
+  TextColumn get entityId => text()();
+  TextColumn get entityType => text()();
+  DateTimeColumn get deletedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {entityId, entityType};
+}

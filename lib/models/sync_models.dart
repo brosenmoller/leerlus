@@ -53,6 +53,44 @@ class SyncEntry {
       );
 }
 
+/// Records a deletion for sync propagation. [entityType] is one of
+/// 'folder' | 'quiz' | 'question' | 'favorite'.
+class SyncTombstone {
+  final String entityId;
+  final String entityType;
+  final DateTime deletedAt;
+
+  const SyncTombstone({
+    required this.entityId,
+    required this.entityType,
+    required this.deletedAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'entityId': entityId,
+        'entityType': entityType,
+        'deletedAt': deletedAt.toIso8601String(),
+      };
+
+  factory SyncTombstone.fromJson(Map<String, dynamic> json) => SyncTombstone(
+        entityId: json['entityId'] as String,
+        entityType: json['entityType'] as String,
+        deletedAt: DateTime.parse(json['deletedAt'] as String),
+      );
+}
+
+/// Parses a tombstone list defensively — absent on older clients → empty.
+List<SyncTombstone> _tombstonesFromJson(dynamic raw) =>
+    (raw as List?)
+        ?.map((e) => SyncTombstone.fromJson(Map<String, dynamic>.from(e as Map)))
+        .toList() ??
+    const [];
+
+/// Parses a {id: isoString} map defensively.
+Map<String, String> _strMapFromJson(dynamic raw) =>
+    (raw as Map?)?.map((k, v) => MapEntry(k as String, v as String)) ??
+    const {};
+
 class SyncManifest {
   final List<SyncEntry> folders;
   final List<SyncEntry> quizzes;
@@ -60,12 +98,20 @@ class SyncManifest {
   final List<String> srsKeys;
   final List<String> favoriteSyncIds;
 
+  /// Deletions (content + favorites) for propagation. Empty for older clients.
+  final List<SyncTombstone> tombstones;
+
+  /// favorited quizId -> addedAt ISO string. Empty for older clients.
+  final Map<String, String> favoriteAddedAt;
+
   const SyncManifest({
     required this.folders,
     required this.quizzes,
     required this.questions,
     required this.srsKeys,
     required this.favoriteSyncIds,
+    this.tombstones = const [],
+    this.favoriteAddedAt = const {},
   });
 
   Map<String, dynamic> toJson() => {
@@ -74,6 +120,8 @@ class SyncManifest {
         'questions': questions.map((e) => e.toJson()).toList(),
         'srsKeys': srsKeys,
         'favoriteSyncIds': favoriteSyncIds,
+        'tombstones': tombstones.map((e) => e.toJson()).toList(),
+        'favoriteAddedAt': favoriteAddedAt,
       };
 
   factory SyncManifest.fromJson(Map<String, dynamic> json) => SyncManifest(
@@ -89,6 +137,8 @@ class SyncManifest {
         srsKeys: (json['srsKeys'] as List).map((e) => e as String).toList(),
         favoriteSyncIds:
             (json['favoriteSyncIds'] as List).map((e) => e as String).toList(),
+        tombstones: _tombstonesFromJson(json['tombstones']),
+        favoriteAddedAt: _strMapFromJson(json['favoriteAddedAt']),
       );
 }
 
@@ -104,6 +154,12 @@ class SyncPayload {
   /// Nullable for backward-compat: absent when receiving from an older client.
   final Map<String, dynamic>? statisticsData;
 
+  /// Deletions to apply on the receiver. Empty for older clients.
+  final List<SyncTombstone> tombstones;
+
+  /// favorited quizId -> addedAt ISO string. Empty for older clients.
+  final Map<String, String> favoriteAddedAt;
+
   const SyncPayload({
     required this.folders,
     required this.quizzes,
@@ -113,6 +169,8 @@ class SyncPayload {
     required this.imageFilenames,
     this.streakData,
     this.statisticsData,
+    this.tombstones = const [],
+    this.favoriteAddedAt = const {},
   });
 
   Map<String, dynamic> toJson() => {
@@ -124,6 +182,8 @@ class SyncPayload {
         'imageFilenames': imageFilenames,
         if (streakData != null) 'streakData': streakData,
         if (statisticsData != null) 'statisticsData': statisticsData,
+        'tombstones': tombstones.map((e) => e.toJson()).toList(),
+        'favoriteAddedAt': favoriteAddedAt,
       };
 
   factory SyncPayload.fromJson(Map<String, dynamic> json) => SyncPayload(
@@ -149,6 +209,8 @@ class SyncPayload {
         statisticsData: json['statisticsData'] != null
             ? Map<String, dynamic>.from(json['statisticsData'] as Map)
             : null,
+        tombstones: _tombstonesFromJson(json['tombstones']),
+        favoriteAddedAt: _strMapFromJson(json['favoriteAddedAt']),
       );
 }
 
@@ -164,6 +226,7 @@ class SyncResult {
   final int foldersDeleted;
   final int quizzesDeleted;
   final int questionsDeleted;
+  final int favoritesRemoved;
   final int imagesFailedCount;
   /// True when this result is for the hard-sync initiator. Deletions in that
   /// case happened on the remote device, not locally, so the UI suppresses them.
@@ -182,6 +245,7 @@ class SyncResult {
     this.foldersDeleted = 0,
     this.quizzesDeleted = 0,
     this.questionsDeleted = 0,
+    this.favoritesRemoved = 0,
     this.imagesFailedCount = 0,
     this.isHardSync = false,
     this.statisticsUpdated = false,
@@ -190,6 +254,10 @@ class SyncResult {
   SyncResult copyWith({
     int? srsUpdated,
     bool? statisticsUpdated,
+    int? foldersDeleted,
+    int? quizzesDeleted,
+    int? questionsDeleted,
+    int? favoritesRemoved,
   }) =>
       SyncResult(
         foldersAdded: foldersAdded,
@@ -200,9 +268,10 @@ class SyncResult {
         questionsUpdated: questionsUpdated,
         srsUpdated: srsUpdated ?? this.srsUpdated,
         favoritesAdded: favoritesAdded,
-        foldersDeleted: foldersDeleted,
-        quizzesDeleted: quizzesDeleted,
-        questionsDeleted: questionsDeleted,
+        foldersDeleted: foldersDeleted ?? this.foldersDeleted,
+        quizzesDeleted: quizzesDeleted ?? this.quizzesDeleted,
+        questionsDeleted: questionsDeleted ?? this.questionsDeleted,
+        favoritesRemoved: favoritesRemoved ?? this.favoritesRemoved,
         imagesFailedCount: imagesFailedCount,
         isHardSync: isHardSync,
         statisticsUpdated: statisticsUpdated ?? this.statisticsUpdated,
@@ -220,6 +289,7 @@ class SyncResult {
     foldersDeleted: foldersDeleted,
     quizzesDeleted: quizzesDeleted,
     questionsDeleted: questionsDeleted,
+    favoritesRemoved: favoritesRemoved,
     imagesFailedCount: count,
     isHardSync: isHardSync,
     statisticsUpdated: statisticsUpdated,
@@ -236,5 +306,6 @@ class SyncResult {
       favoritesAdded == 0 &&
       foldersDeleted == 0 &&
       quizzesDeleted == 0 &&
-      questionsDeleted == 0;
+      questionsDeleted == 0 &&
+      favoritesRemoved == 0;
 }

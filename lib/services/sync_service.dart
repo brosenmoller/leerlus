@@ -34,6 +34,10 @@ class SyncService {
   Completer<bool>? _pendingAccept;
   SyncResult? _acceptorResult; // set by _handlePush, consumed by _handleSyncDone
   Timer? _acceptorFallbackTimer;
+  // True from the moment a request is accepted (or we start initiating) until
+  // the sync finishes / times out. Blocks a second concurrent sync that would
+  // clobber _acceptorResult and the fallback timer.
+  bool _syncInProgress = false;
 
   // Tracks peers we've already sent a reverse-advertisement to this session so
   // we don't spam the request on every peers-stream tick.
@@ -79,6 +83,7 @@ class SyncService {
     _acceptorFallbackTimer?.cancel();
     _acceptorFallbackTimer = null;
     _acceptorResult = null;
+    _syncInProgress = false;
   }
 
   Future<void> _startServer() async {
@@ -162,7 +167,7 @@ class SyncService {
       ));
     }
 
-    if (_pendingAccept != null) {
+    if (_pendingAccept != null || _syncInProgress) {
       return Response(503,
           body: jsonEncode({'accepted': false, 'reason': 'busy'}),
           headers: {'content-type': 'application/json'});
@@ -182,7 +187,18 @@ class SyncService {
   }
 
   /// Called by the UI to accept or reject an incoming sync request.
-  void respondToRequest(bool accepted) => _pendingAccept?.complete(accepted);
+  void respondToRequest(bool accepted) {
+    if (accepted) {
+      _syncInProgress = true;
+      // Arm a watchdog so the acceptor UI never hangs if the initiator aborts
+      // before pushing. The first push/hard-delete re-arms it to 30s; the
+      // longer initial window covers the initiator's manifest fetch + payload
+      // build. Arming here (even if the accept-completer already timed out)
+      // also rescues the case where the user taps Accept after the 60s window.
+      _scheduleAcceptorFallback(const Duration(seconds: 90));
+    }
+    _pendingAccept?.complete(accepted);
+  }
 
   Future<Response> _handleManifest(Request req) async {
     final manifest = await _buildManifest();
@@ -444,6 +460,7 @@ class SyncService {
   Future<Response> _handleSyncDone(Request req) async {
     _acceptorFallbackTimer?.cancel();
     _acceptorFallbackTimer = null;
+    _syncInProgress = false;
     final result = _acceptorResult ?? const SyncResult();
     _acceptorResult = null;
     if (!_acceptorDoneController.isClosed) {
@@ -457,12 +474,14 @@ class SyncService {
 
   // Starts (or restarts) a fallback timer so the acceptor UI is never left
   // waiting if the initiator's /sync/done signal fails to arrive.
-  void _scheduleAcceptorFallback() {
+  void _scheduleAcceptorFallback(
+      [Duration timeout = const Duration(seconds: 30)]) {
     _acceptorFallbackTimer?.cancel();
-    _acceptorFallbackTimer = Timer(const Duration(seconds: 30), () {
+    _acceptorFallbackTimer = Timer(timeout, () {
       final result = _acceptorResult ?? const SyncResult();
       _acceptorResult = null;
       _acceptorFallbackTimer = null;
+      _syncInProgress = false;
       if (!_acceptorDoneController.isClosed) {
         _acceptorDoneController.add(result);
       }
@@ -472,6 +491,17 @@ class SyncService {
   // ── Initiator: full bidirectional sync ───────────────────────
 
   Future<SyncResult> syncWith(SyncPeer peer, {bool hardSync = false}) async {
+    // Hold the lock for the whole initiator run so an inbound request can't
+    // start a second concurrent sync against us mid-flight.
+    _syncInProgress = true;
+    try {
+      return await _syncWithImpl(peer, hardSync: hardSync);
+    } finally {
+      _syncInProgress = false;
+    }
+  }
+
+  Future<SyncResult> _syncWithImpl(SyncPeer peer, {bool hardSync = false}) async {
     final base = 'http://${peer.host}:${peer.port}';
 
     _progress('Connecting to ${peer.deviceName}…');
@@ -498,6 +528,13 @@ class SyncService {
     }
     final remoteManifest = SyncManifest.fromJson(
         Map<String, dynamic>.from(jsonDecode(manifestResp.body) as Map));
+
+    // Normal sync: apply the remote's deletions to our side first so a deleted
+    // item isn't seen as "remote-only" and re-pushed, then build our manifest
+    // from the post-deletion state. Hard sync keeps our own state untouched.
+    final tombDel = !hardSync
+        ? await _applyIncomingTombstones(remoteManifest.tombstones)
+        : (folders: 0, quizzes: 0, questions: 0, favorites: 0);
 
     final localManifest = await _buildManifest();
 
@@ -593,20 +630,35 @@ class SyncService {
     final remoteOnlyQuestionIds =
         remoteQuestionIds.difference(localQuestionIds).toList();
 
-    // Normal-mode pull set: remote-only items plus shared items the remote
-    // changed more recently.
-    final toFetchFolderIds = [...remoteOnlyFolderIds, ...folderChanged.pull];
-    final toFetchQuizIds = [...remoteOnlyQuizIds, ...quizChanged.pull];
+    // A remote-only item we tombstoned more recently than the remote's copy
+    // must NOT be pulled — the remote will delete it via the tombstones we
+    // push. We only pull (resurrect) when the remote edited it after our
+    // deletion. Items with no local tombstone pull normally.
+    final localTombByKey = <String, DateTime>{
+      for (final t in await _db!.getAllTombstones())
+        '${t.entityType}|${t.entityId}': t.deletedAt,
+    };
+    bool shouldPull(String type, String id) {
+      final lt = localTombByKey['$type|$id'];
+      if (lt == null) return true;
+      final ru = remoteUpdatedById[id];
+      return ru != null && ru.isAfter(lt);
+    }
+
+    // Normal-mode pull set: remote-only items (minus those we deleted more
+    // recently) plus shared items the remote changed more recently.
+    final toFetchFolderIds = [
+      ...remoteOnlyFolderIds.where((id) => shouldPull('folder', id)),
+      ...folderChanged.pull,
+    ];
+    final toFetchQuizIds = [
+      ...remoteOnlyQuizIds.where((id) => shouldPull('quiz', id)),
+      ...quizChanged.pull,
+    ];
     final toFetchQuestionIds = [
-      ...remoteOnlyQuestionIds,
+      ...remoteOnlyQuestionIds.where((id) => shouldPull('question', id)),
       ...questionChanged.pull,
     ];
-
-    // Favorites delta (additive union)
-    final remoteFavIds = remoteManifest.favoriteSyncIds.toSet();
-    final localFavIds = localManifest.favoriteSyncIds.toSet();
-    final toFetchFavIds =
-        remoteFavIds.difference(localFavIds).toList();
 
     // Push to remote — always, even with no content delta, so streak /
     // statistics / SRS round-trip in every mode. The response carries the
@@ -701,8 +753,7 @@ class SyncService {
     } else {
       if (toFetchFolderIds.isNotEmpty ||
           toFetchQuizIds.isNotEmpty ||
-          toFetchQuestionIds.isNotEmpty ||
-          toFetchFavIds.isNotEmpty) {
+          toFetchQuestionIds.isNotEmpty) {
         _progress('Fetching remote content…');
         final pullResp = await http.post(
           Uri.parse('$base/sync/pull'),
@@ -728,15 +779,32 @@ class SyncService {
 
         _progress('Importing content…');
         // Non-content state already round-tripped via the push response above.
+        // Tombstones from the acceptor were already applied from its manifest.
         result = (await _importPayload(fetchedPayload,
-                applyNonContentState: false))
+                applyNonContentState: false, applyTombstones: false))
             .withImagesFailed(imagesFailed);
-
-        // Also apply remote favorites we don't have yet
-        for (final favId in toFetchFavIds) {
-          await FavoritesService().addFavorite(favId);
-        }
       }
+
+      // Favorites (normal mode): the acceptor's unfavorites were applied from
+      // its manifest tombstones above; now add the favorites it has that we
+      // lack, respecting any newer local unfavorite via applyFavoriteAdd.
+      for (final id in remoteManifest.favoriteSyncIds) {
+        if (FavoritesService().isFavorite(id)) continue;
+        if (await _db!.getQuizById(id) == null) continue; // quiz must exist
+        final addedAt = DateTime.tryParse(
+                remoteManifest.favoriteAddedAt[id] ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        await FavoritesService().applyFavoriteAdd(id, addedAt);
+      }
+
+      // Reflect the deletions we applied from the remote's tombstones in the
+      // result shown to the user.
+      result = result.copyWith(
+        foldersDeleted: result.foldersDeleted + tombDel.folders,
+        quizzesDeleted: result.quizzesDeleted + tombDel.quizzes,
+        questionsDeleted: result.questionsDeleted + tombDel.questions,
+        favoritesRemoved: result.favoritesRemoved + tombDel.favorites,
+      );
     }
 
     // Apply the acceptor's SRS state now that any pulled questions exist
@@ -826,7 +894,86 @@ class SyncService {
           .toList(),
       srsKeys: srsKeys,
       favoriteSyncIds: favIds,
+      tombstones: await _collectLocalTombstones(),
+      favoriteAddedAt: _localFavoriteAddedAt(),
     );
+  }
+
+  // ── Tombstones (deletion propagation) ────────────────────────
+
+  /// Gathers content tombstones (Drift) and favorite tombstones (Hive) into a
+  /// single list for the manifest / payload.
+  Future<List<SyncTombstone>> _collectLocalTombstones() async {
+    final out = <SyncTombstone>[];
+    for (final t in await _db!.getAllTombstones()) {
+      out.add(SyncTombstone(
+        entityId: t.entityId,
+        entityType: t.entityType,
+        deletedAt: t.deletedAt,
+      ));
+    }
+    FavoritesService().getFavoriteTombstones().forEach((id, ts) {
+      out.add(SyncTombstone(
+          entityId: id, entityType: 'favorite', deletedAt: ts));
+    });
+    return out;
+  }
+
+  /// favorited quizId -> addedAt ISO, for last-write-wins favorite merging.
+  Map<String, String> _localFavoriteAddedAt() {
+    final fav = FavoritesService();
+    return {
+      for (final id in fav.getAllFavoriteIds())
+        id: fav.favoriteAddedAt(id).toIso8601String(),
+    };
+  }
+
+  /// Applies incoming tombstones: records each (keeping the latest deletedAt)
+  /// and deletes any local entity that is present and older than the deletion.
+  /// Returns how many of each entity type were actually deleted.
+  Future<({int folders, int quizzes, int questions, int favorites})>
+      _applyIncomingTombstones(List<SyncTombstone> tombs) async {
+    int fDel = 0, qzDel = 0, qDel = 0, favDel = 0;
+    final questionsT = tombs.where((t) => t.entityType == 'question');
+    final quizzesT = tombs.where((t) => t.entityType == 'quiz');
+    final foldersT = tombs.where((t) => t.entityType == 'folder');
+    final favsT = tombs.where((t) => t.entityType == 'favorite');
+
+    // Delete questions → quizzes → folders to mirror the local cascade order.
+    await _db!.transaction(() async {
+      for (final t in questionsT) {
+        final e = await _db!.getQuestionById(t.entityId);
+        if (e != null && t.deletedAt.isAfter(e.updatedAt)) {
+          await _db!.deleteQuestion(t.entityId, tombstone: false);
+          await SrsService().deleteUserData(t.entityId);
+          qDel++;
+        }
+        await _db!.recordTombstone(t.entityId, 'question', t.deletedAt);
+      }
+      for (final t in quizzesT) {
+        final e = await _db!.getQuizById(t.entityId);
+        if (e != null && t.deletedAt.isAfter(e.updatedAt)) {
+          await _db!.deleteQuiz(t.entityId, tombstone: false);
+          qzDel++;
+        }
+        await _db!.recordTombstone(t.entityId, 'quiz', t.deletedAt);
+      }
+      for (final t in foldersT) {
+        final e = await _db!.getFolderById(t.entityId);
+        if (e != null && t.deletedAt.isAfter(e.updatedAt)) {
+          await _db!.deleteFolderRow(t.entityId, tombstone: false);
+          fDel++;
+        }
+        await _db!.recordTombstone(t.entityId, 'folder', t.deletedAt);
+      }
+    });
+
+    for (final t in favsT) {
+      final had = FavoritesService().isFavorite(t.entityId);
+      await FavoritesService().applyFavoriteTombstone(t.entityId, t.deletedAt);
+      if (had && !FavoritesService().isFavorite(t.entityId)) favDel++;
+    }
+    return (folders: fDel, quizzes: qzDel, questions: qDel, favorites: favDel);
   }
 
   // ── Payload building ─────────────────────────────────────────
@@ -947,6 +1094,10 @@ class SyncService {
       // settings (notifs, enabled toggle) are intentionally excluded.
       streakData: _buildStreakData(),
       statisticsData: StatisticsService().exportForSync(),
+      // Deletions ride along so the receiver removes them; favorite add-times
+      // accompany the favorite ids for last-write-wins merging.
+      tombstones: await _collectLocalTombstones(),
+      favoriteAddedAt: includeFavorites ? _localFavoriteAddedAt() : const {},
     );
   }
 
@@ -1056,10 +1207,15 @@ class SyncService {
   /// SRS — in merge mode (highest/newer wins) by default, or in overwrite mode
   /// (mirror the sender) when [overwriteState] is true. The pull path passes
   /// false because that state round-trips via the push response instead.
+  /// When [applyTombstones] is true (push import on the acceptor), the
+  /// payload's deletions are applied after content. The initiator's pull import
+  /// passes false because it already applied the remote's deletions from the
+  /// manifest.
   Future<SyncResult> _importPayload(
     SyncPayload payload, {
     bool applyNonContentState = true,
     bool overwriteState = false,
+    bool applyTombstones = true,
   }) async {
     int foldersAdded = 0, quizzesAdded = 0, questionsAdded = 0;
     int foldersUpdated = 0, quizzesUpdated = 0, questionsUpdated = 0;
@@ -1117,7 +1273,10 @@ class SyncService {
         if (existing != null) {
           questionIdMap[id] = existing.id;
           // Last-write-wins: keep the local copy when it is strictly newer.
-          if (incomingTs != null && existing.updatedAt.isAfter(incomingTs)) {
+          // Hard sync (overwriteState) forces the sender's copy regardless.
+          if (!overwriteState &&
+              incomingTs != null &&
+              existing.updatedAt.isAfter(incomingTs)) {
             continue;
           }
           await _db!.updateQuestion(QuestionsCompanion(
@@ -1177,7 +1336,10 @@ class SyncService {
         if (existing != null) {
           folderIdMap[id] = existing.id;
           // Last-write-wins: keep the local copy when it is strictly newer.
-          if (incomingTs != null && existing.updatedAt.isAfter(incomingTs)) {
+          // Hard sync (overwriteState) forces the sender's copy regardless.
+          if (!overwriteState &&
+              incomingTs != null &&
+              existing.updatedAt.isAfter(incomingTs)) {
             continue;
           }
           await _db!.updateFolder(FoldersCompanion(
@@ -1240,8 +1402,10 @@ class SyncService {
 
         final incomingTs = _parseTs(qzJson['updatedAt']);
         final existing = await _db!.getQuizById(id);
-        // Incoming wins unless the local copy is strictly newer.
-        final bool quizIncomingWins = existing == null ||
+        // Incoming wins unless the local copy is strictly newer. Hard sync
+        // (overwriteState) forces the sender's copy regardless.
+        final bool quizIncomingWins = overwriteState ||
+            existing == null ||
             !(incomingTs != null && existing.updatedAt.isAfter(incomingTs));
         if (existing != null) {
           quizLocalId = existing.id;
@@ -1299,16 +1463,29 @@ class SyncService {
       }
     });
 
+    // Imported content is live again — drop any stale local tombstone for it
+    // (a newer edit / re-create supersedes an older deletion).
+    for (final qJson in payload.questions) {
+      await _db!.clearTombstone(qJson['id'] as String, 'question');
+    }
+    for (final fJson in payload.folders) {
+      await _db!.clearTombstone(fJson['id'] as String, 'folder');
+    }
+    for (final qzJson in payload.quizzes) {
+      await _db!.clearTombstone(qzJson['id'] as String, 'quiz');
+    }
+
     // Favorites (outside transaction — Hive)
-    // Only add favorites whose quiz was actually imported (prevents broken refs).
+    // Only add favorites whose quiz exists (prevents broken refs); a newer
+    // local unfavorite overrides via applyFavoriteAdd.
     for (final favId in payload.favoriteSyncIds) {
-      if (!FavoritesService().isFavorite(favId)) {
-        final quizExists = await _db!.getQuizById(favId) != null;
-        if (quizExists) {
-          await FavoritesService().addFavorite(favId);
-          favoritesAdded++;
-        }
-      }
+      final quizExists = await _db!.getQuizById(favId) != null;
+      if (!quizExists) continue;
+      final addedAt = DateTime.tryParse(payload.favoriteAddedAt[favId] ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      final had = FavoritesService().isFavorite(favId);
+      await FavoritesService().applyFavoriteAdd(favId, addedAt);
+      if (!had && FavoritesService().isFavorite(favId)) favoritesAdded++;
     }
 
     // Non-content state (streak / statistics / SRS).
@@ -1323,6 +1500,18 @@ class SyncService {
       await StreakService().removeFreezeDates(StatisticsService().getActiveDays());
     }
 
+    // Apply the sender's deletions (acceptor push import). The initiator's pull
+    // passes applyTombstones:false — it already applied the remote's deletions
+    // from the manifest.
+    int fDel = 0, qzDel = 0, qDel = 0, favDel = 0;
+    if (applyTombstones) {
+      final d = await _applyIncomingTombstones(payload.tombstones);
+      fDel = d.folders;
+      qzDel = d.quizzes;
+      qDel = d.questions;
+      favDel = d.favorites;
+    }
+
     return SyncResult(
       foldersAdded: foldersAdded,
       quizzesAdded: quizzesAdded,
@@ -1332,6 +1521,10 @@ class SyncService {
       questionsUpdated: questionsUpdated,
       srsUpdated: srsUpdated,
       favoritesAdded: favoritesAdded,
+      foldersDeleted: fDel,
+      quizzesDeleted: qzDel,
+      questionsDeleted: qDel,
+      favoritesRemoved: favDel,
       statisticsUpdated: statsWereMerged,
     );
   }

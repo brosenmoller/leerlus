@@ -678,6 +678,9 @@ class _SyncScreenState extends State<SyncScreen> {
                       if (r.questionsDeleted > 0)
                         _ResultRow(Icons.help_outline,
                             l10n.syncResultQuestionsDeleted(r.questionsDeleted)),
+                      if (r.favoritesRemoved > 0)
+                        _ResultRow(Icons.star_border,
+                            l10n.syncResultFavoritesRemoved(r.favoritesRemoved)),
                     ],
                   ),
                 ),

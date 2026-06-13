@@ -11,7 +11,7 @@ import 'tables.dart';
 
 part 'app_database.g.dart';
 
-@DriftDatabase(tables: [Folders, Quizzes, Questions, QuizQuestions])
+@DriftDatabase(tables: [Folders, Quizzes, Questions, QuizQuestions, Tombstones])
 class AppDatabase extends _$AppDatabase {
   /// The single live instance, set once in main.dart via [AppDatabase()].
   static late final AppDatabase instance;
@@ -34,7 +34,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -71,8 +71,50 @@ class AppDatabase extends _$AppDatabase {
           }
         }
       }
+      if (from >= 8 && from < 11) {
+        // Tombstones table for deletion propagation during sync. Guarded by an
+        // existence check so it's idempotent and safe upgrading from 8/9/10
+        // (the from<8 path already recreated everything via createAll).
+        final existing = await customSelect(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='tombstones'")
+            .get();
+        if (existing.isEmpty) {
+          await m.createTable(tombstones);
+        }
+      }
     },
   );
+
+  // ─── Tombstones (deletion propagation) ────────────────────────
+
+  /// Records a deletion, keeping the latest [deletedAt] if one already exists.
+  Future<void> recordTombstone(String entityId, String entityType,
+      [DateTime? when]) async {
+    final ts = when ?? DateTime.now();
+    final existing = await (select(tombstones)
+          ..where((t) =>
+              t.entityId.equals(entityId) & t.entityType.equals(entityType)))
+        .getSingleOrNull();
+    if (existing != null && !ts.isAfter(existing.deletedAt)) return;
+    await into(tombstones).insert(
+      TombstonesCompanion.insert(
+        entityId: entityId,
+        entityType: entityType,
+        deletedAt: ts,
+      ),
+      mode: InsertMode.insertOrReplace,
+    );
+  }
+
+  Future<List<Tombstone>> getAllTombstones() => select(tombstones).get();
+
+  /// Removes a tombstone — used when an entity is resurrected (a newer remote
+  /// edit / re-create supersedes a stale deletion).
+  Future<void> clearTombstone(String entityId, String entityType) =>
+      (delete(tombstones)
+            ..where((t) =>
+                t.entityId.equals(entityId) & t.entityType.equals(entityType)))
+          .go();
 
   // ─── Export ───────────────────────────────────────────────────
 
@@ -278,6 +320,7 @@ class AppDatabase extends _$AppDatabase {
               : const Value.absent(),
         ));
         questionIdMap[importedId] = newId;
+        await clearTombstone(importedId, 'question');
         inserted++;
       }
 
@@ -300,6 +343,7 @@ class AppDatabase extends _$AppDatabase {
             imagePath: Value(f['imagePath'] as String?),
           ));
           folderIdMap[importedId] = newId;
+          await clearTombstone(importedId, 'folder');
           inserted++;
         }
         // Second pass: set parent_folder_id
@@ -361,6 +405,7 @@ class AppDatabase extends _$AppDatabase {
           imagePath: Value(quiz['imagePath'] as String?),
           languageCode: Value(quiz['languageCode'] as String?),
         ));
+        await clearTombstone(importedId, 'quiz');
         inserted++;
 
         // Support both new 'questionIds' and legacy 'questionSyncIds'
@@ -408,8 +453,12 @@ class AppDatabase extends _$AppDatabase {
 
   /// Deletes only the folder row — no recursion. Used by the hard-sync handler
   /// which already deletes quizzes and questions as separate steps.
-  Future<void> deleteFolderRow(String id) =>
-      (delete(folders)..where((t) => t.id.equals(id))).go();
+  /// Pass [tombstone] false from the sync-apply path (it records the peer's
+  /// exact deletedAt itself).
+  Future<void> deleteFolderRow(String id, {bool tombstone = true}) async {
+    await (delete(folders)..where((t) => t.id.equals(id))).go();
+    if (tombstone) await recordTombstone(id, 'folder');
+  }
 
   Future<void> _deleteFolderRecursive(String id) async {
     final subs = await (select(folders)
@@ -423,6 +472,7 @@ class AppDatabase extends _$AppDatabase {
       await deleteQuiz(quiz.id);
     }
     await (delete(folders)..where((t) => t.id.equals(id))).go();
+    await recordTombstone(id, 'folder');
   }
 
   // ─── Quizzes ──────────────────────────────────────────────────
@@ -447,7 +497,7 @@ class AppDatabase extends _$AppDatabase {
   Future<bool> updateQuiz(QuizzesCompanion entry) =>
       update(quizzes).replace(entry);
 
-  Future<void> deleteQuiz(String id) async {
+  Future<void> deleteQuiz(String id, {bool tombstone = true}) async {
     // Capture question IDs before junction rows are removed.
     final rows = await (select(quizQuestions)
       ..where((t) => t.quizId.equals(id))).get();
@@ -455,6 +505,7 @@ class AppDatabase extends _$AppDatabase {
 
     await (delete(quizQuestions)..where((t) => t.quizId.equals(id))).go();
     await (delete(quizzes)..where((t) => t.id.equals(id))).go();
+    if (tombstone) await recordTombstone(id, 'quiz');
 
     // Delete questions that are now orphaned (no remaining quiz references).
     for (final qId in questionIds) {
@@ -463,6 +514,7 @@ class AppDatabase extends _$AppDatabase {
       if (remaining.isEmpty) {
         await (delete(questions)..where((t) => t.id.equals(qId))).go();
         await SrsService().deleteUserData(qId);
+        if (tombstone) await recordTombstone(qId, 'question');
       }
     }
   }
@@ -548,7 +600,7 @@ class AppDatabase extends _$AppDatabase {
   Future<bool> updateQuestion(QuestionsCompanion entry) =>
       update(questions).replace(entry);
 
-  Future<void> deleteQuestion(String id) async {
+  Future<void> deleteQuestion(String id, {bool tombstone = true}) async {
     // Bump updatedAt on every quiz that referenced this question so the
     // membership change wins last-write-wins during sync.
     final refs = await (select(quizQuestions)
@@ -558,6 +610,7 @@ class AppDatabase extends _$AppDatabase {
     }
     await (delete(quizQuestions)..where((t) => t.questionId.equals(id))).go();
     await (delete(questions)..where((t) => t.id.equals(id))).go();
+    if (tombstone) await recordTombstone(id, 'question');
   }
 
   // ─── Lookup helpers ───────────────────────────────────────────
@@ -593,11 +646,14 @@ class AppDatabase extends _$AppDatabase {
       _collectFolderSubtree(folderId);
 
   /// Deletes every row from every content table. Used by the dev wipe tool.
+  /// Also clears tombstones so a wipe is a true clean slate (a leftover
+  /// tombstone could otherwise delete re-pulled content on a peer at next sync).
   Future<void> wipeAllContent() => transaction(() async {
         await delete(quizQuestions).go();
         await delete(questions).go();
         await delete(quizzes).go();
         await delete(folders).go();
+        await delete(tombstones).go();
       });
 
   Future<void> insertJunctionRowSafe(String quizId, String questionId, int sortOrder) =>

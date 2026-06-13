@@ -551,6 +551,12 @@
       "count": { "type": "int" }
     }
   },
+  "syncResultFavoritesRemoved": "{count, plural, =1{1 favorite removed} other{{count} favorites removed}}",
+  "@syncResultFavoritesRemoved": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "syncResultImagesFailed": "{count, plural, =1{1 image failed to sync} other{{count} images failed to sync}}",
   "@syncResultImagesFailed": {
     "placeholders": {

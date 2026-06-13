@@ -1113,6 +1113,17 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String syncResultFavoritesRemoved(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count favorites removed',
+      one: '1 favorite removed',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String syncResultImagesFailed(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

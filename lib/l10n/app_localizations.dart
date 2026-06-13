@@ -1820,6 +1820,12 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 question removed} other{{count} questions removed}}'**
   String syncResultQuestionsDeleted(int count);
 
+  /// No description provided for @syncResultFavoritesRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 favorite removed} other{{count} favorites removed}}'**
+  String syncResultFavoritesRemoved(int count);
+
   /// No description provided for @syncResultImagesFailed.
   ///
   /// In en, this message translates to:
