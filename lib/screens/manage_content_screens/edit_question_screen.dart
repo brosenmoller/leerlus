@@ -107,6 +107,8 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
   late final List<FocusNode> _acceptedAnswerFocusNodes;
   late final List<FocusNode> _sortingFocusNodes;
   late final List<FocusNode> _setFocusNodes;
+  late final FocusNode _flashcardFrontFocusNode;
+  late final FocusNode _flashcardBackFocusNode;
 
   bool get _hasChanges => _isDirty;
 
@@ -154,7 +156,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
     super.initState();
     final q = widget.question;
 
-    _answerType = q?.answerType ?? 'typed';
+    _answerType = q?.answerType ?? 'flashcard';
     _imagePath = q?.imagePath;
     _questionController = TextEditingController(text: q?.questionText ?? '');
     _explanationController =
@@ -315,12 +317,29 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
     _acceptedAnswerFocusNodes = List.generate(_acceptedAnswerControllers.length, (_) => FocusNode());
     _sortingFocusNodes = List.generate(_sortingControllers.length, (_) => FocusNode());
     _setFocusNodes = List.generate(_setControllers.length, (_) => FocusNode());
+    _flashcardBackFocusNode = FocusNode();
+    // The front text field is multiline, so Tab would normally insert a tab
+    // character. Intercept Tab (without Shift) to jump straight to the back field.
+    _flashcardFrontFocusNode = FocusNode(
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.tab &&
+            !HardwareKeyboard.instance.isShiftPressed) {
+          _flashcardBackFocusNode.requestFocus();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+    );
 
-    if (_answerType != 'flashcard') {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _questionFocusNode.requestFocus();
-      });
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_answerType == 'flashcard') {
+        _flashcardFrontFocusNode.requestFocus();
+      } else {
+        _questionFocusNode.requestFocus();
+      }
+    });
 
     _addTextDirtyListener(_questionController);
     _addTextDirtyListener(_explanationController);
@@ -347,6 +366,8 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
     for (final fn in _acceptedAnswerFocusNodes) fn.dispose();
     for (final fn in _sortingFocusNodes) fn.dispose();
     for (final fn in _setFocusNodes) fn.dispose();
+    _flashcardFrontFocusNode.dispose();
+    _flashcardBackFocusNode.dispose();
     super.dispose();
   }
 
@@ -494,6 +515,8 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                       }),
                       frontTextController: _flashcardFrontTextController,
                       backTextController: _flashcardBackTextController,
+                      frontFocusNode: _flashcardFrontFocusNode,
+                      backFocusNode: _flashcardBackFocusNode,
                       frontImagePath: _flashcardFrontImagePath,
                       backImagePath: _flashcardBackImagePath,
                       frontPickerKey: _flashcardFrontPickerKey,

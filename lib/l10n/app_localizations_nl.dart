@@ -168,6 +168,9 @@ class AppLocalizationsNl extends AppLocalizations {
   String get edit => 'Bewerken';
 
   @override
+  String get duplicate => 'Dupliceren';
+
+  @override
   String get required => 'Verplicht';
 
   @override

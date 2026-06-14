@@ -68,6 +68,7 @@
   "save": "Save",
   "reset": "Reset",
   "edit": "Edit",
+  "duplicate": "Duplicate",
   "required": "Required",
   "start": "Start",
   "retry": "Retry",

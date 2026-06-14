@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:leerlus/l10n/app_localizations.dart';
 import 'package:leerlus/data/database/app_database.dart';
@@ -196,6 +197,7 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
                             .primaryContainer
                             .withValues(alpha: 0.45)
                         : null,
+                    onTap: () => _openEditScreen(question),
                     leading: _answerTypeIcon(question.answerType),
                     title: Text(
                       question.questionText,
@@ -207,19 +209,38 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
                         _answerTypeChip(question.answerType, l10n),
                       ],
                     ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit_outlined),
-                          tooltip: l10n.edit,
-                          onPressed: () => _openEditScreen(question),
+                    trailing: PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert),
+                      onSelected: (value) {
+                        switch (value) {
+                          case 'delete':
+                            _confirmDelete(context, question);
+                          case 'duplicate':
+                            _duplicateQuestion(question);
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: 'duplicate',
+                          child: Row(
+                            children: [
+                              const Icon(Icons.copy_outlined),
+                              const SizedBox(width: 12),
+                              Text(l10n.duplicate),
+                            ],
+                          ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline,
-                              color: Colors.red),
-                          tooltip: l10n.delete,
-                          onPressed: () => _confirmDelete(context, question),
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              const Icon(Icons.delete_outline,
+                                  color: Colors.red),
+                              const SizedBox(width: 12),
+                              Text(l10n.delete,
+                                  style: const TextStyle(color: Colors.red)),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -261,6 +282,28 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
       _                => type,
     };
     return _Chip(label: label, color: Colors.blue);
+  }
+
+  Future<void> _duplicateQuestion(Question q) async {
+    // Copy every field except the id so insertQuestion mints a fresh UUID,
+    // making the copy a fully independent question.
+    final newId = await widget.db.insertQuestionIntoQuiz(
+      quizId: widget.quiz.id,
+      question: QuestionsCompanion(
+        questionText: Value(q.questionText),
+        questionVariants: Value(q.questionVariants),
+        answerType: Value(q.answerType),
+        answerConfig: Value(q.answerConfig),
+        explanation: Value(q.explanation),
+        imagePath: Value(q.imagePath),
+        imagePathVariants: Value(q.imagePathVariants),
+        occlusionConfig: Value(q.occlusionConfig),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+    await QuestionService().refresh();
+    await SrsService().enrollIfQuizEnabled(widget.quiz.id, newId);
+    _handleSaveResult({'id': newId, 'isNew': true});
   }
 
   void _confirmDelete(BuildContext context, Question q) {

@@ -8,6 +8,8 @@ class FlashcardSection extends StatelessWidget {
   final ValueChanged<bool> onRandomizeChanged;
   final TextEditingController frontTextController;
   final TextEditingController backTextController;
+  final FocusNode? frontFocusNode;
+  final FocusNode? backFocusNode;
   final String? frontImagePath;
   final String? backImagePath;
   final GlobalKey<ImagePickerFieldState> frontPickerKey;
@@ -21,6 +23,8 @@ class FlashcardSection extends StatelessWidget {
     required this.onRandomizeChanged,
     required this.frontTextController,
     required this.backTextController,
+    this.frontFocusNode,
+    this.backFocusNode,
     required this.frontImagePath,
     required this.backImagePath,
     required this.frontPickerKey,
@@ -40,6 +44,7 @@ class FlashcardSection extends StatelessWidget {
           textOptionalLabel: l10n.flashcardFrontTextOptional,
           imageOptionalLabel: l10n.flashcardFrontImageOptional,
           textController: frontTextController,
+          focusNode: frontFocusNode,
           imagePath: frontImagePath,
           pickerKey: frontPickerKey,
           onImageChanged: onFrontImageChanged,
@@ -50,6 +55,7 @@ class FlashcardSection extends StatelessWidget {
           textOptionalLabel: l10n.flashcardBackTextOptional,
           imageOptionalLabel: l10n.flashcardBackImageOptional,
           textController: backTextController,
+          focusNode: backFocusNode,
           imagePath: backImagePath,
           pickerKey: backPickerKey,
           onImageChanged: onBackImageChanged,

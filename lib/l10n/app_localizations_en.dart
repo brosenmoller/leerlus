@@ -166,6 +166,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get edit => 'Edit';
 
   @override
+  String get duplicate => 'Duplicate';
+
+  @override
   String get required => 'Required';
 
   @override

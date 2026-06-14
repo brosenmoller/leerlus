@@ -7,6 +7,7 @@ class FlashcardSideEditor extends StatelessWidget {
   final String textOptionalLabel;
   final String imageOptionalLabel;
   final TextEditingController textController;
+  final FocusNode? focusNode;
   final String? imagePath;
   final GlobalKey<ImagePickerFieldState> pickerKey;
   final ValueChanged<String?> onImageChanged;
@@ -17,6 +18,7 @@ class FlashcardSideEditor extends StatelessWidget {
     required this.textOptionalLabel,
     required this.imageOptionalLabel,
     required this.textController,
+    this.focusNode,
     required this.imagePath,
     required this.pickerKey,
     required this.onImageChanged,
@@ -34,6 +36,7 @@ class FlashcardSideEditor extends StatelessWidget {
         const SizedBox(height: 8),
         TextFormField(
           controller: textController,
+          focusNode: focusNode,
           onTap: collapseSelectionOnTap(textController),
           decoration: InputDecoration(
             labelText: textOptionalLabel,
