@@ -123,9 +123,14 @@ class _SortingWidgetState extends State<SortingWidget> {
           ),
 
         Expanded(
-          child: _showPreFilled
-              ? _buildDragList(context)
-              : _buildTypeList(context),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 800),
+              child: _showPreFilled
+                  ? _buildDragList(context)
+                  : _buildTypeList(context),
+            ),
+          ),
         ),
 
         if (showCheckButton)
