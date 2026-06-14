@@ -6,6 +6,7 @@ import 'package:leerlus/models/question_data.dart';
 import 'package:leerlus/models/user_question_data.dart';
 import 'package:leerlus/screens/question_display/srs_buttons.dart';
 import 'package:leerlus/widgets/app_image.dart';
+import 'package:leerlus/widgets/auto_scale_text.dart';
 import 'package:leerlus/widgets/occluded_image.dart';
 
 class FlashcardWidget extends StatefulWidget {
@@ -233,60 +234,6 @@ class _FlashcardWidgetState extends State<FlashcardWidget>
   }
 }
 
-/// Centered text that shrinks its font to fit the available height (down to
-/// [minFontSize]). If the text still overflows at the minimum size, it becomes
-/// vertically scrollable instead of being clipped.
-class _AutoScaleText extends StatelessWidget {
-  final String text;
-  final TextStyle? style;
-
-  /// Font won't shrink below this before falling back to scrolling.
-  static const double minFontSize = 16;
-
-  const _AutoScaleText({required this.text, this.style});
-
-  @override
-  Widget build(BuildContext context) {
-    final baseStyle = style ?? const TextStyle();
-    final baseFontSize = baseStyle.fontSize ?? 14;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        double measuredHeight(double size) {
-          final tp = TextPainter(
-            text: TextSpan(
-              text: text,
-              style: baseStyle.copyWith(fontSize: size),
-            ),
-            textDirection: TextDirection.ltr,
-            textAlign: TextAlign.center,
-          )..layout(maxWidth: constraints.maxWidth);
-          return tp.height;
-        }
-
-        // Shrink one step at a time until it fits or we hit the floor.
-        double fontSize = baseFontSize;
-        while (fontSize > minFontSize &&
-            measuredHeight(fontSize) > constraints.maxHeight) {
-          fontSize = max(minFontSize, fontSize - 1);
-        }
-
-        final textWidget = Text(
-          text,
-          style: baseStyle.copyWith(fontSize: fontSize),
-          textAlign: TextAlign.center,
-        );
-
-        // Still too tall even at the smallest size → let the user scroll.
-        if (measuredHeight(fontSize) > constraints.maxHeight) {
-          return SingleChildScrollView(child: textWidget);
-        }
-        return Center(child: textWidget);
-      },
-    );
-  }
-}
-
 class _CardFace extends StatelessWidget {
   final String label;
   final String? text;
@@ -342,7 +289,7 @@ class _CardFace extends StatelessWidget {
                 )
               else if (text != null)
                 Expanded(
-                  child: _AutoScaleText(
+                  child: AutoScaleText(
                     text: text!,
                     style: theme.textTheme.titleLarge,
                   ),

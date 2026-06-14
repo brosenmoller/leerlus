@@ -9,6 +9,7 @@ import 'package:leerlus/screens/question_display/continue_button.dart';
 import 'package:leerlus/screens/question_display/srs_buttons.dart';
 import 'package:leerlus/services/settings_service.dart';
 import 'package:leerlus/services/statistics_service.dart';
+import 'package:leerlus/widgets/auto_scale_text.dart';
 
 class QuestionDisplayScreen extends StatefulWidget {
   final QuestionData question;
@@ -137,45 +138,58 @@ class _QuestionDisplayScreenState extends State<QuestionDisplayScreen>
           /// MAIN CONTENT
           SafeArea(
             top: false,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                AnimatedBuilder(
-                  animation: _shakeController,
-                  builder: (context, child) {
-                    final offset = _shakeAnimation.value *
-                        (_shakeController.status == AnimationStatus.forward
-                            ? 1
-                            : 0);
-                    return Transform.translate(
-                      offset: Offset(offset, 0),
-                      child: child,
-                    );
-                  },
-                  child: widget.question.answerType == AnswerType.flashcard
-                      ? const SizedBox.shrink()
-                      : Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                          child: Text(
-                            widget.question.questionVariants.first,
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                        ),
-                ),
-                Expanded(
-                  child: AnswerArea(
-                    question: widget.question,
-                    locked: answerState != AnswerState.unanswered,
-                    answerState: answerState,
-                    onAnswered: _handleAnswer,
-                    spacedRepetitionMode: widget.spacedRepetitionMode,
-                    onFlashcardSrsAnswered: widget.spacedRepetitionMode
-                        ? (quality) => widget.onContinue(true, quality)
-                        : null,
-                  ),
-                ),
-              ],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // Question text is large by default but capped to ~40% of the
+                // available height; AutoScaleText shrinks the font when the
+                // text (e.g. a long question above a big image) needs the room.
+                final maxQuestionHeight = constraints.maxHeight * 0.4;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    AnimatedBuilder(
+                      animation: _shakeController,
+                      builder: (context, child) {
+                        final offset = _shakeAnimation.value *
+                            (_shakeController.status == AnimationStatus.forward
+                                ? 1
+                                : 0);
+                        return Transform.translate(
+                          offset: Offset(offset, 0),
+                          child: child,
+                        );
+                      },
+                      child: widget.question.answerType == AnswerType.flashcard
+                          ? const SizedBox.shrink()
+                          : Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                    maxHeight: maxQuestionHeight),
+                                child: AutoScaleText(
+                                  text: widget.question.questionVariants.first,
+                                  style:
+                                      Theme.of(context).textTheme.headlineSmall,
+                                  expand: false,
+                                ),
+                              ),
+                            ),
+                    ),
+                    Expanded(
+                      child: AnswerArea(
+                        question: widget.question,
+                        locked: answerState != AnswerState.unanswered,
+                        answerState: answerState,
+                        onAnswered: _handleAnswer,
+                        spacedRepetitionMode: widget.spacedRepetitionMode,
+                        onFlashcardSrsAnswered: widget.spacedRepetitionMode
+                            ? (quality) => widget.onContinue(true, quality)
+                            : null,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
 
