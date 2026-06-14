@@ -38,12 +38,17 @@ class SrsQuizCard extends StatelessWidget {
   final void Function(BuildContext, QuizData) onStartNormal;
   final void Function(BuildContext, SrsQuizEntry) onRemoveSrs;
 
+  /// Whether to show the parent-folder tag. Hidden in folder view where the
+  /// quiz already sits visually inside its folder.
+  final bool showFolderTag;
+
   const SrsQuizCard({
     super.key,
     required this.entry,
     required this.onStart,
     required this.onStartNormal,
     required this.onRemoveSrs,
+    this.showFolderTag = true,
   });
 
   @override
@@ -114,7 +119,7 @@ class SrsQuizCard extends StatelessWidget {
                               spacing: 6,
                               runSpacing: 4,
                               children: [
-                                if (entry.folderTitle != null)
+                                if (showFolderTag && entry.folderTitle != null)
                                   SrsTag(
                                     label: entry.folderTitle!,
                                     icon: Icons.folder_outlined,

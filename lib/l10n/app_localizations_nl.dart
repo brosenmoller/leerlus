@@ -459,6 +459,12 @@ class AppLocalizationsNl extends AppLocalizations {
   String get srsAllDueTitle => 'Alle te herhalen vragen';
 
   @override
+  String get srsViewListView => 'Lijstweergave';
+
+  @override
+  String get srsViewFolderView => 'Mapweergave';
+
+  @override
   String get srsHowWellKnew => 'Hoe goed kende je dit?';
 
   @override

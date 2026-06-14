@@ -454,6 +454,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get srsAllDueTitle => 'All due questions';
 
   @override
+  String get srsViewListView => 'List view';
+
+  @override
+  String get srsViewFolderView => 'Folder view';
+
+  @override
   String get srsHowWellKnew => 'How well did you know this?';
 
   @override

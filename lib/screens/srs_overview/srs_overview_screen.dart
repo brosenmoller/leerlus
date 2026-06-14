@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:leerlus/l10n/app_localizations.dart';
@@ -6,10 +6,15 @@ import 'package:leerlus/models/question_data.dart';
 import 'package:leerlus/models/quiz_data.dart';
 import 'package:leerlus/screens/quiz_session_screen.dart';
 import 'package:leerlus/screens/srs_session_screen.dart';
+import 'package:leerlus/screens/srs_overview/srs_folder_card.dart';
+import 'package:leerlus/screens/srs_overview/srs_folder_screen.dart';
+import 'package:leerlus/screens/srs_overview/srs_overview_data.dart';
 import 'package:leerlus/screens/srs_overview/srs_quiz_card.dart';
 import 'package:leerlus/services/question_service.dart';
 import 'package:leerlus/services/srs_service.dart';
 import 'package:leerlus/widgets/collapsible_app_bar_title.dart';
+
+enum SrsViewMode { list, folder }
 
 class SrsOverviewScreen extends StatefulWidget {
   const SrsOverviewScreen({super.key});
@@ -21,6 +26,7 @@ class SrsOverviewScreen extends StatefulWidget {
 class _SrsOverviewScreenState extends State<SrsOverviewScreen> {
   final QuestionService questionService = QuestionService();
   final SrsService srsService = SrsService();
+  SrsViewMode _viewMode = SrsViewMode.folder;
   Timer? _ticker;
 
   @override
@@ -40,58 +46,9 @@ class _SrsOverviewScreenState extends State<SrsOverviewScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final entries = <SrsQuizEntry>[];
-
-    for (final quiz in questionService.getAllQuizzes()) {
-      final questions = quiz.questionIds
-          .map((id) => questionService.getQuestion(id))
-          .whereType<QuestionData>()
-          .where((q) => srsService.getUserData(q).spacedRepetitionEnabled)
-          .toList();
-
-      if (questions.isEmpty) continue;
-
-      final dueQuestions =
-          questions.where((q) => srsService.getUserData(q).isDue).toList();
-
-      final dueDates =
-          dueQuestions.map((q) => srsService.getUserData(q).nextReview);
-
-      final DateTime? oldestDue = dueQuestions.isEmpty
-          ? null
-          : dueDates.reduce((a, b) => a.isBefore(b) ? a : b);
-
-      final upcomingDates =
-          questions.map((q) => srsService.getUserData(q).nextReview);
-      final DateTime nextUpcoming =
-          upcomingDates.reduce((a, b) => a.isBefore(b) ? a : b);
-
-      final folderTitle = quiz.parentFolderId != null
-          ? questionService.getFolder(quiz.parentFolderId!)?.title
-          : null;
-
-      entries.add(SrsQuizEntry(
-        quiz: quiz,
-        quizTitle: quiz.title,
-        folderTitle: folderTitle,
-        dueQuestions: dueQuestions,
-        allQuestions: questions,
-        oldestDue: oldestDue,
-        nextUpcoming: nextUpcoming,
-      ));
-    }
-
-    // Due entries first (most overdue at top), then upcoming (soonest first).
-    entries.sort((a, b) {
-      final aDue = a.oldestDue != null;
-      final bDue = b.oldestDue != null;
-      if (aDue && bDue) return a.oldestDue!.compareTo(b.oldestDue!);
-      if (aDue) return -1;
-      if (bDue) return 1;
-      return a.nextUpcoming.compareTo(b.nextUpcoming);
-    });
-
     final colorScheme = Theme.of(context).colorScheme;
+
+    final entries = computeSrsEntries(questionService, srsService);
 
     // Order is randomized by SrsSessionScreen (see scrambleQuestions), which
     // also keeps chained flashcards apart, so no shuffle is needed here.
@@ -107,7 +64,9 @@ class _SrsOverviewScreenState extends State<SrsOverviewScreen> {
               foregroundColor: colorScheme.onError,
             )
           : null,
-      body: CustomScrollView(
+      body: Stack(
+        children: [
+          CustomScrollView(
         slivers: [
           SliverAppBar(
             expandedHeight: 120,
@@ -161,31 +120,147 @@ class _SrsOverviewScreenState extends State<SrsOverviewScreen> {
             SliverFillRemaining(
               child: Center(child: Text(l10n.srsNoQuestions)),
             )
+          else if (_viewMode == SrsViewMode.list)
+            _buildListSliver(entries)
           else
-            SliverPadding(
-              padding: const EdgeInsets.only(top: 12, bottom: 24),
-              sliver: SliverList.builder(
-                itemCount: entries.length,
-                itemBuilder: (context, index) => Align(
-                  alignment: Alignment.center,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 720),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                      child: SrsQuizCard(
-                        entry: entries[index],
-                        onStart: _start,
-                        onStartNormal: _startNormal,
-                        onRemoveSrs: _removeSrs,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+            _buildFolderSliver(entries),
+        ],
+          ),
+
+          // View-mode toggle, floating bottom-left (mirrors the FAB).
+          Positioned(
+            left: 16,
+            bottom: 16,
+            child: SafeArea(
+              child: _buildViewToggle(colorScheme, l10n),
             ),
+          ),
         ],
       ),
     );
+  }
+
+  Widget _buildViewToggle(ColorScheme colorScheme, AppLocalizations l10n) {
+    return Material(
+      elevation: 3,
+      borderRadius: BorderRadius.circular(28),
+      color: colorScheme.surfaceContainerHigh,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              tooltip: l10n.srsViewFolderView,
+              isSelected: _viewMode == SrsViewMode.folder,
+              onPressed: () => setState(() => _viewMode = SrsViewMode.folder),
+              icon: Icon(
+                Icons.account_tree_rounded,
+                color: _viewMode == SrsViewMode.folder
+                    ? colorScheme.primary
+                    : colorScheme.onSurfaceVariant,
+              ),
+            ),
+            IconButton(
+              tooltip: l10n.srsViewListView,
+              isSelected: _viewMode == SrsViewMode.list,
+              onPressed: () => setState(() => _viewMode = SrsViewMode.list),
+              icon: Icon(
+                Icons.view_list_rounded,
+                color: _viewMode == SrsViewMode.list
+                    ? colorScheme.primary
+                    : colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildListSliver(List<SrsQuizEntry> entries) {
+    return SliverPadding(
+      padding: const EdgeInsets.only(top: 12, bottom: 24),
+      sliver: SliverList.builder(
+        itemCount: entries.length,
+        itemBuilder: (context, index) => _centered(
+          child: SrsQuizCard(
+            entry: entries[index],
+            onStart: _start,
+            onStartNormal: _startNormal,
+            onRemoveSrs: _removeSrs,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFolderSliver(List<SrsQuizEntry> entries) {
+    final entryByQuizId = {for (final e in entries) e.quiz.id: e};
+
+    // Root level: only folders containing an SRS quiz somewhere below them.
+    final nodes = <SrsFolderNode>[];
+    for (final folder in questionService.getRootFolders()) {
+      final node = buildSrsFolderNode(questionService, folder, entryByQuizId);
+      if (node != null) nodes.add(node);
+    }
+
+    // Quizzes not assigned to any folder show as loose cards below the folders.
+    final looseEntries =
+        entries.where((e) => e.quiz.parentFolderId == null).toList();
+
+    final itemCount = nodes.length + looseEntries.length;
+
+    return SliverPadding(
+      padding: const EdgeInsets.only(top: 12, bottom: 24),
+      sliver: SliverList.builder(
+        itemCount: itemCount,
+        itemBuilder: (context, index) {
+          if (index < nodes.length) {
+            return _centered(
+              child: SrsFolderCard(
+                node: nodes[index],
+                onTap: () => _openFolder(context, nodes[index]),
+                onReview: () => _start(context, nodes[index].allDueRecursive,
+                    nodes[index].folder.title),
+              ),
+            );
+          }
+          final entry = looseEntries[index - nodes.length];
+          return _centered(
+            child: SrsQuizCard(
+              entry: entry,
+              onStart: _start,
+              onStartNormal: _startNormal,
+              onRemoveSrs: _removeSrs,
+              showFolderTag: false,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _centered({required Widget child}) => Align(
+        alignment: Alignment.center,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+            child: child,
+          ),
+        ),
+      );
+
+  void _openFolder(BuildContext context, SrsFolderNode node) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SrsFolderScreen(folderId: node.folder.id),
+      ),
+    ).then((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   void _start(BuildContext context, List<QuestionData> questions,

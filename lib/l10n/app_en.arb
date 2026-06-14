@@ -212,6 +212,8 @@
   "srsBackToSpacedRepetition": "Back to Spaced Repetition",
   "srsReviewAll": "Review all",
   "srsAllDueTitle": "All due questions",
+  "srsViewListView": "List view",
+  "srsViewFolderView": "Folder view",
   "srsHowWellKnew": "How well did you know this?",
   "srsAgain": "Again",
   "srsHard": "Hard",

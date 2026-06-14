@@ -177,6 +177,8 @@
   "srsBackToSpacedRepetition": "Terug naar Spaced Repetition",
   "srsReviewAll": "Alles herhalen",
   "srsAllDueTitle": "Alle te herhalen vragen",
+  "srsViewListView": "Lijstweergave",
+  "srsViewFolderView": "Mapweergave",
   "srsHowWellKnew": "Hoe goed kende je dit?",
   "srsAgain": "Opnieuw",
   "srsHard": "Moeilijk",

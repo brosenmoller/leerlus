@@ -812,6 +812,18 @@ abstract class AppLocalizations {
   /// **'All due questions'**
   String get srsAllDueTitle;
 
+  /// No description provided for @srsViewListView.
+  ///
+  /// In en, this message translates to:
+  /// **'List view'**
+  String get srsViewListView;
+
+  /// No description provided for @srsViewFolderView.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder view'**
+  String get srsViewFolderView;
+
   /// No description provided for @srsHowWellKnew.
   ///
   /// In en, this message translates to:
