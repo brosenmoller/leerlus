@@ -52,7 +52,6 @@ class _TypedAnswerWidgetState extends State<TypedAnswerWidget> {
 
   void _submit() {
     if (widget.locked || _submitted) return;
-    if (_controller.text.trim().isEmpty) return;
     final isCorrect =
     widget.question.typedAnswerConfig!.isCorrect(_controller.text);
     setState(() => _submitted = true);
