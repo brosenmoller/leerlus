@@ -884,6 +884,10 @@ class AppLocalizationsNl extends AppLocalizations {
   }
 
   @override
+  String get sortingIncorrectHint =>
+      'Dit is de juiste volgorde, groen is wat jij goed had';
+
+  @override
   String get unsavedChangesQuestion => 'Je vraagwijzigingen gaan verloren.';
 
   @override

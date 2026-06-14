@@ -878,6 +878,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get sortingIncorrectHint =>
+      'This is the correct order, green is what you entered correctly';
+
+  @override
   String get unsavedChangesQuestion => 'Your question changes will be lost.';
 
   @override

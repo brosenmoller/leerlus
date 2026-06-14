@@ -1544,6 +1544,12 @@ abstract class AppLocalizations {
   /// **'Correct: {answer}'**
   String sortingCorrectAnswer(String answer);
 
+  /// No description provided for @sortingIncorrectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'This is the correct order, green is what you entered correctly'**
+  String get sortingIncorrectHint;
+
   /// No description provided for @unsavedChangesQuestion.
   ///
   /// In en, this message translates to:

@@ -148,14 +148,32 @@ class _SortingWidgetState extends State<SortingWidget> {
     );
   }
 
+  // Shown directly below the tiles once an incorrect answer is checked.
+  Widget? _buildIncorrectHint(BuildContext context) {
+    final correctness = _correctness;
+    if (correctness == null || correctness.every((c) => c)) return null;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
+      child: Text(
+        AppLocalizations.of(context).sortingIncorrectHint,
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.error,
+            ),
+      ),
+    );
+  }
+
   // ── Drag mode ──────────────────────────────────────────────────────────────
 
   Widget _buildDragList(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final isChecked = _correctness != null;
     return ReorderableListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      footer: _buildIncorrectHint(context),
       onReorder: (oldIndex, newIndex) {
-        if (widget.locked) return;
+        if (widget.locked || isChecked) return;
         setState(() {
           if (newIndex > oldIndex) newIndex--;
           final item = _currentOrder.removeAt(oldIndex);
@@ -169,13 +187,17 @@ class _SortingWidgetState extends State<SortingWidget> {
   }
 
   Widget _buildDragItem(BuildContext context, int index, AppLocalizations l10n) {
+    final config = widget.question.sortingConfig!;
     final isChecked = _correctness != null;
     final isCorrect = _correctness?[index] ?? false;
+    final dragLocked = widget.locked || isChecked;
 
+    // Only correct slots are highlighted (green). An unplaced item isn't "wrong",
+    // so it keeps the default colors and instead reveals what belongs here.
     Color? tileColor;
     Color? textColor;
-    if (isChecked) {
-      tileColor = isCorrect ? Colors.green.shade600 : Colors.red.shade600;
+    if (isChecked && isCorrect) {
+      tileColor = Colors.green.shade600;
       textColor = Colors.white;
     }
 
@@ -208,12 +230,15 @@ class _SortingWidgetState extends State<SortingWidget> {
           _currentOrder[index],
           style: TextStyle(color: textColor),
         ),
+        subtitle: (isChecked && !isCorrect)
+            ? Text(l10n.sortingCorrectAnswer(config.items[index]))
+            : null,
         trailing: ReorderableDragStartListener(
           index: index,
-          enabled: !widget.locked,
+          enabled: !dragLocked,
           child: Icon(
             Icons.drag_handle,
-            color: widget.locked
+            color: dragLocked
                 ? (textColor ?? Colors.grey)
                 : (textColor ?? Theme.of(context).colorScheme.onSurfaceVariant),
           ),
@@ -226,10 +251,14 @@ class _SortingWidgetState extends State<SortingWidget> {
 
   Widget _buildTypeList(BuildContext context) {
     final config = widget.question.sortingConfig!;
-    return ListView.builder(
+    final hint = _buildIncorrectHint(context);
+    return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      itemCount: config.items.length,
-      itemBuilder: (context, i) => _buildTypeItem(context, i, config.items[i]),
+      children: [
+        for (var i = 0; i < config.items.length; i++)
+          _buildTypeItem(context, i, config.items[i]),
+        ?hint,
+      ],
     );
   }
 
@@ -238,11 +267,11 @@ class _SortingWidgetState extends State<SortingWidget> {
     final isChecked = _correctness != null;
     final isCorrect = _correctness?[i] ?? false;
 
+    // Only correct fields are highlighted (green). An unentered answer isn't
+    // "wrong", so it keeps the default color and just reveals the correct answer.
     Color? fillColor;
-    if (isChecked) {
-      fillColor = isCorrect
-          ? Colors.green.withValues(alpha: 0.1)
-          : Colors.red.withValues(alpha: 0.1);
+    if (isChecked && isCorrect) {
+      fillColor = Colors.green.withValues(alpha: 0.1);
     }
 
     return Padding(
@@ -290,13 +319,10 @@ class _SortingWidgetState extends State<SortingWidget> {
                     ? l10n.sortingCorrectAnswer(correctAnswer)
                     : null,
                 helperStyle: const TextStyle(color: Colors.green),
-                suffixIcon: isChecked
+                suffixIcon: (isChecked && isCorrect)
                     ? Icon(
-                        isCorrect
-                            ? Icons.check_circle_outline
-                            : Icons.cancel_outlined,
-                        color:
-                            isCorrect ? Colors.green.shade600 : Colors.red.shade600,
+                        Icons.check_circle_outline,
+                        color: Colors.green.shade600,
                       )
                     : null,
               ),

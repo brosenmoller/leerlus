@@ -320,6 +320,7 @@
   "checkOrder": "Volgorde controleren",
   "sortingDragHint": "Slepen om te herordenen",
   "sortingCorrectAnswer": "Juist: {answer}",
+  "sortingIncorrectHint": "Dit is de juiste volgorde, groen is wat jij goed had",
   "unsavedChangesQuestion": "Je vraagwijzigingen gaan verloren.",
 
   "discardChangesTitle": "Wijzigingen verwerpen?",

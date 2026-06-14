@@ -425,6 +425,7 @@
       "answer": { "type": "String" }
     }
   },
+  "sortingIncorrectHint": "This is the correct order, green is what you entered correctly",
   "unsavedChangesQuestion": "Your question changes will be lost.",
 
   "discardChangesTitle": "Discard changes?",
