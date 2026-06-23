@@ -104,6 +104,22 @@ class NotificationService {
   /// grant notification permission after a permanent denial.
   Future<void> openSettings() => openAppSettings();
 
+  /// Whether the OS will currently deliver *exact* alarms. On Android 12+
+  /// (API 31+) exact alarms are gated behind a permission; if it isn't held,
+  /// scheduling with [AndroidScheduleMode.exactAllowWhileIdle] throws, so we
+  /// fall back to inexact instead of silently failing. With `USE_EXACT_ALARM`
+  /// in the manifest this returns true without any user action.
+  Future<bool> _canScheduleExact() async {
+    if (!Platform.isAndroid) return true;
+    try {
+      final impl = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      return await impl?.canScheduleExactNotifications() ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Creates the channel matching the requested [sound]/[vibration] settings
   /// and removes any stale reminder channels (including the legacy bare-id one)
   /// so the user only ever sees a single "Daily Reminder" channel in system
@@ -187,7 +203,9 @@ class NotificationService {
           ),
           linux: const LinuxNotificationDetails(),
         ),
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        androidScheduleMode: await _canScheduleExact()
+            ? AndroidScheduleMode.exactAllowWhileIdle
+            : AndroidScheduleMode.inexactAllowWhileIdle,
         matchDateTimeComponents: DateTimeComponents.time,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,

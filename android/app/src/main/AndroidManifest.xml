@@ -9,6 +9,11 @@
     <!-- Notifications (POST_NOTIFICATIONS required on Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <!-- Exact alarms so the daily streak reminder fires on time. USE_EXACT_ALARM
+         is auto-granted to alarm/reminder apps (no user action); SCHEDULE_EXACT_ALARM
+         is the fallback that can be granted via system settings on older flows. -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
     <application
         android:usesCleartextTraffic="true"
         android:label="Leerlus"
