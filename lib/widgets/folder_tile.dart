@@ -1,5 +1,8 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:leerlus/models/folder_data.dart';
+import 'package:leerlus/models/question_data.dart';
+import 'package:leerlus/services/question_service.dart';
+import 'package:leerlus/services/srs_service.dart';
 import 'package:leerlus/widgets/app_image.dart';
 
 // A small palette of saturated colors for folders without a cover image.
@@ -36,7 +39,89 @@ class FolderTile extends StatefulWidget {
 }
 
 class _FolderTileState extends State<FolderTile> {
+  final QuestionService _questionService = QuestionService();
+  final SrsService _srsService = SrsService();
+
   bool _hovering = false;
+  bool _initialized = false;
+  bool _toggling = false;
+  int _enabledCount = 0;
+  int _totalQuestions = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _srsService.enrollmentRevision.addListener(_onEnrollmentChanged);
+    _initState();
+  }
+
+  @override
+  void dispose() {
+    _srsService.enrollmentRevision.removeListener(_onEnrollmentChanged);
+    super.dispose();
+  }
+
+  /// Recursively collect every question in this folder's subtree.
+  List<QuestionData> _collectAllQuestions(String folderId) {
+    final result = <QuestionData>[];
+    for (final quiz in _questionService.getQuizzesInFolder(folderId)) {
+      result.addAll(_srsService.getQuestionsForQuiz(quiz: quiz));
+    }
+    for (final sub in _questionService.getSubfolders(folderId)) {
+      result.addAll(_collectAllQuestions(sub.id));
+    }
+    return result;
+  }
+
+  /// Recompute enrollment counts from the SRS box. Returns whether anything
+  /// changed so callers can avoid needless rebuilds.
+  bool _recomputeCounts() {
+    final questions = _collectAllQuestions(widget.folder.id);
+    final total = questions.length;
+    final enabled = questions
+        .where((q) => _srsService.getUserData(q).spacedRepetitionEnabled)
+        .length;
+    if (total == _totalQuestions && enabled == _enabledCount) return false;
+    _totalQuestions = total;
+    _enabledCount = enabled;
+    return true;
+  }
+
+  Future<void> _initState() async {
+    try {
+      await _srsService.init();
+      _recomputeCounts();
+    } catch (_) {
+      // Leave defaults on failure.
+    }
+
+    if (mounted) setState(() => _initialized = true);
+  }
+
+  /// React to enrollment changes made elsewhere (e.g. a child quiz toggled on
+  /// another screen). Ignored while this tile is mid-toggle to avoid flicker —
+  /// the toggle settles its own final state.
+  void _onEnrollmentChanged() {
+    if (!_initialized || _toggling || !mounted) return;
+    if (_recomputeCounts()) setState(() {});
+  }
+
+  void _toggleSrs() async {
+    if (!_initialized || _toggling) return;
+    final questions = _collectAllQuestions(widget.folder.id);
+    // Mixed or none → enroll all; fully enrolled → unenroll all.
+    final target = !(_totalQuestions > 0 && _enabledCount == _totalQuestions);
+    _toggling = true;
+    setState(() => _enabledCount = target ? questions.length : 0);
+    try {
+      for (final question in questions) {
+        await _srsService.setQuestionSrs(question, target);
+      }
+    } finally {
+      _toggling = false;
+    }
+    if (mounted && _recomputeCounts()) setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -104,27 +189,41 @@ class _FolderTileState extends State<FolderTile> {
                     ),
                   ),
 
-                  // Play-all button
-                  if (widget.onPlayAll != null)
-                    Positioned(
-                      top: 6,
-                      right: 6,
-                      child: GestureDetector(
-                        onTap: widget.onPlayAll,
-                        child: Container(
-                          padding: const EdgeInsets.all(5),
-                          decoration: BoxDecoration(
-                            color: Colors.black45,
-                            borderRadius: BorderRadius.circular(20),
+                  // Top-right controls: SRS toggle + play-all
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_initialized && _totalQuestions > 0) ...[
+                          _SrsToggle(
+                            mixed: _enabledCount > 0 &&
+                                _enabledCount < _totalQuestions,
+                            active: _enabledCount > 0,
+                            onTap: _toggleSrs,
                           ),
-                          child: const Icon(
-                            Icons.play_arrow_rounded,
-                            color: Colors.white70,
-                            size: 16,
+                          const SizedBox(width: 6),
+                        ],
+                        if (widget.onPlayAll != null)
+                          GestureDetector(
+                            onTap: widget.onPlayAll,
+                            child: Container(
+                              padding: const EdgeInsets.all(5),
+                              decoration: BoxDecoration(
+                                color: Colors.black45,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Icon(
+                                Icons.play_arrow_rounded,
+                                color: Colors.white70,
+                                size: 16,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
+                      ],
                     ),
+                  ),
 
                   // Content
                   Padding(
@@ -163,6 +262,59 @@ class _FolderTileState extends State<FolderTile> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// SRS enrollment toggle for a whole folder. Shows the repeat icon in grey
+/// (none enrolled) or blue (some/all enrolled); an asterisk badge marks the
+/// mixed state where only part of the folder is enrolled.
+class _SrsToggle extends StatelessWidget {
+  final bool active;
+  final bool mixed;
+  final VoidCallback onTap;
+
+  const _SrsToggle({
+    required this.active,
+    required this.mixed,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(5),
+        decoration: BoxDecoration(
+          color: Colors.black45,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Icon(
+              Icons.repeat_rounded,
+              color: active ? Colors.lightBlueAccent : Colors.white60,
+              size: 16,
+            ),
+            if (mixed)
+              const Positioned(
+                top: -5,
+                right: -5,
+                child: Text(
+                  '*',
+                  style: TextStyle(
+                    color: Colors.lightBlueAccent,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    height: 1,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

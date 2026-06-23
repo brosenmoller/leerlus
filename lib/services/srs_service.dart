@@ -1,4 +1,5 @@
-﻿import 'package:hive/hive.dart';
+﻿import 'package:flutter/foundation.dart';
+import 'package:hive/hive.dart';
 import 'package:leerlus/models/question_data.dart';
 import 'package:leerlus/models/quiz_data.dart';
 import 'package:leerlus/models/user_question_data.dart';
@@ -15,6 +16,11 @@ class SrsService {
   late Box<UserQuestionData> _userQuestionBox;
 
   final QuestionService _questionService = QuestionService();
+
+  /// Bumped whenever a question's SRS enrollment changes, so widgets that show
+  /// aggregate enrollment state (e.g. [FolderTile]) can refresh reactively
+  /// rather than only on a fresh build.
+  final ValueNotifier<int> enrollmentRevision = ValueNotifier<int>(0);
 
   /// Initialize Hive box
   Future<void> init() async {
@@ -57,6 +63,7 @@ class SrsService {
     final userData = getUserData(question);
     userData.spacedRepetitionEnabled = enabled;
     await _box.put(question.id, userData);
+    enrollmentRevision.value++;
   }
 
   /// Enroll [questionId] in SRS iff its quiz already has SRS enabled (any other
@@ -109,6 +116,7 @@ class SrsService {
   /// Puts the Updated User Data into Hive
   Future<void> updateUserData(UserQuestionData userData) async {
     await _box.put(userData.questionId, userData);
+    enrollmentRevision.value++;
   }
 
   /// Update user data after answering a question
