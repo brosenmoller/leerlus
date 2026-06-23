@@ -30,6 +30,29 @@ class SrsFolderCard extends StatelessWidget {
     final accentColor =
         hasDue ? colorScheme.error : colorScheme.outlineVariant;
 
+    final Color timeColor = hasDue ? colorScheme.error : colorScheme.outline;
+
+    // Use screen width as the breakpoint — avoids LayoutBuilder inside
+    // IntrinsicHeight, which Flutter does not support.
+    final wide = MediaQuery.sizeOf(context).width > 450;
+
+    String? timeLabel;
+    if (hasDue) {
+      final oldestDue = node.oldestDueRecursive;
+      if (oldestDue != null) {
+        final overdue = DateTime.now().difference(oldestDue);
+        timeLabel = wide
+            ? l10n.srsOldestOverdue(_fmt(overdue, l10n))
+            : _fmt(overdue, l10n);
+      }
+    } else {
+      final next = node.nextUpcomingRecursive;
+      if (next != null) {
+        final until = next.difference(DateTime.now());
+        timeLabel = l10n.srsNextIn(_fmt(until, l10n));
+      }
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Card(
@@ -64,15 +87,27 @@ class SrsFolderCard extends StatelessWidget {
                               ?.copyWith(fontWeight: FontWeight.w600),
                         ),
                         const SizedBox(height: 8),
-                        SrsTag(
-                          label: hasDue
-                              ? l10n.srsDue(dueCount)
-                              : l10n.srsCards(node.totalCardsRecursive),
-                          icon: hasDue
-                              ? Icons.schedule
-                              : Icons.style_outlined,
-                          color:
-                              hasDue ? colorScheme.error : colorScheme.outline,
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: [
+                            SrsTag(
+                              label: hasDue
+                                  ? l10n.srsDue(dueCount)
+                                  : l10n.srsCards(node.totalCardsRecursive),
+                              icon: hasDue
+                                  ? Icons.schedule
+                                  : Icons.style_outlined,
+                              color: hasDue
+                                  ? colorScheme.error
+                                  : colorScheme.outline,
+                            ),
+                            if (timeLabel != null)
+                              SrsTag(
+                                label: timeLabel,
+                                color: timeColor,
+                              ),
+                          ],
                         ),
                       ],
                     ),
@@ -105,5 +140,14 @@ class SrsFolderCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _fmt(Duration d, AppLocalizations l10n) {
+    if (d.inDays > 0) return l10n.durationDays(d.inDays);
+    if (d.inHours > 0) return l10n.durationHours(d.inHours);
+    if (d.inMinutes > 0) return l10n.durationMinutes(d.inMinutes);
+    final secs = d.inSeconds;
+    if (secs > 0) return l10n.durationSeconds(secs);
+    return l10n.durationNow;
   }
 }

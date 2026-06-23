@@ -29,6 +29,36 @@ class SrsFolderNode {
   int get totalCardsRecursive =>
       quizEntries.fold<int>(0, (sum, e) => sum + e.allQuestions.length) +
       subfolders.fold<int>(0, (sum, s) => sum + s.totalCardsRecursive);
+
+  /// The soonest upcoming review across this folder and all descendants — i.e.
+  /// the containing quiz with the shortest "next in" time. Null only if there
+  /// are no SRS questions below (which never happens for a built node).
+  DateTime? get nextUpcomingRecursive {
+    DateTime? best;
+    for (final e in quizEntries) {
+      if (best == null || e.nextUpcoming.isBefore(best)) best = e.nextUpcoming;
+    }
+    for (final s in subfolders) {
+      final sub = s.nextUpcomingRecursive;
+      if (sub != null && (best == null || sub.isBefore(best))) best = sub;
+    }
+    return best;
+  }
+
+  /// The most-overdue due review across this folder and all descendants, or
+  /// null when nothing is due.
+  DateTime? get oldestDueRecursive {
+    DateTime? best;
+    for (final e in quizEntries) {
+      final due = e.oldestDue;
+      if (due != null && (best == null || due.isBefore(best))) best = due;
+    }
+    for (final s in subfolders) {
+      final sub = s.oldestDueRecursive;
+      if (sub != null && (best == null || sub.isBefore(best))) best = sub;
+    }
+    return best;
+  }
 }
 
 // ── Builders ──────────────────────────────────────────────────────────────────
