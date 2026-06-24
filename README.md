@@ -21,7 +21,7 @@ Leerlus supports six different question formats which are all editable:
 - All questions support inbuilt randomization to avoid remembering question quirks instead of the actual answer.
 
 ### Spaced Repetition (SRS)
-Leerlus uses a **spaced repetition system** to surface the right cards at the right time. After answering, you rate how well you knew it — *Again*, *Hard*, *Good*, or *Easy* — and Leerlus schedules your next review accordingly. Similar to anki, but not limited to flashcards.
+Leerlus uses a **spaced repetition system** to surface the right cards at the right time. After answering, you rate how well you knew it (*Again*, *Hard*, *Good*, or *Easy*) and Leerlus schedules your next review accordingly. Similar to anki, but not limited to flashcards.
 
 ### Other Features
 - Sync across devices (local network)
@@ -54,7 +54,7 @@ Leerlus uses a **spaced repetition system** to surface the right cards at the ri
 
 ## Import & Export
 
-You can **export** your quizzes and questions to a JSON file for backup or sharing, and **import** them on another device or from a content pack. All your content stays yours.
+You can **export** your quizzes and questions to a .lus file for backup or sharing, and **import** them on another device or from a content pack. All your content stays yours.
 
 ---
 
