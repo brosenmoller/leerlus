@@ -176,16 +176,21 @@ class SrsService {
   ///    enrollment timestamp happens to be newer.
   ///  - **Enrollment** (spacedRepetitionEnabled): plain last-write-wins by
   ///    lastReviewed, preserving the previous enable/disable sync behaviour.
-  Future<void> upsertUserData(UserQuestionData incoming) async {
+  /// Returns true when the stored entry was created or actually changed, false
+  /// when the incoming entry brought nothing new (used by sync to report only
+  /// real changes).
+  Future<bool> upsertUserData(UserQuestionData incoming) async {
     final existing = _box.get(incoming.questionId);
     if (existing == null) {
       await _box.put(incoming.questionId, incoming);
-      return;
+      return true;
     }
     final merged = _mergeSrs(existing, incoming);
     if (!identical(merged, existing)) {
       await _box.put(incoming.questionId, merged);
+      return true;
     }
+    return false;
   }
 
   /// Returns the merged entry, or [existing] unchanged when [incoming] adds

@@ -235,7 +235,12 @@ class StatisticsService {
     };
   }
 
-  Future<void> mergeFromSync(Map<String, dynamic> remote) async {
+  /// Merges [remote] statistics into the local box. Returns true only when at
+  /// least one stored value actually changed, so sync can report statistics as
+  /// updated only when there was something to update.
+  Future<bool> mergeFromSync(Map<String, dynamic> remote) async {
+    bool changed = false;
+
     // 1. Daily data — union of dates; for same date take max per metric
     final remoteDailyRaw =
         (remote['dailyData'] as Map?)?.cast<String, dynamic>() ?? {};
@@ -246,10 +251,18 @@ class StatisticsService {
               MapEntry(k as String, (v as num).toInt())));
       final localDay = _readDay(dayKey);
       final merged = <String, int>{};
+      bool dayChanged = false;
       for (final k in {...localDay.keys, ...remoteDay.keys}) {
-        merged[k] = max(localDay[k] ?? 0, remoteDay[k] ?? 0);
+        final m = max(localDay[k] ?? 0, remoteDay[k] ?? 0);
+        merged[k] = m;
+        // A missing key and a stored 0 are semantically identical, so only a
+        // genuine increase counts as a change (avoids false "updated" reports).
+        if (m != (localDay[k] ?? 0)) dayChanged = true;
       }
-      await _box.put(dayKey, merged);
+      if (dayChanged) {
+        await _box.put(dayKey, merged);
+        changed = true;
+      }
     }
 
     // 2. Answer-type counts — per-type, per-metric max
@@ -259,6 +272,7 @@ class StatisticsService {
     final localAt = rawLocalAt != null
         ? Map<String, dynamic>.from(rawLocalAt as Map)
         : <String, dynamic>{};
+    bool atChanged = false;
     for (final type in {...localAt.keys, ...remoteAt.keys}) {
       final rawLb = localAt[type];
       final lb = rawLb != null
@@ -270,12 +284,17 @@ class StatisticsService {
           ? Map<String, int>.from((rawRb as Map).map(
               (k, v) => MapEntry(k as String, (v as num).toInt())))
           : <String, int>{};
-      localAt[type] = {
+      final mergedBucket = {
         'answered': max(lb['answered'] ?? 0, rb['answered'] ?? 0),
         'correct': max(lb['correct'] ?? 0, rb['correct'] ?? 0),
       };
+      if (!_mapEquals(lb, mergedBucket)) atChanged = true;
+      localAt[type] = mergedBucket;
     }
-    await _box.put(_kAnswerTypeCounts, localAt);
+    if (atChanged) {
+      await _box.put(_kAnswerTypeCounts, localAt);
+      changed = true;
+    }
 
     // 3. SRS quality — max per bucket
     final rawRemoteSrs = remote['srsQuality'];
@@ -284,15 +303,36 @@ class StatisticsService {
             (k, v) => MapEntry(k as String, (v as num).toInt())))
         : <String, int>{};
     final localSrs = getSrsQuality();
+    final mergedSrs = Map<String, int>.from(localSrs);
+    bool srsChanged = false;
     for (final q in ['again', 'hard', 'good', 'easy']) {
-      localSrs[q] = max(localSrs[q] ?? 0, remoteSrs[q] ?? 0);
+      final m = max(localSrs[q] ?? 0, remoteSrs[q] ?? 0);
+      mergedSrs[q] = m;
+      // Missing key == stored 0; only a genuine increase is a real change.
+      if (m != (localSrs[q] ?? 0)) srsChanged = true;
     }
-    await _box.put(_kSrsQuality, localSrs);
+    if (srsChanged) {
+      await _box.put(_kSrsQuality, mergedSrs);
+      changed = true;
+    }
 
     // 4. Perfect sessions total — max
     final rp = (remote['totalPerfectSessions'] as num?)?.toInt() ?? 0;
     final lp = (_box.get(_kTotalPerfectSessions) as int?) ?? 0;
-    if (rp > lp) await _box.put(_kTotalPerfectSessions, rp);
+    if (rp > lp) {
+      await _box.put(_kTotalPerfectSessions, rp);
+      changed = true;
+    }
+
+    return changed;
+  }
+
+  static bool _mapEquals(Map<String, int> a, Map<String, int> b) {
+    if (a.length != b.length) return false;
+    for (final e in a.entries) {
+      if (b[e.key] != e.value) return false;
+    }
+    return true;
   }
 
   /// Replaces local statistics with the remote snapshot exactly (hard sync).

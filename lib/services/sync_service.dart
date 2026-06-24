@@ -860,7 +860,7 @@ class SyncService {
         createdAt: q.createdAt,
         updatedAt: q.updatedAt,
         contentHash:
-            '${q.title}|${q.folderId ?? ''}|${q.imagePath ?? ''}|${q.languageCode ?? ''}|$memberIds',
+            '${q.title}|${q.folderId ?? ''}|${_basenameOrEmpty(q.imagePath)}|${q.languageCode ?? ''}|$memberIds',
       ));
     }
 
@@ -871,7 +871,7 @@ class SyncService {
                 createdAt: f.createdAt,
                 updatedAt: f.updatedAt,
                 contentHash:
-                    '${f.title}|${f.parentFolderId ?? ''}|${f.imagePath ?? ''}',
+                    '${f.title}|${f.parentFolderId ?? ''}|${_basenameOrEmpty(f.imagePath)}',
               ))
           .toList(),
       quizzes: quizEntries,
@@ -880,16 +880,7 @@ class SyncService {
                 id: q.id,
                 createdAt: DateTime.fromMillisecondsSinceEpoch(0),
                 updatedAt: q.updatedAt,
-                contentHash: [
-                  q.questionText,
-                  q.questionVariants ?? '',
-                  q.answerType,
-                  q.answerConfig,
-                  q.explanation ?? '',
-                  q.imagePath ?? '',
-                  q.imagePathVariants ?? '',
-                  q.occlusionConfig ?? '',
-                ].join('|'),
+                contentHash: _questionContentHash(q),
               ))
           .toList(),
       srsKeys: srsKeys,
@@ -897,6 +888,41 @@ class SyncService {
       tombstones: await _collectLocalTombstones(),
       favoriteAddedAt: _localFavoriteAddedAt(),
     );
+  }
+
+  /// Basename of an image path, or '' when null. Used for content hashing so the
+  /// hash is independent of the device-specific (or .lus-pack-specific) absolute
+  /// path — otherwise already-synced images would forever appear "changed".
+  String _basenameOrEmpty(String? path) => path == null ? '' : p.basename(path);
+
+  /// Builds a platform-independent content hash for a question by normalizing
+  /// every embedded image reference to its basename. Mirrors the normalization
+  /// done by [_buildPayload] so the hash matches across devices once synced.
+  String _questionContentHash(dynamic q) {
+    final throwaway = <String>{};
+    final config = Map<String, dynamic>.from(jsonDecode(q.answerConfig) as Map);
+    final normalizedConfig =
+        _normalizeConfigImagePaths(config, q.answerType, throwaway);
+    final normalizedOcclusion =
+        _normalizeOcclusionConfig(q.occlusionConfig, q.answerType, throwaway);
+
+    String variantBasenames = '';
+    if (q.imagePathVariants != null) {
+      final paths =
+          List<String>.from(jsonDecode(q.imagePathVariants as String) as List);
+      variantBasenames = paths.map(p.basename).join(',');
+    }
+
+    return [
+      q.questionText,
+      q.questionVariants ?? '',
+      q.answerType,
+      jsonEncode(normalizedConfig),
+      q.explanation ?? '',
+      _basenameOrEmpty(q.imagePath),
+      variantBasenames,
+      normalizedOcclusion != null ? jsonEncode(normalizedOcclusion) : '',
+    ].join('|');
   }
 
   // ── Tombstones (deletion propagation) ────────────────────────
@@ -1568,11 +1594,11 @@ class SyncService {
       {required bool overwrite}) async {
     if (statsData == null) return false;
     if (overwrite) {
+      // Hard sync is an intentional forced mirror — always report it.
       await StatisticsService().replaceFromSync(statsData);
-    } else {
-      await StatisticsService().mergeFromSync(statsData);
+      return true;
     }
-    return true;
+    return await StatisticsService().mergeFromSync(statsData);
   }
 
   /// Applies incoming SRS entries (skipping ones whose question is absent
@@ -1594,13 +1620,16 @@ class SyncService {
       ));
     }
     if (overwrite) {
+      // Hard sync is an intentional full replace — report all enabled entries.
       await SrsService().replaceAllFromSync(entries);
-    } else {
-      for (final e in entries) {
-        await SrsService().upsertUserData(e);
-      }
+      return entries.where((e) => e.spacedRepetitionEnabled).length;
     }
-    return entries.where((e) => e.spacedRepetitionEnabled).length;
+    // Merge mode: count only entries whose stored value actually changed.
+    int changed = 0;
+    for (final e in entries) {
+      if (await SrsService().upsertUserData(e)) changed++;
+    }
+    return changed;
   }
 
   Map<String, dynamic> _localizeConfigImagePaths(
