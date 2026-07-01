@@ -540,6 +540,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get moveToRootOption => 'Root (no folder)';
 
   @override
+  String get moveToQuizMenu => 'Move to quiz';
+
+  @override
+  String get moveToQuizTitle => 'Move to quiz';
+
+  @override
+  String get moveToQuizSearchHint => 'Search quizzes…';
+
+  @override
+  String get moveNoOtherQuizzes => 'No other quizzes available';
+
+  @override
+  String get moveQuestionDone => 'Question moved';
+
+  @override
+  String get moveToQuizNoFolder => 'No folder';
+
+  @override
   String get contentPacksTitle => 'Content Packs';
 
   @override

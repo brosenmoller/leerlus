@@ -545,6 +545,24 @@ class AppLocalizationsNl extends AppLocalizations {
   String get moveToRootOption => 'Root (geen map)';
 
   @override
+  String get moveToQuizMenu => 'Verplaats naar quiz';
+
+  @override
+  String get moveToQuizTitle => 'Verplaats naar quiz';
+
+  @override
+  String get moveToQuizSearchHint => 'Zoek quizzes…';
+
+  @override
+  String get moveNoOtherQuizzes => 'Geen andere quizzes beschikbaar';
+
+  @override
+  String get moveQuestionDone => 'Vraag verplaatst';
+
+  @override
+  String get moveToQuizNoFolder => 'Geen map';
+
+  @override
   String get contentPacksTitle => 'Inhoudspakketten';
 
   @override

@@ -634,6 +634,39 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
+  /// Reassigns a question from [fromQuizId] to [toQuizId] by moving its junction
+  /// row. SRS data (keyed by questionId) is untouched. Both quizzes are touched so
+  /// the membership change wins last-write-wins during sync.
+  Future<void> moveQuestionToQuiz({
+    required String questionId,
+    required String fromQuizId,
+    required String toQuizId,
+  }) {
+    if (fromQuizId == toQuizId) return Future.value();
+    return transaction(() async {
+      await (delete(quizQuestions)
+            ..where((t) =>
+                t.quizId.equals(fromQuizId) & t.questionId.equals(questionId)))
+          .go();
+      final maxExpr = quizQuestions.sortOrder.max();
+      final maxOrder = await (selectOnly(quizQuestions)
+            ..where(quizQuestions.quizId.equals(toQuizId))
+            ..addColumns([maxExpr]))
+          .map((row) => row.read(maxExpr) ?? -1)
+          .getSingle();
+      await into(quizQuestions).insert(
+        QuizQuestionsCompanion.insert(
+          quizId: toQuizId,
+          questionId: questionId,
+          sortOrder: Value(maxOrder + 1),
+        ),
+        mode: InsertMode.insertOrIgnore, // no-op if already a member of target
+      );
+      await _touchQuiz(fromQuizId);
+      await _touchQuiz(toQuizId);
+    });
+  }
+
   Future<bool> updateQuestion(QuestionsCompanion entry) =>
       update(questions).replace(entry);
 

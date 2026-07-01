@@ -217,6 +217,8 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
                             _confirmDelete(context, question);
                           case 'duplicate':
                             _duplicateQuestion(question);
+                          case 'move':
+                            _moveQuestionToQuiz(question);
                         }
                       },
                       itemBuilder: (context) => [
@@ -227,6 +229,16 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
                               const Icon(Icons.copy_outlined),
                               const SizedBox(width: 12),
                               Text(l10n.duplicate),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'move',
+                          child: Row(
+                            children: [
+                              const Icon(Icons.drive_file_move_outline),
+                              const SizedBox(width: 12),
+                              Text(l10n.moveToQuizMenu),
                             ],
                           ),
                         ),
@@ -306,6 +318,29 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
     _handleSaveResult({'id': newId, 'isNew': true});
   }
 
+  Future<void> _moveQuestionToQuiz(Question q) async {
+    final l10n = AppLocalizations.of(context);
+    final targetId = await _showMoveToQuizDialog(
+      context: context,
+      db: widget.db,
+      excludeQuizId: widget.quiz.id,
+    );
+    if (targetId == null || !mounted) return;
+    await widget.db.moveQuestionToQuiz(
+      questionId: q.id,
+      fromQuizId: widget.quiz.id,
+      toQuizId: targetId,
+    );
+    await QuestionService().refresh();
+    // SRS data is keyed by questionId and travels with the card; enroll it if the
+    // target quiz already has SRS on. Never delete its progress.
+    await SrsService().enrollIfQuizEnabled(targetId, q.id);
+    if (mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.moveQuestionDone)));
+    }
+  }
+
   void _confirmDelete(BuildContext context, Question q) {
     final l10n = AppLocalizations.of(context);
     showDialog(
@@ -331,6 +366,117 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
         ],
       ),
     );
+  }
+}
+
+// ── Move-to-quiz picker dialog ─────────────────────────────────────────────────
+
+/// Shows a searchable flat list of quizzes (excluding [excludeQuizId]), each with
+/// its folder name as a subtitle. Returns the chosen quiz id, or null on cancel.
+Future<String?> _showMoveToQuizDialog({
+  required BuildContext context,
+  required AppDatabase db,
+  required String excludeQuizId,
+}) async {
+  final l10n = AppLocalizations.of(context);
+  final allQuizzes = await db.getAllQuizzes();
+  final available =
+      allQuizzes.where((q) => q.id != excludeQuizId).toList();
+
+  if (!context.mounted) return null;
+
+  if (available.isEmpty) {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.moveToQuizTitle),
+        content: Text(l10n.moveNoOtherQuizzes),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.cancel),
+          ),
+        ],
+      ),
+    );
+    return null;
+  }
+
+  final folders = await db.getAllFolders();
+  if (!context.mounted) return null;
+  final folderTitles = {for (final f in folders) f.id: f.title};
+
+  final searchController = TextEditingController();
+  var query = '';
+  try {
+    return await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.moveToQuizTitle),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: StatefulBuilder(
+            builder: (ctx, setDialogState) {
+              final q = query.toLowerCase().trim();
+              final filtered = q.isEmpty
+                  ? available
+                  : available
+                      .where((quiz) => quiz.title.toLowerCase().contains(q))
+                      .toList();
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: searchController,
+                    autofocus: true,
+                    onTap: collapseSelectionOnTap(searchController),
+                    onChanged: (value) =>
+                        setDialogState(() => query = value),
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search),
+                      hintText: l10n.moveToQuizSearchHint,
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Flexible(
+                    child: filtered.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 24),
+                            child: Text(l10n.searchNoResults),
+                          )
+                        : ListView(
+                            shrinkWrap: true,
+                            children: filtered.map((quiz) {
+                              final folderTitle = quiz.folderId == null
+                                  ? l10n.moveToQuizNoFolder
+                                  : folderTitles[quiz.folderId] ??
+                                      l10n.moveToQuizNoFolder;
+                              return ListTile(
+                                leading: const Icon(Icons.quiz_outlined),
+                                title: Text(quiz.title),
+                                subtitle: Text(folderTitle),
+                                onTap: () => Navigator.pop(ctx, quiz.id),
+                              );
+                            }).toList(),
+                          ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.cancel),
+          ),
+        ],
+      ),
+    );
+  } finally {
+    searchController.dispose();
   }
 }
 

@@ -968,6 +968,42 @@ abstract class AppLocalizations {
   /// **'Root (no folder)'**
   String get moveToRootOption;
 
+  /// No description provided for @moveToQuizMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to quiz'**
+  String get moveToQuizMenu;
+
+  /// No description provided for @moveToQuizTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to quiz'**
+  String get moveToQuizTitle;
+
+  /// No description provided for @moveToQuizSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search quizzes…'**
+  String get moveToQuizSearchHint;
+
+  /// No description provided for @moveNoOtherQuizzes.
+  ///
+  /// In en, this message translates to:
+  /// **'No other quizzes available'**
+  String get moveNoOtherQuizzes;
+
+  /// No description provided for @moveQuestionDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Question moved'**
+  String get moveQuestionDone;
+
+  /// No description provided for @moveToQuizNoFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'No folder'**
+  String get moveToQuizNoFolder;
+
   /// No description provided for @contentPacksTitle.
   ///
   /// In en, this message translates to:
