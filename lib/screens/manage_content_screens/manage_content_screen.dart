@@ -12,10 +12,8 @@ import 'package:leerlus/screens/manage_content_screens/edit_quiz_screen.dart';
 import 'package:leerlus/screens/manage_content_screens/manage_folder_screen.dart';
 import 'package:leerlus/screens/manage_content_screens/manage_questions_screen.dart';
 import 'package:leerlus/services/question_service.dart';
+import 'package:leerlus/utils/lus_export_flow.dart';
 import 'package:leerlus/utils/text_field_selection_fix.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 /// Root management screen. Handles import/export and renders the
 /// root folder contents via [ManageFolderScreen].
@@ -244,62 +242,31 @@ class _ManageContentScreenState extends State<ManageContentScreen> {
 
   // ── .lus export ─────────────────────────────────────────────────
 
-  Future<void> _exportJson(BuildContext context) async {
-    try {
-      final bytes = await db.exportToLus();
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File(p.join(dir.path, 'leerlus_export.lus'));
-      await file.writeAsBytes(bytes);
-
-      if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Exported to ${file.path}')),
-          );
-        }
-      } else {
-        await Share.shareXFiles(
-          [XFile(file.path, mimeType: 'application/zip')],
-          subject: 'Leerlus export',
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        final l10n = AppLocalizations.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.exportFailed(e))),
-        );
-      }
-    }
-  }
+  Future<void> _exportJson(BuildContext context) => runLusExport(
+        context,
+        defaultFileName: 'leerlus_export.lus',
+        startEncode: db.startExportToLus,
+        shareSubject: 'Leerlus export',
+      );
 
   // ── Import (.lus) ────────────────────────────────────────────────
 
-  Future<void> _importJson(BuildContext context) async {
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['lus'],
-      );
-      if (result == null || result.files.single.path == null) return;
-
-      await db.importFromLus(await File(result.files.single.path!).readAsBytes());
-      await QuestionService().refresh();
-
-      if (context.mounted) {
-        final l10n = AppLocalizations.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.importSuccess)),
+  Future<void> _importJson(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return runLusImport(
+      context,
+      loadBytes: () async {
+        final result = await FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: ['lus'],
         );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        final l10n = AppLocalizations.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.importFailed(e))),
-        );
-      }
-    }
+        final path = result?.files.single.path;
+        if (path == null) return null;
+        return File(path).readAsBytes();
+      },
+      startImport: db.startImportFromLus,
+      successMessage: (_) => l10n.importSuccess,
+    );
   }
 }
 

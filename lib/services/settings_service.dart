@@ -92,6 +92,21 @@ class SettingsService {
     }
   }
 
+  // ── Last export directory (desktop save dialog) ───────────────────────────
+
+  static const _kLastExportDir = 'last_export_directory';
+
+  /// The directory last chosen in the desktop "save export" dialog, or null.
+  String? get lastExportDirectory => _box.get(_kLastExportDir) as String?;
+
+  Future<void> setLastExportDirectory(String? path) async {
+    if (path == null) {
+      await _box.delete(_kLastExportDir);
+    } else {
+      await _box.put(_kLastExportDir, path);
+    }
+  }
+
   // ── Animations ───────────────────────────────────────────────────────────
 
   static const _kAnimationsEnabled = 'animations_enabled';

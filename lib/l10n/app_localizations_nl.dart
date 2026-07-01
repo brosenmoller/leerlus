@@ -568,6 +568,12 @@ class AppLocalizationsNl extends AppLocalizations {
   String get importSuccess => 'Importeren geslaagd';
 
   @override
+  String get importInProgress => 'Bezig met importeren…';
+
+  @override
+  String get importCancelled => 'Import geannuleerd';
+
+  @override
   String importFailed(Object error) {
     return 'Importeren mislukt: $error';
   }
@@ -575,6 +581,20 @@ class AppLocalizationsNl extends AppLocalizations {
   @override
   String exportFailed(Object error) {
     return 'Exporteren mislukt: $error';
+  }
+
+  @override
+  String get exportInProgress => 'Bezig met exporteren…';
+
+  @override
+  String get exportSaveDialogTitle => 'Export opslaan';
+
+  @override
+  String get exportCancelled => 'Export geannuleerd';
+
+  @override
+  String exportedTo(Object path) {
+    return 'Geëxporteerd naar $path';
   }
 
   @override

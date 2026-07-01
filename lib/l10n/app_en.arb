@@ -273,6 +273,8 @@
   "contentPacksAlreadyUpToDate": "Already up to date",
   "contentPacksNoneAvailable": "No content packs available",
   "importSuccess": "Import successful",
+  "importInProgress": "Importing…",
+  "importCancelled": "Import cancelled",
   "importFailed": "Import failed: {error}",
   "@importFailed": {
     "placeholders": {
@@ -283,6 +285,15 @@
   "@exportFailed": {
     "placeholders": {
       "error": { "type": "Object" }
+    }
+  },
+  "exportInProgress": "Exporting…",
+  "exportSaveDialogTitle": "Save export",
+  "exportCancelled": "Export cancelled",
+  "exportedTo": "Exported to {path}",
+  "@exportedTo": {
+    "placeholders": {
+      "path": { "type": "Object" }
     }
   },
   "folderContents": "Folder contents",

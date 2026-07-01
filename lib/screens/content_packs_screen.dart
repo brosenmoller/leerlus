@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:leerlus/data/database/app_database.dart';
 import 'package:leerlus/l10n/app_localizations.dart';
 import 'package:leerlus/services/question_service.dart';
+import 'package:leerlus/utils/lus_export_flow.dart';
 import 'package:path/path.dart' as p;
 
 class ContentPacksScreen extends StatefulWidget {
@@ -39,35 +40,42 @@ class _ContentPacksScreenState extends State<ContentPacksScreen> {
   }
 
   Future<void> _importPack(_PackMeta pack) async {
+    final assetPath = 'assets/content_packs/${pack.file}';
+    final l10n = AppLocalizations.of(context);
+    String packMessage(int count) => count == 0
+        ? l10n.contentPacksAlreadyUpToDate
+        : l10n.contentPacksImportedCount(count);
+
+    // .lus packs can be large — decode behind the debounced progress dialog.
+    if (p.extension(pack.file).toLowerCase() == '.lus') {
+      await runLusImport(
+        context,
+        loadBytes: () async {
+          final byteData = await rootBundle.load(assetPath);
+          return byteData.buffer.asUint8List(
+            byteData.offsetInBytes,
+            byteData.lengthInBytes,
+          );
+        },
+        startImport: widget.db.startImportFromLus,
+        successMessage: packMessage,
+      );
+      return;
+    }
+
+    // JSON packs are small; import inline without a progress dialog.
     try {
-      final assetPath = 'assets/content_packs/${pack.file}';
-      final int count;
-
-      if (p.extension(pack.file).toLowerCase() == '.lus') {
-        final byteData = await rootBundle.load(assetPath);
-        count = await widget.db.importFromLus(
-          byteData.buffer.asUint8List(byteData.offsetInBytes, byteData.lengthInBytes),
-        );
-      } else {
-        final raw = await rootBundle.loadString(assetPath);
-        final data = jsonDecode(raw) as Map<String, dynamic>;
-        count = await widget.db.importFromJson(data);
-      }
-
+      final raw = await rootBundle.loadString(assetPath);
+      final data = jsonDecode(raw) as Map<String, dynamic>;
+      final count = await widget.db.importFromJson(data);
       await QuestionService().refresh();
       if (mounted) {
-        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              count == 0 ? l10n.contentPacksAlreadyUpToDate : l10n.contentPacksImportedCount(count),
-            ),
-          ),
+          SnackBar(content: Text(packMessage(count))),
         );
       }
     } catch (e) {
       if (mounted) {
-        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l10n.importFailed(e))),
         );

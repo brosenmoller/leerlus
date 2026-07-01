@@ -1010,6 +1010,18 @@ abstract class AppLocalizations {
   /// **'Import successful'**
   String get importSuccess;
 
+  /// No description provided for @importInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Importing…'**
+  String get importInProgress;
+
+  /// No description provided for @importCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Import cancelled'**
+  String get importCancelled;
+
   /// No description provided for @importFailed.
   ///
   /// In en, this message translates to:
@@ -1021,6 +1033,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Export failed: {error}'**
   String exportFailed(Object error);
+
+  /// No description provided for @exportInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Exporting…'**
+  String get exportInProgress;
+
+  /// No description provided for @exportSaveDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Save export'**
+  String get exportSaveDialogTitle;
+
+  /// No description provided for @exportCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Export cancelled'**
+  String get exportCancelled;
+
+  /// No description provided for @exportedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Exported to {path}'**
+  String exportedTo(Object path);
 
   /// No description provided for @folderContents.
   ///

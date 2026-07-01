@@ -11,6 +11,20 @@ import 'tables.dart';
 
 part 'app_database.g.dart';
 
+/// Wraps a background [CancellableLusDecode] with the main-isolate DB import
+/// that follows it. [result] completes with the number of new items inserted;
+/// [cancel] aborts the (heavy, cancellable) decode before any DB write happens.
+class CancellableLusImport {
+  final CancellableLusDecode _decode;
+  final Future<int> Function(Map<String, dynamic>) _import;
+
+  CancellableLusImport._(this._decode, this._import);
+
+  Future<int> get result async => _import(await _decode.result);
+
+  void cancel() => _decode.cancel();
+}
+
 @DriftDatabase(tables: [Folders, Quizzes, Questions, QuizQuestions, Tombstones])
 class AppDatabase extends _$AppDatabase {
   /// The single live instance, set once in main.dart via [AppDatabase()].
@@ -187,8 +201,31 @@ class AppDatabase extends _$AppDatabase {
   Future<Uint8List> exportQuizToLus(String quizId) async =>
       LusArchiveService.packToLus(await exportQuizToJsonMap(quizId));
 
+  /// Gathers the export content and starts a cancellable background ZIP encode.
+  /// The DB queries and image reads happen here (async, non-blocking); only the
+  /// CPU-heavy encoding runs in the spawned isolate.
+  Future<CancellableLusEncode> startExportToLus() async =>
+      CancellableLusEncode.start(
+          await LusArchiveService.gatherEntries(await exportToJsonMap()));
+
+  Future<CancellableLusEncode> startExportFolderToLus(String folderId) async =>
+      CancellableLusEncode.start(await LusArchiveService.gatherEntries(
+          await exportFolderToJsonMap(folderId)));
+
+  Future<CancellableLusEncode> startExportQuizToLus(String quizId) async =>
+      CancellableLusEncode.start(await LusArchiveService.gatherEntries(
+          await exportQuizToJsonMap(quizId)));
+
   Future<int> importFromLus(Uint8List lusBytes) async =>
       importFromJson(await LusArchiveService.unpackFromLus(lusBytes));
+
+  /// Starts a cancellable background decode of [bytes] and returns a handle
+  /// whose [CancellableLusImport.result] runs the DB import (on this isolate)
+  /// and completes with the number of new items inserted.
+  Future<CancellableLusImport> startImportFromLus(Uint8List bytes) async {
+    final decode = await CancellableLusDecode.start(bytes);
+    return CancellableLusImport._(decode, importFromJson);
+  }
 
   // ─── Internal helpers ─────────────────────────────────────────
 

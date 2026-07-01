@@ -563,6 +563,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get importSuccess => 'Import successful';
 
   @override
+  String get importInProgress => 'Importing…';
+
+  @override
+  String get importCancelled => 'Import cancelled';
+
+  @override
   String importFailed(Object error) {
     return 'Import failed: $error';
   }
@@ -570,6 +576,20 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String exportFailed(Object error) {
     return 'Export failed: $error';
+  }
+
+  @override
+  String get exportInProgress => 'Exporting…';
+
+  @override
+  String get exportSaveDialogTitle => 'Save export';
+
+  @override
+  String get exportCancelled => 'Export cancelled';
+
+  @override
+  String exportedTo(Object path) {
+    return 'Exported to $path';
   }
 
   @override

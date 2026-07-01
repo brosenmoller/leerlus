@@ -9,10 +9,9 @@ import 'package:leerlus/screens/manage_content_screens/edit_folder_screen.dart';
 import 'package:leerlus/screens/manage_content_screens/edit_quiz_screen.dart';
 import 'package:leerlus/screens/manage_content_screens/manage_questions_screen.dart';
 import 'package:leerlus/services/question_service.dart';
+import 'package:leerlus/utils/lus_export_flow.dart';
 import 'package:leerlus/widgets/app_image.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 /// Shows the contents (subfolders + quizzes) of a folder, or the root if
 /// [folder] is null. Navigating into a subfolder pushes another instance.
@@ -297,34 +296,12 @@ class _FolderTileState extends State<_FolderTile> {
     if (ok && mounted) setState(() => _inManifest = true);
   }
 
-  Future<void> _exportFolder(BuildContext context) async {
-    try {
-      final bytes = await db.exportFolderToLus(f.id);
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File(p.join(dir.path, _fileName));
-      await file.writeAsBytes(bytes);
-
-      if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Exported to ${file.path}')),
-          );
-        }
-      } else {
-        await Share.shareXFiles(
-          [XFile(file.path, mimeType: 'application/zip')],
-          subject: 'Leerlus folder export',
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        final l10n = AppLocalizations.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.exportFailed(e))),
-        );
-      }
-    }
-  }
+  Future<void> _exportFolder(BuildContext context) => runLusExport(
+        context,
+        defaultFileName: _fileName,
+        startEncode: () => db.startExportFolderToLus(f.id),
+        shareSubject: 'Leerlus folder export',
+      );
 
   Future<void> _confirmDeleteFolder(BuildContext context) async {
     final l10n = AppLocalizations.of(context);
@@ -540,34 +517,12 @@ class _QuizTileState extends State<_QuizTile> {
     if (ok && mounted) setState(() => _inManifest = true);
   }
 
-  Future<void> _exportQuiz(BuildContext context) async {
-    try {
-      final bytes = await db.exportQuizToLus(q.id);
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File(p.join(dir.path, _fileName));
-      await file.writeAsBytes(bytes);
-
-      if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Exported to ${file.path}')),
-          );
-        }
-      } else {
-        await Share.shareXFiles(
-          [XFile(file.path, mimeType: 'application/zip')],
-          subject: 'Leerlus quiz export',
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        final l10n = AppLocalizations.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.exportFailed(e))),
-        );
-      }
-    }
-  }
+  Future<void> _exportQuiz(BuildContext context) => runLusExport(
+        context,
+        defaultFileName: _fileName,
+        startEncode: () => db.startExportQuizToLus(q.id),
+        shareSubject: 'Leerlus quiz export',
+      );
 
   Future<void> _confirmDeleteQuiz(BuildContext context) async {
     final l10n = AppLocalizations.of(context);
