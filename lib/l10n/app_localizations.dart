@@ -998,6 +998,48 @@ abstract class AppLocalizations {
   /// **'Question moved'**
   String get moveQuestionDone;
 
+  /// No description provided for @selectItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get selectItems;
+
+  /// No description provided for @selectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all'**
+  String get selectAll;
+
+  /// No description provided for @nSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 selected} other{{count} selected}}'**
+  String nSelected(int count);
+
+  /// No description provided for @deleteNQuestionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Delete 1 question?} other{Delete {count} questions?}}'**
+  String deleteNQuestionsTitle(int count);
+
+  /// No description provided for @deleteNQuestionsDone.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 question deleted} other{{count} questions deleted}}'**
+  String deleteNQuestionsDone(int count);
+
+  /// No description provided for @moveNQuestionsDone.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 question moved} other{{count} questions moved}}'**
+  String moveNQuestionsDone(int count);
+
+  /// No description provided for @duplicateNQuestionsDone.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 question duplicated} other{{count} questions duplicated}}'**
+  String duplicateNQuestionsDone(int count);
+
   /// No description provided for @moveToQuizNoFolder.
   ///
   /// In en, this message translates to:

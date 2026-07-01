@@ -555,6 +555,67 @@ class AppLocalizationsEn extends AppLocalizations {
   String get moveQuestionDone => 'Question moved';
 
   @override
+  String get selectItems => 'Select';
+
+  @override
+  String get selectAll => 'Select all';
+
+  @override
+  String nSelected(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count selected',
+      one: '1 selected',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String deleteNQuestionsTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Delete $count questions?',
+      one: 'Delete 1 question?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String deleteNQuestionsDone(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count questions deleted',
+      one: '1 question deleted',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String moveNQuestionsDone(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count questions moved',
+      one: '1 question moved',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String duplicateNQuestionsDone(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count questions duplicated',
+      one: '1 question duplicated',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get moveToQuizNoFolder => 'No folder';
 
   @override

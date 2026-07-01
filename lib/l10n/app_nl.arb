@@ -211,6 +211,38 @@
   "moveToQuizSearchHint": "Zoek quizzes…",
   "moveNoOtherQuizzes": "Geen andere quizzes beschikbaar",
   "moveQuestionDone": "Vraag verplaatst",
+  "selectItems": "Selecteren",
+  "selectAll": "Alles selecteren",
+  "nSelected": "{count, plural, =1{1 geselecteerd} other{{count} geselecteerd}}",
+  "@nSelected": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "deleteNQuestionsTitle": "{count, plural, =1{1 vraag verwijderen?} other{{count} vragen verwijderen?}}",
+  "@deleteNQuestionsTitle": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "deleteNQuestionsDone": "{count, plural, =1{1 vraag verwijderd} other{{count} vragen verwijderd}}",
+  "@deleteNQuestionsDone": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "moveNQuestionsDone": "{count, plural, =1{1 vraag verplaatst} other{{count} vragen verplaatst}}",
+  "@moveNQuestionsDone": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "duplicateNQuestionsDone": "{count, plural, =1{1 vraag gedupliceerd} other{{count} vragen gedupliceerd}}",
+  "@duplicateNQuestionsDone": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "moveToQuizNoFolder": "Geen map",
   "contentPacksTitle": "Inhoudspakketten",
   "contentPacksTooltip": "Inhoudspakketten bekijken",

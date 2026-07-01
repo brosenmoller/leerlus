@@ -266,6 +266,38 @@
   "moveToQuizSearchHint": "Search quizzes…",
   "moveNoOtherQuizzes": "No other quizzes available",
   "moveQuestionDone": "Question moved",
+  "selectItems": "Select",
+  "selectAll": "Select all",
+  "nSelected": "{count, plural, =1{1 selected} other{{count} selected}}",
+  "@nSelected": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "deleteNQuestionsTitle": "{count, plural, =1{Delete 1 question?} other{Delete {count} questions?}}",
+  "@deleteNQuestionsTitle": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "deleteNQuestionsDone": "{count, plural, =1{1 question deleted} other{{count} questions deleted}}",
+  "@deleteNQuestionsDone": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "moveNQuestionsDone": "{count, plural, =1{1 question moved} other{{count} questions moved}}",
+  "@moveNQuestionsDone": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "duplicateNQuestionsDone": "{count, plural, =1{1 question duplicated} other{{count} questions duplicated}}",
+  "@duplicateNQuestionsDone": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "moveToQuizNoFolder": "No folder",
   "contentPacksTitle": "Content Packs",
   "contentPacksTooltip": "Browse content packs",

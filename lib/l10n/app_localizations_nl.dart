@@ -560,6 +560,67 @@ class AppLocalizationsNl extends AppLocalizations {
   String get moveQuestionDone => 'Vraag verplaatst';
 
   @override
+  String get selectItems => 'Selecteren';
+
+  @override
+  String get selectAll => 'Alles selecteren';
+
+  @override
+  String nSelected(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count geselecteerd',
+      one: '1 geselecteerd',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String deleteNQuestionsTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count vragen verwijderen?',
+      one: '1 vraag verwijderen?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String deleteNQuestionsDone(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count vragen verwijderd',
+      one: '1 vraag verwijderd',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String moveNQuestionsDone(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count vragen verplaatst',
+      one: '1 vraag verplaatst',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String duplicateNQuestionsDone(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count vragen gedupliceerd',
+      one: '1 vraag gedupliceerd',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get moveToQuizNoFolder => 'Geen map';
 
   @override
