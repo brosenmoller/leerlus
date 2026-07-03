@@ -78,6 +78,12 @@ class _FlashcardWidgetState extends State<FlashcardWidget>
     final frontOcclusion =
         widget.question.occlusionDataByImage[_sidesSwapped ? 'back' : 'front'];
 
+    // A face showing both an image and text needs more vertical room, so the
+    // card switches to a portrait shape whenever either side has both.
+    final frontHasBoth = frontImagePath != null && frontText != null;
+    final backHasBoth = backImagePath != null && backText != null;
+    final cardAspectRatio = (frontHasBoth || backHasBoth) ? 4 / 5 : 5 / 4;
+
     // The answer buttons are always in the layout tree to anchor the button
     // section height. They fade in on completion; the flip button is overlaid
     // as a positioned child so it never affects layout height.
@@ -154,7 +160,7 @@ class _FlashcardWidgetState extends State<FlashcardWidget>
                   child: Align(
                     alignment: Alignment.center,
                     child: AspectRatio(
-                      aspectRatio: 5 / 4,
+                      aspectRatio: cardAspectRatio,
                       child: AnimatedBuilder(
                         animation: _controller,
                         builder: (context, _) {
@@ -234,7 +240,7 @@ class _FlashcardWidgetState extends State<FlashcardWidget>
   }
 }
 
-class _CardFace extends StatelessWidget {
+class _CardFace extends StatefulWidget {
   final String label;
   final String? text;
   final String? imagePath;
@@ -252,11 +258,49 @@ class _CardFace extends StatelessWidget {
   });
 
   @override
+  State<_CardFace> createState() => _CardFaceState();
+}
+
+class _CardFaceState extends State<_CardFace> {
+  // Real aspect ratio of the image, resolved async when occlusion is present so
+  // the overlay is painted on an AspectRatio that exactly matches the image
+  // (no letterboxing offset). Mirrors QuestionImage.
+  double? _aspectRatio;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolveAspectRatioIfNeeded();
+  }
+
+  @override
+  void didUpdateWidget(_CardFace old) {
+    super.didUpdateWidget(old);
+    if (widget.imagePath != old.imagePath) {
+      _aspectRatio = null;
+      _resolveAspectRatioIfNeeded();
+    }
+  }
+
+  void _resolveAspectRatioIfNeeded() {
+    final path = widget.imagePath;
+    if (widget.occlusionData == null || path == null) return;
+    resolveImageAspectRatio(path).then((r) {
+      if (mounted) setState(() => _aspectRatio = r);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final label = widget.label;
+    final text = widget.text;
+    final imagePath = widget.imagePath;
+    final occlusionData = widget.occlusionData;
+    final tapToFlip = widget.tapToFlip;
 
     return GestureDetector(
-      onTap: tapToFlip ? onTap : null,
+      onTap: tapToFlip ? widget.onTap : null,
       child: Card(
         elevation: 3,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -276,28 +320,37 @@ class _CardFace extends StatelessWidget {
               const Divider(height: 20),
               if (imagePath != null)
                 Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: occlusionData != null
-                        ? OccludedImage(
-                            imagePath: imagePath,
-                            occlusionData: occlusionData!,
-                            revealed: false,
-                          )
-                        : AppImage(path: imagePath, fit: BoxFit.contain),
+                  child: Center(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      // With occlusion, paint the overlay on an AspectRatio that
+                      // matches the image so hidden/highlight areas land exactly
+                      // on it. Until the ratio resolves (or without occlusion),
+                      // fall back to a plain contained image.
+                      child: occlusionData != null && _aspectRatio != null
+                          ? AspectRatio(
+                              aspectRatio: _aspectRatio!,
+                              child: OccludedImage(
+                                imagePath: imagePath,
+                                occlusionData: occlusionData,
+                                revealed: false,
+                              ),
+                            )
+                          : AppImage(path: imagePath, fit: BoxFit.contain),
+                    ),
                   ),
                 )
               else if (text != null)
                 Expanded(
                   child: AutoScaleText(
-                    text: text!,
+                    text: text,
                     style: theme.textTheme.titleLarge,
                   ),
                 ),
               if (imagePath != null && text != null) ...[
                 const SizedBox(height: 12),
                 Text(
-                  text!,
+                  text,
                   style: theme.textTheme.titleLarge,
                   textAlign: TextAlign.center,
                 ),
