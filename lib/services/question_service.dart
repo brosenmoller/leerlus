@@ -226,6 +226,15 @@ class QuestionService {
 
   QuestionData? getQuestion(String id) => _questions[id];
 
+  /// The id of the first quiz that contains [questionId], or null if none.
+  String? getQuizIdForQuestion(String questionId) {
+    _ensureInitialized();
+    for (final quiz in _quizzes.values) {
+      if (quiz.questionIds.contains(questionId)) return quiz.id;
+    }
+    return null;
+  }
+
   List<QuestionData> getQuestionsForQuiz(String quizId) {
     _ensureInitialized();
     final quiz = _quizzes[quizId];

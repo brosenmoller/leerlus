@@ -198,13 +198,16 @@ class AppLocalizationsNl extends AppLocalizations {
   String get quizzesSection => 'Quizzen';
 
   @override
+  String get questionsSection => 'Vragen';
+
+  @override
   String get emptyFolder => 'Hier is nog niets.';
 
   @override
   String get searchTooltip => 'Zoeken';
 
   @override
-  String get searchHint => 'Zoek mappen & quizzen…';
+  String get searchHint => 'Zoek mappen, quizzen & vragen…';
 
   @override
   String get searchNoResults => 'Geen resultaten gevonden.';

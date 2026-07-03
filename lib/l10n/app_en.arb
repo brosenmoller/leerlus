@@ -79,10 +79,11 @@
 
   "foldersSection": "Folders",
   "quizzesSection": "Quizzes",
+  "questionsSection": "Questions",
   "emptyFolder": "Nothing here yet.",
 
   "searchTooltip": "Search",
-  "searchHint": "Search folders & quizzes…",
+  "searchHint": "Search folders, quizzes & questions…",
   "searchNoResults": "No results found.",
   "searchQuestionsHint": "Search questions…",
 

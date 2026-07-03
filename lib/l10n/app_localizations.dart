@@ -446,6 +446,12 @@ abstract class AppLocalizations {
   /// **'Quizzes'**
   String get quizzesSection;
 
+  /// No description provided for @questionsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Questions'**
+  String get questionsSection;
+
   /// No description provided for @emptyFolder.
   ///
   /// In en, this message translates to:
@@ -461,7 +467,7 @@ abstract class AppLocalizations {
   /// No description provided for @searchHint.
   ///
   /// In en, this message translates to:
-  /// **'Search folders & quizzes…'**
+  /// **'Search folders, quizzes & questions…'**
   String get searchHint;
 
   /// No description provided for @searchNoResults.

@@ -560,6 +560,8 @@ class AppDatabase extends _$AppDatabase {
 
   Future<List<Question>> getAllQuestions() => select(questions).get();
 
+  Stream<List<Question>> watchAllQuestions() => select(questions).watch();
+
   Future<List<Question>> getQuestionsForQuiz(String quizId) {
     final query = select(questions).join([
       innerJoin(

@@ -11,10 +11,15 @@ class ManageQuestionsScreen extends StatefulWidget {
   final AppDatabase db;
   final Quiz quiz;
 
+  /// When set, the screen opens scrolled to and highlighting this question
+  /// (used when navigating here from the global content search).
+  final String? highlightQuestionId;
+
   const ManageQuestionsScreen({
     super.key,
     required this.db,
     required this.quiz,
+    this.highlightQuestionId,
   });
 
   @override
@@ -27,11 +32,25 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
   final _searchController = TextEditingController();
   String? _highlightId;
   bool _pendingScrollToEnd = false;
+  bool _pendingScrollToHighlight = false;
+  final _highlightKey = GlobalKey();
   bool _searching = false;
   String _query = '';
   bool _selectionMode = false;
   final Set<String> _selectedIds = {};
   List<Question> _visibleQuestions = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.highlightQuestionId != null) {
+      _highlightId = widget.highlightQuestionId;
+      _pendingScrollToHighlight = true;
+      Future.delayed(const Duration(milliseconds: 1800), () {
+        if (mounted) setState(() => _highlightId = null);
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -272,6 +291,25 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
             });
           }
 
+          // Scroll an arbitrary highlighted question into view (e.g. when
+          // navigating here from the global search). Tiles vary in height, so
+          // use ensureVisible on the tile's key rather than an index estimate.
+          if (_pendingScrollToHighlight &&
+              filtered.any((q) => q.id == _highlightId)) {
+            _pendingScrollToHighlight = false;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              final ctx = _highlightKey.currentContext;
+              if (ctx != null) {
+                Scrollable.ensureVisible(
+                  ctx,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOut,
+                  alignment: 0.3,
+                );
+              }
+            });
+          }
+
           return Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
@@ -285,6 +323,7 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
                   final isHighlighted = question.id == _highlightId;
                   final isSelected = _selectedIds.contains(question.id);
                   return ListTile(
+                    key: isHighlighted ? _highlightKey : null,
                     tileColor: isHighlighted || isSelected
                         ? Theme.of(context)
                             .colorScheme

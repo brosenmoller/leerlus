@@ -79,10 +79,11 @@
 
   "foldersSection": "Mappen",
   "quizzesSection": "Quizzen",
+  "questionsSection": "Vragen",
   "emptyFolder": "Hier is nog niets.",
 
   "searchTooltip": "Zoeken",
-  "searchHint": "Zoek mappen & quizzen…",
+  "searchHint": "Zoek mappen, quizzen & vragen…",
   "searchNoResults": "Geen resultaten gevonden.",
   "searchQuestionsHint": "Zoek vragen…",
 

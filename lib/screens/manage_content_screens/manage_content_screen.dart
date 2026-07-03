@@ -36,6 +36,12 @@ class _ManageContentScreenState extends State<ManageContentScreen> {
   bool _searching = false;
   String _query = '';
 
+  // Which result sections the global search shows. Questions is off by default
+  // so results stay uncluttered until the user opts in.
+  bool _showFolders = true;
+  bool _showQuizzes = true;
+  bool _showQuestions = false;
+
   @override
   void initState() {
     super.initState();
@@ -53,6 +59,9 @@ class _ManageContentScreenState extends State<ManageContentScreen> {
       _searching = false;
       _query = '';
       _searchController.clear();
+      _showFolders = true;
+      _showQuizzes = true;
+      _showQuestions = false;
     });
   }
 
@@ -148,19 +157,63 @@ class _ManageContentScreenState extends State<ManageContentScreen> {
                 ),
               ],
             ),
-      // Reuse the folder contents view — null folder = root level
-      body: _query.trim().isEmpty
-          ? FolderContentsBody(db: db, folder: null)
-          : _buildSearchResults(l10n),
+      // While searching, show the filter chips immediately (even before any
+      // text is typed); below them the root folder view or the live results.
+      // Reuse the folder contents view — null folder = root level.
+      body: _searching
+          ? Column(
+              children: [
+                _buildFilterChips(l10n),
+                Expanded(
+                  child: _query.trim().isEmpty
+                      ? FolderContentsBody(db: db, folder: null)
+                      : _buildResultsList(l10n),
+                ),
+              ],
+            )
+          : FolderContentsBody(db: db, folder: null),
     );
   }
 
-  // ── Folder & quiz search results ────────────────────────────────
+  // ── Folder, quiz & question search results ──────────────────────
 
-  /// Flat, case-insensitive search across every folder and quiz in the app.
-  /// Tapping a folder opens its management screen; tapping a quiz opens its
-  /// question management screen.
-  Widget _buildSearchResults(AppLocalizations l10n) {
+  /// Flat, case-insensitive search across every folder, quiz and question in
+  /// the app. The three [FilterChip]s pick which sections are shown. Tapping a
+  /// folder opens its management screen; tapping a quiz or question opens the
+  /// question management screen (questions are scrolled to and highlighted).
+  Widget _buildFilterChips(AppLocalizations l10n) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 800),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+          child: Wrap(
+            spacing: 8,
+            children: [
+              FilterChip(
+                label: Text(l10n.foldersSection),
+                selected: _showFolders,
+                onSelected: (v) => setState(() => _showFolders = v),
+              ),
+              FilterChip(
+                label: Text(l10n.quizzesSection),
+                selected: _showQuizzes,
+                onSelected: (v) => setState(() => _showQuizzes = v),
+              ),
+              FilterChip(
+                label: Text(l10n.questionsSection),
+                selected: _showQuestions,
+                onSelected: (v) => setState(() => _showQuestions = v),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResultsList(AppLocalizations l10n) {
     final query = _query.toLowerCase().trim();
     return StreamBuilder<List<Folder>>(
       stream: db.watchAllFolders(),
@@ -168,64 +221,117 @@ class _ManageContentScreenState extends State<ManageContentScreen> {
         return StreamBuilder<List<Quiz>>(
           stream: db.watchAllQuizzes(),
           builder: (context, quizSnap) {
-            if (!folderSnap.hasData || !quizSnap.hasData) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            final folders = folderSnap.data!
-                .where((f) => f.title.toLowerCase().contains(query))
-                .toList()
-              ..sort((a, b) => a.title.compareTo(b.title));
-            final quizzes = quizSnap.data!
-                .where((q) => q.title.toLowerCase().contains(query))
-                .toList()
-              ..sort((a, b) => a.title.compareTo(b.title));
+            return StreamBuilder<List<Question>>(
+              stream: db.watchAllQuestions(),
+              builder: (context, questionSnap) {
+                if (!folderSnap.hasData ||
+                    !quizSnap.hasData ||
+                    !questionSnap.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-            if (folders.isEmpty && quizzes.isEmpty) {
-              return Center(child: Text(l10n.searchNoResults));
-            }
+                final folders = _showFolders
+                    ? (folderSnap.data!
+                        .where((f) => f.title.toLowerCase().contains(query))
+                        .toList()
+                      ..sort((a, b) => a.title.compareTo(b.title)))
+                    : const <Folder>[];
+                final quizzes = _showQuizzes
+                    ? (quizSnap.data!
+                        .where((q) => q.title.toLowerCase().contains(query))
+                        .toList()
+                      ..sort((a, b) => a.title.compareTo(b.title)))
+                    : const <Quiz>[];
 
-            return Align(
-              alignment: Alignment.topCenter,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 800),
-                child: ListView(
-                  padding: const EdgeInsets.only(bottom: 100),
-                  children: [
-                    if (folders.isNotEmpty) ...[
-                      _SearchSectionHeader(label: l10n.foldersSection),
-                      ...folders.map((f) => ListTile(
-                            leading: const CircleAvatar(
-                                child: Icon(Icons.folder_outlined)),
-                            title: Text(f.title),
-                            subtitle: _parentSubtitle(f.parentFolderId),
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    ManageFolderScreen(db: db, folder: f),
-                              ),
-                            ),
-                          )),
-                    ],
-                    if (quizzes.isNotEmpty) ...[
-                      _SearchSectionHeader(label: l10n.quizzesSection),
-                      ...quizzes.map((quiz) => ListTile(
-                            leading: const CircleAvatar(
-                                child: Icon(Icons.quiz_outlined)),
-                            title: Text(quiz.title),
-                            subtitle: _parentSubtitle(quiz.folderId),
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    ManageQuestionsScreen(db: db, quiz: quiz),
-                              ),
-                            ),
-                          )),
-                    ],
-                  ],
-                ),
-              ),
+                // Resolve each matching question to the quiz it lives in so the
+                // tile knows where to navigate; skip orphans with no owner.
+                final quizById = {for (final q in quizSnap.data!) q.id: q};
+                final questions = <_QuestionHit>[];
+                if (_showQuestions) {
+                  for (final q in questionSnap.data!) {
+                    if (!q.questionText.toLowerCase().contains(query)) continue;
+                    final quizId =
+                        QuestionService().getQuizIdForQuestion(q.id);
+                    final quiz = quizId == null ? null : quizById[quizId];
+                    if (quiz == null) continue;
+                    questions.add(_QuestionHit(q, quiz));
+                  }
+                  questions.sort((a, b) => a.question.questionText
+                      .toLowerCase()
+                      .compareTo(b.question.questionText.toLowerCase()));
+                }
+
+                if (folders.isEmpty && quizzes.isEmpty && questions.isEmpty) {
+                  return Center(child: Text(l10n.searchNoResults));
+                }
+
+                return Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 800),
+                    child: ListView(
+                      padding: const EdgeInsets.only(bottom: 100),
+                      children: [
+                        if (folders.isNotEmpty) ...[
+                          _SearchSectionHeader(label: l10n.foldersSection),
+                          ...folders.map((f) => ListTile(
+                                leading: const CircleAvatar(
+                                    child: Icon(Icons.folder_outlined)),
+                                title: Text(f.title),
+                                subtitle: _parentSubtitle(f.parentFolderId),
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        ManageFolderScreen(db: db, folder: f),
+                                  ),
+                                ),
+                              )),
+                        ],
+                        if (quizzes.isNotEmpty) ...[
+                          _SearchSectionHeader(label: l10n.quizzesSection),
+                          ...quizzes.map((quiz) => ListTile(
+                                leading: const CircleAvatar(
+                                    child: Icon(Icons.quiz_outlined)),
+                                title: Text(quiz.title),
+                                subtitle: _parentSubtitle(quiz.folderId),
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ManageQuestionsScreen(
+                                        db: db, quiz: quiz),
+                                  ),
+                                ),
+                              )),
+                        ],
+                        if (questions.isNotEmpty) ...[
+                          _SearchSectionHeader(label: l10n.questionsSection),
+                          ...questions.map((hit) => ListTile(
+                                leading: const CircleAvatar(
+                                    child: Icon(Icons.help_outline)),
+                                title: Text(
+                                  hit.question.questionText,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                subtitle: Text(hit.quiz.title),
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ManageQuestionsScreen(
+                                      db: db,
+                                      quiz: hit.quiz,
+                                      highlightQuestionId: hit.question.id,
+                                    ),
+                                  ),
+                                ),
+                              )),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              },
             );
           },
         );
@@ -268,6 +374,13 @@ class _ManageContentScreenState extends State<ManageContentScreen> {
       successMessage: (_) => l10n.importSuccess,
     );
   }
+}
+
+/// A question search hit paired with the quiz it belongs to (for navigation).
+class _QuestionHit {
+  final Question question;
+  final Quiz quiz;
+  const _QuestionHit(this.question, this.quiz);
 }
 
 /// Section header used in the folder/quiz search results list.
