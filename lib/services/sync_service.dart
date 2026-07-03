@@ -1156,6 +1156,7 @@ class SyncService {
         'lastReviewed': data.lastReviewed.toIso8601String(),
         'nextReview': data.nextReview.toIso8601String(),
         'spacedRepetitionEnabled': data.spacedRepetitionEnabled,
+        'enrollmentChangedAt': data.enrollmentChangedAt?.toIso8601String(),
       });
     }
     return out;
@@ -1606,6 +1607,9 @@ class SyncService {
         easeFactor: (srsJson['easeFactor'] as num).toDouble(),
         intervalSeconds: (srsJson['intervalSeconds'] as num).toDouble(),
         spacedRepetitionEnabled: srsJson['spacedRepetitionEnabled'] as bool,
+        enrollmentChangedAt: srsJson['enrollmentChangedAt'] != null
+            ? DateTime.parse(srsJson['enrollmentChangedAt'] as String)
+            : null,
         lastReviewed: DateTime.parse(srsJson['lastReviewed'] as String),
         nextReview: DateTime.parse(srsJson['nextReview'] as String),
       ));

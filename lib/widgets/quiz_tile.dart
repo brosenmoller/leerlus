@@ -86,9 +86,7 @@ class _QuizTileState extends State<QuizTile> {
     setState(() => _isSrsEnabled = !_isSrsEnabled);
     final questions = _srsService.getQuestionsForQuiz(quiz: widget.quiz);
     for (final question in questions) {
-      final userData = _srsService.getUserData(question);
-      userData.spacedRepetitionEnabled = _isSrsEnabled;
-      await _srsService.updateUserData(userData);
+      await _srsService.setQuestionSrs(question, _isSrsEnabled);
     }
   }
 

@@ -22,6 +22,7 @@ class UserQuestionDataAdapter extends TypeAdapter<UserQuestionData> {
       easeFactor: fields[2] as double,
       intervalSeconds: fields[3] as double,
       spacedRepetitionEnabled: fields[6] as bool,
+      enrollmentChangedAt: fields[7] as DateTime?,
       lastReviewed: fields[4] as DateTime?,
       nextReview: fields[5] as DateTime?,
     );
@@ -30,7 +31,7 @@ class UserQuestionDataAdapter extends TypeAdapter<UserQuestionData> {
   @override
   void write(BinaryWriter writer, UserQuestionData obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.questionId)
       ..writeByte(1)
@@ -44,7 +45,9 @@ class UserQuestionDataAdapter extends TypeAdapter<UserQuestionData> {
       ..writeByte(5)
       ..write(obj.nextReview)
       ..writeByte(6)
-      ..write(obj.spacedRepetitionEnabled);
+      ..write(obj.spacedRepetitionEnabled)
+      ..writeByte(7)
+      ..write(obj.enrollmentChangedAt);
   }
 
   @override

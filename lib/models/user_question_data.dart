@@ -26,12 +26,19 @@ class UserQuestionData extends HiveObject {
   @HiveField(6)
   bool spacedRepetitionEnabled;
 
+  /// When [spacedRepetitionEnabled] was last toggled. Drives enrollment
+  /// last-write-wins during sync independently of [lastReviewed] (which only
+  /// advances on a review). Null for entries written before this field existed.
+  @HiveField(7)
+  DateTime? enrollmentChangedAt;
+
   UserQuestionData({
     required this.questionId,
     this.streak = 0,
     this.easeFactor = 2.0,
     this.intervalSeconds = 0,
     this.spacedRepetitionEnabled = false,
+    this.enrollmentChangedAt,
     DateTime? lastReviewed,
     DateTime? nextReview,
   })  : lastReviewed = lastReviewed ?? DateTime.now(),
@@ -44,6 +51,7 @@ class UserQuestionData extends HiveObject {
       easeFactor: easeFactor,
       intervalSeconds: intervalSeconds,
       spacedRepetitionEnabled: spacedRepetitionEnabled,
+      enrollmentChangedAt: enrollmentChangedAt,
       lastReviewed: lastReviewed,
       nextReview: nextReview,
     );
@@ -129,6 +137,7 @@ class UserQuestionData extends HiveObject {
   @override
   String toString() {
     return 'UserQuestionData(questionId: $questionId, spacedRepetitionEnabled: $spacedRepetitionEnabled, '
+        'enrollmentChangedAt: $enrollmentChangedAt, '
         'streak: $streak, intervalSeconds: $intervalSeconds, nextReview: $nextReview)';
   }
 }

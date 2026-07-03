@@ -62,6 +62,7 @@ class SrsService {
   Future<void> setQuestionSrs(QuestionData question, bool enabled) async {
     final userData = getUserData(question);
     userData.spacedRepetitionEnabled = enabled;
+    userData.enrollmentChangedAt = DateTime.now();
     await _box.put(question.id, userData);
     enrollmentRevision.value++;
   }
@@ -83,6 +84,7 @@ class SrsService {
           easeFactor: SettingsService().srsSettings.initialEase,
         );
     data.spacedRepetitionEnabled = true;
+    data.enrollmentChangedAt = DateTime.now();
     await _box.put(questionId, data);
   }
 
@@ -106,6 +108,7 @@ class SrsService {
               easeFactor: SettingsService().srsSettings.initialEase,
             );
         entry.spacedRepetitionEnabled = true;
+        entry.enrollmentChangedAt = DateTime.now();
         await _box.put(id, entry);
         changed++;
       }
@@ -206,9 +209,28 @@ class SrsService {
     } else {
       scheduleFromIncoming = incomingNewer; // tie/both → last-write-wins
     }
-    final bool enabled = incomingNewer
+
+    // Enrollment is resolved by its own timestamp so a disable (which never
+    // advances lastReviewed) still propagates. When only one side carries the
+    // timestamp, that side wins (an explicit toggle beats a legacy write); when
+    // neither does, fall back to lastReviewed last-write-wins.
+    final DateTime? existingEnroll = existing.enrollmentChangedAt;
+    final DateTime? incomingEnroll = incoming.enrollmentChangedAt;
+    final bool enrollFromIncoming;
+    if (incomingEnroll == null && existingEnroll == null) {
+      enrollFromIncoming = incomingNewer;
+    } else if (incomingEnroll == null) {
+      enrollFromIncoming = false;
+    } else if (existingEnroll == null) {
+      enrollFromIncoming = true;
+    } else {
+      enrollFromIncoming = incomingEnroll.isAfter(existingEnroll);
+    }
+    final bool enabled = enrollFromIncoming
         ? incoming.spacedRepetitionEnabled
         : existing.spacedRepetitionEnabled;
+    final DateTime? enrollmentChangedAt =
+        enrollFromIncoming ? incomingEnroll : existingEnroll;
 
     if (!scheduleFromIncoming && enabled == existing.spacedRepetitionEnabled) {
       return existing; // nothing the incoming entry brings changes our copy
@@ -223,6 +245,7 @@ class SrsService {
       lastReviewed: schedule.lastReviewed,
       nextReview: schedule.nextReview,
       spacedRepetitionEnabled: enabled,
+      enrollmentChangedAt: enrollmentChangedAt,
     );
   }
 
