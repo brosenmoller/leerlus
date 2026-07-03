@@ -97,15 +97,18 @@ class _QuestionDisplayScreenState extends State<QuestionDisplayScreen>
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
-          child: SrsButtons(
-            question: widget.question,
-            onAnswered: (quality) {
-              Navigator.pop(ctx);
-              widget.onContinue(true, quality);
-            },
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+            child: SrsButtons(
+              question: widget.question,
+              onAnswered: (quality) {
+                Navigator.pop(ctx);
+                widget.onContinue(true, quality);
+              },
+            ),
           ),
         ),
       ),
