@@ -934,6 +934,10 @@ class AppLocalizationsNl extends AppLocalizations {
   String get setAnswersLabel => 'Correcte antwoorden';
 
   @override
+  String get setAnswersHelp =>
+      'De eerste is het juiste antwoord; voeg alternatieven toe, gescheiden door komma\'s.';
+
+  @override
   String setAnswerN(int n) {
     return 'Antwoord $n';
   }

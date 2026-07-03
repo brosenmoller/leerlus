@@ -928,6 +928,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setAnswersLabel => 'Correct answers';
 
   @override
+  String get setAnswersHelp =>
+      'First entry is the correct answer; add comma-separated alternatives.';
+
+  @override
   String setAnswerN(int n) {
     return 'Answer $n';
   }

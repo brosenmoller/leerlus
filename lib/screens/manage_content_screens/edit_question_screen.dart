@@ -230,8 +230,11 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
 
       if (_answerType == 'set') {
         final sc = SetConfig.fromJson(config);
-        _setControllers =
-            sc.answers.map((a) => TextEditingController(text: a)).toList();
+        _setControllers = [
+          for (var i = 0; i < sc.answers.length; i++)
+            TextEditingController(
+                text: [sc.answers[i], ...sc.alternatives[i]].join(', ')),
+        ];
         while (_setControllers.length < 2) {
           _setControllers.add(TextEditingController());
         }
@@ -1107,17 +1110,29 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
         showPreFilled: _sortingShowPreFilled,
       ).toJson());
     } else if (_answerType == 'set') {
-      final answers = _setControllers
-          .map((c) => c.text.trim())
-          .where((s) => s.isNotEmpty)
-          .toList();
+      // Each field is comma-separated: first form = canonical, rest = alternatives.
+      final answers = <String>[];
+      final alternatives = <List<String>>[];
+      for (final c in _setControllers) {
+        final forms = <String>[];
+        final seen = <String>{};
+        for (final part in c.text.split(',')) {
+          final trimmed = part.trim();
+          if (trimmed.isEmpty) continue;
+          if (seen.add(trimmed.toLowerCase())) forms.add(trimmed);
+        }
+        if (forms.isEmpty) continue;
+        answers.add(forms.first);
+        alternatives.add(forms.sublist(1));
+      }
       if (answers.length < 2) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l10n.setAtLeastTwo)),
         );
         return;
       }
-      answerConfig = jsonEncode(SetConfig(answers: answers).toJson());
+      answerConfig = jsonEncode(
+          SetConfig(answers: answers, alternatives: alternatives).toJson());
     } else {
       // typed
       answerConfig = jsonEncode({

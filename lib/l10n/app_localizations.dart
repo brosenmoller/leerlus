@@ -1574,6 +1574,12 @@ abstract class AppLocalizations {
   /// **'Correct answers'**
   String get setAnswersLabel;
 
+  /// No description provided for @setAnswersHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'First entry is the correct answer; add comma-separated alternatives.'**
+  String get setAnswersHelp;
+
   /// No description provided for @setAnswerN.
   ///
   /// In en, this message translates to:

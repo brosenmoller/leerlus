@@ -168,32 +168,74 @@ class SortingConfig {
   };
 }
 
+/// One required Set slot: a canonical answer plus alternative accepted forms.
+class SetAnswerGroup {
+  final String canonical;
+  final List<String> alternatives;
+
+  SetAnswerGroup({required this.canonical, this.alternatives = const []});
+
+  /// All accepted spellings for this slot (canonical first).
+  List<String> get forms => [canonical, ...alternatives];
+}
+
 class SetConfig {
+  /// Canonical answers (one per required slot), shown as the "correct" answer.
   final List<String> answers;
 
-  SetConfig({required this.answers});
+  /// Extra accepted forms, parallel to [answers]. `alternatives[i]` widens the
+  /// matching for `answers[i]` without surfacing to the student.
+  final List<List<String>> alternatives;
+
+  SetConfig({required this.answers, List<List<String>>? alternatives})
+      : alternatives = _sizeAlternatives(answers, alternatives);
+
+  static List<List<String>> _sizeAlternatives(
+      List<String> answers, List<List<String>>? alternatives) {
+    return [
+      for (var i = 0; i < answers.length; i++)
+        (alternatives != null && i < alternatives.length)
+            ? List<String>.from(alternatives[i])
+            : <String>[],
+    ];
+  }
+
+  /// Grouped view (canonical + alternatives) for grading.
+  List<SetAnswerGroup> get groups => [
+        for (var i = 0; i < answers.length; i++)
+          SetAnswerGroup(canonical: answers[i], alternatives: alternatives[i]),
+      ];
 
   static String _normalize(String text) {
     return text.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
   }
 
-  /// Returns the canonical answer that matches [input], or null if none.
-  /// Removes it from [remaining] so each canonical answer can only be
-  /// claimed once per submission.
-  static String? claimMatch(String input, List<String> remaining) {
+  /// Returns the canonical answer whose accepted forms match [input], or null
+  /// if none. Removes the matched group from [remaining] so each slot can only
+  /// be claimed once per submission.
+  static String? claimMatch(String input, List<SetAnswerGroup> remaining) {
     final norm = _normalize(input);
-    final idx = remaining.indexWhere((a) => _normalize(a) == norm);
+    final idx = remaining
+        .indexWhere((g) => g.forms.any((f) => _normalize(f) == norm));
     if (idx == -1) return null;
-    return remaining.removeAt(idx);
+    return remaining.removeAt(idx).canonical;
   }
 
   factory SetConfig.fromJson(Map<String, dynamic> json) {
-    return SetConfig(
-      answers: List<String>.from(json['answers'] ?? []),
-    );
+    final answers = List<String>.from(json['answers'] ?? []);
+    List<List<String>>? alternatives;
+    if (json['alternatives'] is List) {
+      alternatives = [
+        for (final e in json['alternatives'] as List) List<String>.from(e ?? []),
+      ];
+    }
+    return SetConfig(answers: answers, alternatives: alternatives);
   }
 
-  Map<String, dynamic> toJson() => {'answers': answers};
+  Map<String, dynamic> toJson() => {
+        'answers': answers,
+        if (alternatives.any((a) => a.isNotEmpty)) 'alternatives': alternatives,
+      };
 }
 
 class TypedAnswerConfig {

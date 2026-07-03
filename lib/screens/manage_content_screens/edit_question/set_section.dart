@@ -28,6 +28,11 @@ class SetSection extends StatelessWidget {
           l10n.setAnswersLabel,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
+        const SizedBox(height: 4),
+        Text(
+          l10n.setAnswersHelp,
+          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+        ),
         const SizedBox(height: 8),
 
         ...answerControllers.asMap().entries.map((e) {

@@ -345,6 +345,7 @@
   "answerTypeSetLabel": "Set",
   "answerTypeSetChip": "Set",
   "setAnswersLabel": "Correcte antwoorden",
+  "setAnswersHelp": "De eerste is het juiste antwoord; voeg alternatieven toe, gescheiden door komma's.",
   "setAnswerN": "Antwoord {n}",
   "@setAnswerN": {
     "placeholders": {

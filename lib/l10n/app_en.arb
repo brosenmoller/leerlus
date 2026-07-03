@@ -445,6 +445,7 @@
   "answerTypeSetLabel": "Set",
   "answerTypeSetChip": "Set",
   "setAnswersLabel": "Correct answers",
+  "setAnswersHelp": "First entry is the correct answer; add comma-separated alternatives.",
   "setAnswerN": "Answer {n}",
   "@setAnswerN": {
     "placeholders": {

@@ -79,7 +79,7 @@ class _SetWidgetState extends State<SetWidget> {
 
     final inputText = _inputController.text.trim();
     if (inputText.isNotEmpty) {
-      final testRemaining = List<String>.from(config.answers);
+      final testRemaining = config.groups;
       final isMatch = SetConfig.claimMatch(inputText, testRemaining) != null;
       final alreadyEntered = _entered.any(
         (e) => e.toLowerCase() == inputText.toLowerCase(),
@@ -91,7 +91,7 @@ class _SetWidgetState extends State<SetWidget> {
     }
 
     if (_entered.isEmpty) return;
-    final remaining = List<String>.from(config.answers);
+    final remaining = config.groups;
 
     final matches = <String?>[
       for (final entry in _entered) SetConfig.claimMatch(entry, remaining),
@@ -99,7 +99,7 @@ class _SetWidgetState extends State<SetWidget> {
 
     setState(() {
       _matches = matches;
-      _missed = List<String>.from(remaining);
+      _missed = [for (final g in remaining) g.canonical];
     });
 
     widget.onAnswered(_missed!.isEmpty && matches.every((m) => m != null));
