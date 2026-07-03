@@ -60,12 +60,51 @@ class AutoScaleText extends StatelessWidget {
           textAlign: textAlign,
         );
 
-        // Still too tall even at the smallest size → let the user scroll.
+        // Still too tall even at the smallest size → let the user scroll, with
+        // an always-visible scrollbar so it's clear the text continues below.
         if (measuredHeight(fontSize) > constraints.maxHeight) {
-          return SingleChildScrollView(child: textWidget);
+          return _ScrollableText(child: textWidget);
         }
         return expand ? Center(child: textWidget) : textWidget;
       },
+    );
+  }
+}
+
+/// Scrollable text with a permanently visible scrollbar, used as the overflow
+/// fallback for [AutoScaleText]. Owns a [ScrollController] because a
+/// [Scrollbar] with `thumbVisibility: true` requires an attached controller.
+class _ScrollableText extends StatefulWidget {
+  final Widget child;
+
+  const _ScrollableText({required this.child});
+
+  @override
+  State<_ScrollableText> createState() => _ScrollableTextState();
+}
+
+class _ScrollableTextState extends State<_ScrollableText> {
+  final ScrollController _controller = ScrollController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scrollbar(
+      controller: _controller,
+      thumbVisibility: true,
+      child: SingleChildScrollView(
+        controller: _controller,
+        // Keep the text clear of the scrollbar thumb.
+        child: Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: widget.child,
+        ),
+      ),
     );
   }
 }

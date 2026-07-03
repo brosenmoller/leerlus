@@ -299,6 +299,64 @@ class _CardFaceState extends State<_CardFace> {
     final occlusionData = widget.occlusionData;
     final tapToFlip = widget.tapToFlip;
 
+    // Image rendering shared between the image-only and image+text layouts.
+    // With occlusion, paint the overlay on an AspectRatio that matches the
+    // image so hidden/highlight areas land exactly on it. Until the ratio
+    // resolves (or without occlusion), fall back to a plain contained image.
+    Widget buildImage(String path) {
+      return Center(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: occlusionData != null && _aspectRatio != null
+              ? AspectRatio(
+                  aspectRatio: _aspectRatio!,
+                  child: OccludedImage(
+                    imagePath: path,
+                    occlusionData: occlusionData,
+                    revealed: false,
+                  ),
+                )
+              : AppImage(path: path, fit: BoxFit.contain),
+        ),
+      );
+    }
+
+    Widget buildContent() {
+      if (imagePath != null && text != null) {
+        // Image section capped at ~50% of the face; text takes the rest and
+        // scales down then scrolls (via AutoScaleText) so it never overflows.
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: constraints.maxHeight * 0.5,
+                  ),
+                  child: buildImage(imagePath),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: AutoScaleText(
+                    text: text,
+                    style: theme.textTheme.titleLarge,
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      }
+      if (imagePath != null) {
+        return buildImage(imagePath);
+      }
+      if (text != null) {
+        return AutoScaleText(text: text, style: theme.textTheme.titleLarge);
+      }
+      return const SizedBox.shrink();
+    }
+
     return GestureDetector(
       onTap: tapToFlip ? widget.onTap : null,
       child: Card(
@@ -318,43 +376,7 @@ class _CardFaceState extends State<_CardFace> {
                 ),
               ),
               const Divider(height: 20),
-              if (imagePath != null)
-                Expanded(
-                  child: Center(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      // With occlusion, paint the overlay on an AspectRatio that
-                      // matches the image so hidden/highlight areas land exactly
-                      // on it. Until the ratio resolves (or without occlusion),
-                      // fall back to a plain contained image.
-                      child: occlusionData != null && _aspectRatio != null
-                          ? AspectRatio(
-                              aspectRatio: _aspectRatio!,
-                              child: OccludedImage(
-                                imagePath: imagePath,
-                                occlusionData: occlusionData,
-                                revealed: false,
-                              ),
-                            )
-                          : AppImage(path: imagePath, fit: BoxFit.contain),
-                    ),
-                  ),
-                )
-              else if (text != null)
-                Expanded(
-                  child: AutoScaleText(
-                    text: text,
-                    style: theme.textTheme.titleLarge,
-                  ),
-                ),
-              if (imagePath != null && text != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  text,
-                  style: theme.textTheme.titleLarge,
-                  textAlign: TextAlign.center,
-                ),
-              ],
+              Expanded(child: buildContent()),
               if (tapToFlip)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),

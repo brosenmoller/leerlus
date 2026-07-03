@@ -32,7 +32,6 @@ class MultipleChoiceSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final canRemove = optionControllers.length > 2;
-    final canAdd = optionControllers.length < 8;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,7 +42,7 @@ class MultipleChoiceSection extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.bold)),
             const Spacer(),
             Text(
-              '${optionControllers.length}/8',
+              '${optionControllers.length}',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -113,12 +112,11 @@ class MultipleChoiceSection extends StatelessWidget {
           );
         }),
 
-        if (canAdd)
-          TextButton.icon(
-            onPressed: onAddOption,
-            icon: const Icon(Icons.add),
-            label: Text(l10n.addOption),
-          ),
+        TextButton.icon(
+          onPressed: onAddOption,
+          icon: const Icon(Icons.add),
+          label: Text(l10n.addOption),
+        ),
         const SizedBox(height: 4),
 
         Text(

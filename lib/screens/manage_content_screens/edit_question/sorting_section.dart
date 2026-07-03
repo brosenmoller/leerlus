@@ -24,7 +24,6 @@ class SortingSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final canRemove = itemControllers.length > 2;
-    final canAdd = itemControllers.length < 8;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -35,7 +34,7 @@ class SortingSection extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.bold)),
             const Spacer(),
             Text(
-              '${itemControllers.length}/8',
+              '${itemControllers.length}',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -107,12 +106,11 @@ class SortingSection extends StatelessWidget {
           );
         }),
 
-        if (canAdd)
-          TextButton.icon(
-            onPressed: onAddItem,
-            icon: const Icon(Icons.add),
-            label: Text(l10n.addItem),
-          ),
+        TextButton.icon(
+          onPressed: onAddItem,
+          icon: const Icon(Icons.add),
+          label: Text(l10n.addItem),
+        ),
         const SizedBox(height: 4),
 
         SwitchListTile(

@@ -166,6 +166,11 @@ class _MultipleChoiceWidgetState extends State<MultipleChoiceWidget> {
     final l10n = AppLocalizations.of(context);
     final config = widget.question.multipleChoiceConfig!;
 
+    // Number-key shortcuts only map to keys 1–9. When there are more than 9
+    // options, disable them entirely (and hide the badges) so the question is
+    // purely tap-driven rather than offering shortcuts for only the first 9.
+    final shortcutsEnabled = options.length <= 9;
+
     final buttonItems = List.generate(options.length, (index) {
       final bgColor = _buttonColor(index, context);
       return Padding(
@@ -181,7 +186,7 @@ class _MultipleChoiceWidgetState extends State<MultipleChoiceWidget> {
           ),
           child: Row(
             children: [
-              if (isDesktop)
+              if (isDesktop && shortcutsEnabled)
                 Align(
                   alignment: Alignment.centerLeft,
                   child: SizedBox(
@@ -338,12 +343,14 @@ class _MultipleChoiceWidgetState extends State<MultipleChoiceWidget> {
       autofocus: true,
       onKeyEvent: (node, event) {
         if (event is KeyDownEvent && !widget.locked) {
-          // Number keys: toggle option.
-          for (int i = 0; i < options.length && i < 9; i++) {
-            if (event.logicalKey == topRowKeys[i] ||
-                event.logicalKey == numpadKeys[i]) {
-              _toggleOption(i);
-              return KeyEventResult.handled;
+          // Number keys: toggle option (disabled when there are > 9 options).
+          if (shortcutsEnabled) {
+            for (int i = 0; i < options.length && i < 9; i++) {
+              if (event.logicalKey == topRowKeys[i] ||
+                  event.logicalKey == numpadKeys[i]) {
+                _toggleOption(i);
+                return KeyEventResult.handled;
+              }
             }
           }
           // Enter/Space: submit multi-select answer.
