@@ -712,8 +712,12 @@ class SyncService {
                 ?.map((e) => Map<String, dynamic>.from(e as Map))
                 .toList() ??
             const <Map<String, dynamic>>[];
-        await _applyStreak(streakBack, overwrite: false);
+        // Merge stats first (practice-day history), then carry the peer's
+        // highest streak and recompute our streak from the combined history.
         statsMergedBack = await _applyStatistics(statsBack, overwrite: false);
+        await _applyStreak(streakBack, overwrite: false);
+        await StreakService()
+            .recomputeFromHistory(StatisticsService().getActiveDays());
       } catch (_) {} // Non-fatal — content sync already succeeded.
     }
 
@@ -1518,12 +1522,14 @@ class SyncService {
     bool statsWereMerged = false;
     if (applyNonContentState) {
       srsUpdated = await _applySrs(payload.srsData, overwrite: overwriteState);
-      await _applyStreak(payload.streakData, overwrite: overwriteState);
+      // Statistics carry the practice-day history, so merge them first; the
+      // streak count is then derived from the combined studied-day set. Only
+      // the all-time highest is carried across from the peer scalar.
       statsWereMerged =
           await _applyStatistics(payload.statisticsData, overwrite: overwriteState);
-      // A study day on either device cancels a freeze for that day (run after
-      // stats merge so both devices' activity is reflected).
-      await StreakService().removeFreezeDates(StatisticsService().getActiveDays());
+      await _applyStreak(payload.streakData, overwrite: overwriteState);
+      await StreakService()
+          .recomputeFromHistory(StatisticsService().getActiveDays());
     }
 
     // Apply the sender's deletions (acceptor push import). The initiator's pull
@@ -1559,34 +1565,19 @@ class SyncService {
   // Merge mode (normal sync): highest streak / newer review / max stats win.
   // Overwrite mode (hard sync): this device is forced to mirror the sender.
 
+  /// Carries the peer's all-time highest streak across. The live streak count,
+  /// last-activity date and freeze days are NOT taken from the peer scalar —
+  /// they are derived from the merged practice-day history by
+  /// [StreakService.recomputeFromHistory], which the caller runs *after* the
+  /// statistics merge (so the studied-day set reflects both devices).
   Future<void> _applyStreak(Map<String, dynamic>? streakData,
       {required bool overwrite}) async {
     if (streakData == null) return;
-    final count = (streakData['streakCount'] as num?)?.toInt() ?? 0;
-    final lastDate = streakData['lastActivityDate'] as String?;
-    final freezes = (streakData['freezesUsedThisWeek'] as num?)?.toInt() ?? 0;
-    final weekAnchor = streakData['weekAnchor'] as String?;
     final highest = (streakData['highestStreak'] as num?)?.toInt() ?? 0;
-    final freezeDates =
-        (streakData['freezeDates'] as List?)?.cast<String>() ?? const [];
     if (overwrite) {
-      await StreakService().overwriteFromSync(
-        remoteCount: count,
-        remoteLastDate: lastDate,
-        remoteFreezesUsed: freezes,
-        remoteWeekAnchor: weekAnchor,
-        remoteHighestStreak: highest,
-      );
-      await StreakService().setFreezeDates(freezeDates);
+      await StreakService().setHighestStreak(highest);
     } else {
-      await StreakService().mergeFromSync(
-        remoteCount: count,
-        remoteLastDate: lastDate,
-        remoteFreezesUsed: freezes,
-        remoteWeekAnchor: weekAnchor,
-        remoteHighestStreak: highest,
-      );
-      await StreakService().mergeFreezeDates(freezeDates);
+      await StreakService().mergeHighestStreak(highest);
     }
   }
 

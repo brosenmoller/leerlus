@@ -137,6 +137,14 @@
   "streakResetBody": "Geen streak freezes meer, opnieuw beginnen bij 1 dag.",
 
   "streakInfoTitle": "Streak",
+  "streakLostTitle": "Reeks beëindigd",
+  "streakLostBody": "Je hebt te veel dagen gemist en had geen bevriezingen meer, dus je reeks van {count} dagen is beëindigd. Begin vandaag een nieuwe!",
+  "@streakLostBody": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "streakLostDismiss": "OK",
   "streakBest": "Beste: {count, plural, =1{1 dag} other{{count} dagen}}",
   "@streakBest": {
     "placeholders": {

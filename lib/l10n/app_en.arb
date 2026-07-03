@@ -137,6 +137,14 @@
   "streakResetBody": "Out of freezes, starting fresh at 1 day.",
 
   "streakInfoTitle": "Streak",
+  "streakLostTitle": "Streak ended",
+  "streakLostBody": "You missed too many days and ran out of freezes, so your {count} day streak has ended. Start a new one today!",
+  "@streakLostBody": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "streakLostDismiss": "OK",
   "streakBest": "Best: {count, plural, =1{1 day} other{{count} days}}",
   "@streakBest": {
     "placeholders": {

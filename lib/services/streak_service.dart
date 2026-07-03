@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:leerlus/services/notification_service.dart';
+import 'package:leerlus/services/statistics_service.dart';
 
 // ── Value types ───────────────────────────────────────────────────────────────
 
@@ -39,6 +40,40 @@ class StreakState {
   });
 }
 
+/// Result of deriving the streak from a set of studied days (pure computation,
+/// no persistence). See [StreakService._calc].
+class _StreakCalc {
+  /// Live streak as of today — 0 when the trailing gap to today can no longer
+  /// be bridged by the weekly freeze budget ([lapsed]).
+  final int current;
+
+  /// Length of the achieved run ending at [last] (independent of [lapsed]);
+  /// used for the all-time highest and the "streak ended" notice.
+  final int run;
+
+  /// Most recent studied day, or null when there is no history.
+  final DateTime? last;
+
+  /// Freeze days that bridged gaps *inside* the run, as 'YYYY-MM-DD' strings.
+  final List<String> bridged;
+
+  /// True when a missed day between [last] and today exhausts the freeze budget,
+  /// so the streak has effectively ended.
+  final bool lapsed;
+
+  /// Freezes charged to the current (Mon–Sun) week by in-run bridges.
+  final int freezesUsedThisWeek;
+
+  const _StreakCalc({
+    required this.current,
+    required this.run,
+    required this.last,
+    required this.bridged,
+    required this.lapsed,
+    required this.freezesUsedThisWeek,
+  });
+}
+
 // ── Service ───────────────────────────────────────────────────────────────────
 
 class StreakService {
@@ -56,13 +91,18 @@ class StreakService {
   static const _kFreezesUsed = 'streak_freezes_used';
   static const _kWeekAnchor = 'streak_week_anchor';
   static const _kStreakEnabled = 'streak_enabled';
-  static const _kLastFreezeDate = 'streak_last_freeze_date';
   static const _kFreezeDates = 'streak_freeze_dates';
   static const _kNotifsEnabled = 'streak_notifs_enabled';
   static const _kNotifsHour = 'streak_notifs_hour';
   static const _kNotifsMinute = 'streak_notifs_minute';
   static const _kNotifsSound = 'streak_notifs_sound';
   static const _kNotifsVibration = 'streak_notifs_vibration';
+  static const _kLapseNotified = 'streak_lapse_notified';
+
+  /// Set by [reconcileOnOpen] when the streak has just lapsed since it was last
+  /// surfaced; holds the ended run length for a one-time UI notice. The UI reads
+  /// it once on startup and clears it.
+  int? pendingLapseNotice;
 
   static const _notifTitle = 'Leerlus';
   static const _notifBody = "Don't forget to study — keep your streak alive!";
@@ -117,79 +157,73 @@ class StreakService {
 
   // ── Core logic ─────────────────────────────────────────────────────────────
 
-  /// Call whenever the user completes a quiz or SRS session.
-  /// Handles freeze logic automatically and returns what happened.
+  /// Call whenever the user completes a quiz or SRS session. Derives the whole
+  /// streak from the real practice-day history ([StatisticsService.getActiveDays])
+  /// — including today — so partial-session days count and freezes are charged
+  /// to the week the missed day actually falls in. Returns what happened for the
+  /// completion-screen message.
   Future<StreakEvent> recordActivity() async {
     if (!streakEnabled) return StreakEvent.disabled;
 
     final today = DateTime.now();
-    final todayStr = _dateStr(today);
+    final todayD = DateTime(today.year, today.month, today.day);
+    final todayStr = _dateStr(todayD);
+    final prevLast = lastActivityDate;
 
-    await _maybeResetWeeklyFreezes(today);
+    // Recompute from history with today included (the user just practised).
+    final studied = <DateTime>{...StatisticsService().getActiveDays(), todayD};
+    await recomputeFromHistory(studied);
 
-    final last = lastActivityDate;
+    if (prevLast == todayStr) return StreakEvent.sameDay;
 
-    // Already counted today — idempotent.
-    if (last == todayStr) return StreakEvent.sameDay;
-
-    // First activity ever.
-    if (last == null) {
-      await _box.put(_kStreakCount, 1);
-      await _box.put(_kLastActivity, todayStr);
-      _refreshNotifier();
-      return StreakEvent.continued;
-    }
-
-    final lastDt = DateTime.parse(last);
-    final daysSince = DateTime(today.year, today.month, today.day)
-        .difference(DateTime(lastDt.year, lastDt.month, lastDt.day))
-        .inDays;
-
-    int newStreak;
     StreakEvent event;
-
-    if (daysSince == 1) {
-      // Perfectly consecutive day.
-      newStreak = currentStreak + 1;
-      event = StreakEvent.continued;
+    if (prevLast == null) {
+      event = StreakEvent.continued; // first activity ever (or after a reset)
     } else {
-      // Gap: daysSince-1 missed days need to be covered by freezes.
-      final missedDays = daysSince - 1;
-      final available = freezesRemainingThisWeek;
-
-      if (available <= 0) {
-        // No freezes left — streak breaks.
-        newStreak = 1;
-        event = StreakEvent.reset;
-      } else if (available >= missedDays) {
-        // Enough freezes to cover all missed days.
-        await _box.put(_kFreezesUsed, freezesUsedThisWeek + missedDays);
-        await _box.put(_kLastFreezeDate, _dateStr(today.subtract(const Duration(days: 1))));
-        // Record every bridged day (lastActivity+1 .. today-1) for the calendar.
-        final bridged = <String>{...freezeDates};
-        for (int i = 1; i <= missedDays; i++) {
-          bridged.add(_dateStr(lastDt.add(Duration(days: i))));
-        }
-        await _box.put(_kFreezeDates, bridged.toList());
-        newStreak = currentStreak + 1;
-        event = StreakEvent.freezeUsed;
+      final lastDt = DateTime.parse(prevLast);
+      final gap = todayD
+          .difference(DateTime(lastDt.year, lastDt.month, lastDt.day))
+          .inDays -
+          1;
+      if (gap <= 0) {
+        event = StreakEvent.continued; // consecutive day
       } else {
-        // Not enough freezes — use what's left, streak still breaks.
-        await _box.put(_kFreezesUsed, maxFreezesPerWeek);
-        newStreak = 1;
-        event = StreakEvent.reset;
+        // Gap existed — freezeUsed if every missed day was bridged, else reset.
+        final frozen = freezeDaySet();
+        var allBridged = true;
+        for (var i = 1; i <= gap; i++) {
+          final m = lastDt.add(Duration(days: i));
+          if (!frozen.contains(DateTime(m.year, m.month, m.day))) {
+            allBridged = false;
+            break;
+          }
+        }
+        event = allBridged ? StreakEvent.freezeUsed : StreakEvent.reset;
       }
     }
 
-    await _box.put(_kStreakCount, newStreak);
-    await _box.put(_kLastActivity, todayStr);
-    if (newStreak > highestStreak) {
-      await _box.put(_kHighestStreak, newStreak);
-    }
-    _refreshNotifier();
     // Push the daily reminder to tomorrow so it doesn't fire on a day already studied.
     if (notifsEnabled && streakEnabled) await _rescheduleForTomorrow();
     return event;
+  }
+
+  /// Reconciles the streak on app open from the real practice history. Self-heals
+  /// the stored count and, when the streak has just lapsed (a trailing gap the
+  /// freeze budget can no longer bridge), sets [pendingLapseNotice] once so the
+  /// UI can tell the user their streak ended — instead of it silently vanishing
+  /// on their next quiz.
+  Future<void> reconcileOnOpen(Set<DateTime> studiedDays, {DateTime? now}) async {
+    if (!streakEnabled) return;
+    final today = now ?? DateTime.now();
+    final calc = _calc(studiedDays, today);
+    await _persist(calc, now: today);
+    if (calc.lapsed && calc.run > 1 && calc.last != null) {
+      final marker = _dateStr(calc.last!);
+      if ((_box.get(_kLapseNotified) as String?) != marker) {
+        pendingLapseNotice = calc.run;
+        await _box.put(_kLapseNotified, marker);
+      }
+    }
   }
 
   // ── Settings ───────────────────────────────────────────────────────────────
@@ -229,99 +263,151 @@ class StreakService {
     if (notifsEnabled && streakEnabled) await _reschedule();
   }
 
-  /// Merges incoming streak data from a sync peer.
-  /// Only applied when the remote state is "better" (higher count or more recent date).
-  /// Highest streak is always merged as the max of local and remote.
-  Future<void> mergeFromSync({
-    required int remoteCount,
-    required String? remoteLastDate,
-    required int remoteFreezesUsed,
-    required String? remoteWeekAnchor,
-    int remoteHighestStreak = 0,
-  }) async {
-    final localCount = currentStreak;
-    final localDate = lastActivityDate;
-
-    final remoteWins = remoteCount > localCount ||
-        (remoteCount == localCount &&
-            remoteLastDate != null &&
-            (localDate == null ||
-                remoteLastDate.compareTo(localDate) > 0));
-
-    if (remoteWins) {
-      await _box.put(_kStreakCount, remoteCount);
-      if (remoteLastDate != null) {
-        await _box.put(_kLastActivity, remoteLastDate);
-      } else {
-        await _box.delete(_kLastActivity);
-      }
-      await _box.put(_kFreezesUsed, remoteFreezesUsed);
-      if (remoteWeekAnchor != null) {
-        await _box.put(_kWeekAnchor, remoteWeekAnchor);
-      }
+  /// Raises the stored all-time highest streak to [remoteHighest] if larger
+  /// (normal sync — highest is monotonic across both devices).
+  Future<void> mergeHighestStreak(int remoteHighest) async {
+    if (remoteHighest > highestStreak) {
+      await _box.put(_kHighestStreak, remoteHighest);
+      _refreshNotifier();
     }
+  }
 
-    // Always take the highest streak from either side.
-    final newHighest = [highestStreak, remoteHighestStreak, remoteCount].reduce((a, b) => a > b ? a : b);
-    if (newHighest > highestStreak) {
-      await _box.put(_kHighestStreak, newHighest);
-    }
-
+  /// Forces the stored all-time highest streak to [value], which may *lower* it
+  /// (hard sync — this device mirrors the initiator).
+  Future<void> setHighestStreak(int value) async {
+    await _box.put(_kHighestStreak, value);
     _refreshNotifier();
   }
 
-  /// Overwrites local streak state to exactly match the remote (hard sync).
-  /// Unlike [mergeFromSync] this may *lower* the count or highest streak — the
-  /// intent is to make this device mirror the initiator.
-  Future<void> overwriteFromSync({
-    required int remoteCount,
-    required String? remoteLastDate,
-    required int remoteFreezesUsed,
-    required String? remoteWeekAnchor,
-    required int remoteHighestStreak,
-  }) async {
-    await _box.put(_kStreakCount, remoteCount);
-    if (remoteLastDate != null) {
-      await _box.put(_kLastActivity, remoteLastDate);
+  /// Rebuilds the entire streak state purely from the merged set of studied
+  /// days, applying the weekly freeze budget ([maxFreezesPerWeek] per Mon–Sun
+  /// week). Called after a sync unions in the other device's practice history
+  /// so both devices resolve to the *same* streak regardless of sync order:
+  ///
+  ///  * a day missed on one device but studied on the other closes the gap
+  ///    (the loss is redeemed — a real study day beats a freeze), and
+  ///  * a gap that neither device covered, and that the weekly freeze budget
+  ///    cannot bridge, breaks the streak on both devices.
+  ///
+  /// The run is anchored at the most recent studied day (not "today"), matching
+  /// the daily-path semantics where a streak persists until the next practice.
+  Future<void> recomputeFromHistory(Set<DateTime> studiedDays, {DateTime? now}) {
+    final today = now ?? DateTime.now();
+    return _persist(_calc(studiedDays, today), now: today);
+  }
+
+  /// Pure derivation of the streak from [studiedDays] as of [today]. See the
+  /// field docs on [_StreakCalc]. No persistence — call [_persist] to store.
+  _StreakCalc _calc(Set<DateTime> studiedDays, DateTime today) {
+    final todayD = DateTime(today.year, today.month, today.day);
+
+    // Normalize to date-only, dedupe, sort most-recent first.
+    final days = studiedDays
+        .map((d) => DateTime(d.year, d.month, d.day))
+        .toSet()
+        .toList()
+      ..sort((a, b) => b.compareTo(a));
+
+    if (days.isEmpty) {
+      return const _StreakCalc(
+        current: 0,
+        run: 0,
+        last: null,
+        bridged: [],
+        lapsed: false,
+        freezesUsedThisWeek: 0,
+      );
+    }
+
+    final latest = days.first;
+    var run = 1;
+    final bridged = <String>[];
+    final weekUsed = <String, int>{}; // Monday 'YYYY-MM-DD' -> freezes used.
+
+    var prev = latest; // more-recent day of the pair being compared
+    for (var i = 1; i < days.length; i++) {
+      final cur = days[i]; // earlier studied day
+      final gap = prev.difference(cur).inDays - 1; // missed days strictly between
+
+      if (gap == 0) {
+        // Consecutive studied days — no freeze needed.
+        run++;
+        prev = cur;
+        continue;
+      }
+
+      // Try to bridge every missed day within its week's freeze budget.
+      final tentative = <String>[];
+      final tentativeWeek = <String, int>{};
+      var bridgeable = true;
+      for (var d = 1; d <= gap; d++) {
+        final missed = cur.add(Duration(days: d));
+        final wk = _dateStr(_monday(missed));
+        final used = (weekUsed[wk] ?? 0) + (tentativeWeek[wk] ?? 0);
+        if (used < maxFreezesPerWeek) {
+          tentativeWeek[wk] = (tentativeWeek[wk] ?? 0) + 1;
+          tentative.add(_dateStr(missed));
+        } else {
+          bridgeable = false;
+          break;
+        }
+      }
+      if (!bridgeable) break; // Gap can't be covered — run ends at [prev].
+
+      tentativeWeek.forEach((k, v) => weekUsed[k] = (weekUsed[k] ?? 0) + v);
+      bridged.addAll(tentative);
+      run++;
+      prev = cur;
+    }
+
+    // Trailing gap: days strictly between the last studied day and today (today
+    // itself is not "missed" — it can still be practised). If the budget can't
+    // cover them the streak has lapsed and the live count is 0.
+    var lapsed = false;
+    final trailingMissed = todayD.difference(latest).inDays - 1;
+    for (var d = 1; d <= trailingMissed; d++) {
+      final missed = latest.add(Duration(days: d));
+      final wk = _dateStr(_monday(missed));
+      if ((weekUsed[wk] ?? 0) < maxFreezesPerWeek) {
+        weekUsed[wk] = (weekUsed[wk] ?? 0) + 1;
+      } else {
+        lapsed = true;
+        break;
+      }
+    }
+
+    final thisMonday = _dateStr(_monday(todayD));
+    final freezesThisWeek = bridged
+        .where((d) => _dateStr(_monday(DateTime.parse(d))) == thisMonday)
+        .length;
+
+    bridged.sort();
+    return _StreakCalc(
+      current: lapsed ? 0 : run,
+      run: run,
+      last: latest,
+      bridged: bridged,
+      lapsed: lapsed,
+      freezesUsedThisWeek: freezesThisWeek,
+    );
+  }
+
+  /// Persists a [_StreakCalc]. The all-time highest is raised to the achieved
+  /// [run] (never lowered — the getter falls back to the live count when unset).
+  Future<void> _persist(_StreakCalc calc, {DateTime? now}) async {
+    final priorHighest = highestStreak;
+    await _box.put(_kStreakCount, calc.current);
+    if (calc.last != null) {
+      await _box.put(_kLastActivity, _dateStr(calc.last!));
     } else {
       await _box.delete(_kLastActivity);
     }
-    await _box.put(_kFreezesUsed, remoteFreezesUsed);
-    if (remoteWeekAnchor != null) {
-      await _box.put(_kWeekAnchor, remoteWeekAnchor);
-    } else {
-      await _box.delete(_kWeekAnchor);
-    }
-    await _box.put(_kHighestStreak, remoteHighestStreak);
+    await _box.put(_kFreezeDates, calc.bridged);
+    await _box.put(_kWeekAnchor, _dateStr(_monday(now ?? DateTime.now())));
+    await _box.put(_kFreezesUsed, calc.freezesUsedThisWeek);
+    await _box.put(
+        _kHighestStreak, priorHighest > calc.run ? priorHighest : calc.run);
     _refreshNotifier();
-  }
-
-  /// Unions remote freeze days into the local set (used in normal sync merge).
-  Future<void> mergeFreezeDates(List<String> remote) async {
-    if (remote.isEmpty) return;
-    final merged = <String>{...freezeDates, ...remote}.toList()..sort();
-    await _box.put(_kFreezeDates, merged);
-    _refreshNotifier();
-  }
-
-  /// Replaces the local freeze days with the remote set (used in hard sync).
-  Future<void> setFreezeDates(List<String> dates) async {
-    await _box.put(_kFreezeDates, (<String>{...dates}.toList()..sort()));
-    _refreshNotifier();
-  }
-
-  /// Drops any freeze day that is also a studied day — actually working that
-  /// day means it was never missed, so the freeze is void (study wins). Used
-  /// after a sync merges in the other device's activity.
-  Future<void> removeFreezeDates(Set<DateTime> studiedDays) async {
-    if (freezeDates.isEmpty || studiedDays.isEmpty) return;
-    final studied =
-        studiedDays.map((d) => _dateStr(DateTime(d.year, d.month, d.day))).toSet();
-    final remaining = freezeDates.where((d) => !studied.contains(d)).toList();
-    if (remaining.length != freezeDates.length) {
-      await _box.put(_kFreezeDates, remaining);
-      _refreshNotifier();
-    }
   }
 
   Future<void> resetStreak() async {
@@ -341,14 +427,6 @@ class StreakService {
   static DateTime _monday(DateTime dt) =>
       DateTime(dt.year, dt.month, dt.day)
           .subtract(Duration(days: dt.weekday - 1));
-
-  Future<void> _maybeResetWeeklyFreezes(DateTime today) async {
-    final thisMonday = _dateStr(_monday(today));
-    if (weekAnchor != thisMonday) {
-      await _box.put(_kWeekAnchor, thisMonday);
-      await _box.put(_kFreezesUsed, 0);
-    }
-  }
 
   Future<void> _reschedule() => NotificationService().rescheduleReminder(
         hour: notifsHour,
@@ -371,15 +449,15 @@ class StreakService {
 
   void _refreshNotifier() {
     final today = DateTime.now();
-    final yesterdayStr = _dateStr(today.subtract(const Duration(days: 1)));
-    final lastFreezeDate = _box.get(_kLastFreezeDate) as String?;
+    final yesterday = DateTime(today.year, today.month, today.day)
+        .subtract(const Duration(days: 1));
     streakNotifier.value = StreakState(
       streakCount: currentStreak,
       highestStreak: highestStreak,
       freezesRemaining: freezesRemainingThisWeek,
       streakEnabled: streakEnabled,
       completedToday: lastActivityDate == _dateStr(today),
-      usedFreezeYesterday: lastFreezeDate == yesterdayStr,
+      usedFreezeYesterday: freezeDaySet().contains(yesterday),
     );
   }
 }

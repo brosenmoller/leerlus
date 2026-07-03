@@ -339,6 +339,17 @@ class AppLocalizationsNl extends AppLocalizations {
   String get streakInfoTitle => 'Streak';
 
   @override
+  String get streakLostTitle => 'Reeks beëindigd';
+
+  @override
+  String streakLostBody(int count) {
+    return 'Je hebt te veel dagen gemist en had geen bevriezingen meer, dus je reeks van $count dagen is beëindigd. Begin vandaag een nieuwe!';
+  }
+
+  @override
+  String get streakLostDismiss => 'OK';
+
+  @override
   String streakBest(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

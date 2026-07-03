@@ -41,6 +41,10 @@ void main() async {
   await streakService.init();
   await StatisticsService().init();
 
+  // Reconcile the streak from real practice history on launch: self-heals the
+  // stored count and flags a one-time notice if the streak has just lapsed.
+  await streakService.reconcileOnOpen(StatisticsService().getActiveDays());
+
   // Restore scheduled reminder after app restart.
   if (streakService.streakEnabled && streakService.notifsEnabled) {
     await notificationService.rescheduleReminder(
@@ -73,6 +77,31 @@ class _LeerlusState extends State<Leerlus> {
     super.initState();
     _settings.localeNotifier.addListener(_onLocaleChanged);
     HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowStreakLapse());
+  }
+
+  /// Shows a one-time notice when the streak lapsed while the app was closed,
+  /// so the user learns their streak ended on open rather than mid-quiz.
+  void _maybeShowStreakLapse() {
+    final ended = StreakService().pendingLapseNotice;
+    if (ended == null) return;
+    StreakService().pendingLapseNotice = null;
+    final ctx = _navigatorKey.currentContext;
+    if (ctx == null) return;
+    final l10n = AppLocalizations.of(ctx);
+    showDialog(
+      context: ctx,
+      builder: (dialogCtx) => AlertDialog(
+        title: Text(l10n.streakLostTitle),
+        content: Text(l10n.streakLostBody(ended)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: Text(l10n.streakLostDismiss),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

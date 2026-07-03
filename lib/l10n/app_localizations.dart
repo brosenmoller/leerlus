@@ -644,6 +644,24 @@ abstract class AppLocalizations {
   /// **'Streak'**
   String get streakInfoTitle;
 
+  /// No description provided for @streakLostTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Streak ended'**
+  String get streakLostTitle;
+
+  /// No description provided for @streakLostBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You missed too many days and ran out of freezes, so your {count} day streak has ended. Start a new one today!'**
+  String streakLostBody(int count);
+
+  /// No description provided for @streakLostDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get streakLostDismiss;
+
   /// No description provided for @streakBest.
   ///
   /// In en, this message translates to:
