@@ -974,7 +974,11 @@ class SyncService {
       for (final t in questionsT) {
         final e = await _db!.getQuestionById(t.entityId);
         if (e != null && t.deletedAt.isAfter(e.updatedAt)) {
-          await _db!.deleteQuestion(t.entityId, tombstone: false);
+          // touchQuizzes:false — otherwise deleting the question would bump the
+          // parent quiz's updatedAt to now, making it look newer than its own
+          // incoming tombstone and wrongly sparing it from deletion below.
+          await _db!.deleteQuestion(t.entityId,
+              tombstone: false, touchQuizzes: false);
           await SrsService().deleteUserData(t.entityId);
           qDel++;
         }
@@ -990,10 +994,26 @@ class SyncService {
       }
       for (final t in foldersT) {
         final e = await _db!.getFolderById(t.entityId);
-        if (e != null && t.deletedAt.isAfter(e.updatedAt)) {
-          await _db!.deleteFolderRow(t.entityId, tombstone: false);
-          fDel++;
+        if (e == null) {
+          // Already gone locally — keep re-propagating the deletion.
+          await _db!.recordTombstone(t.entityId, 'folder', t.deletedAt);
+          continue;
         }
+        // Preserve the folder if it was edited after the deletion (existing
+        // last-write-wins), or if the peer added/changed content inside it
+        // after the deletion.
+        final editedAfter = !t.deletedAt.isAfter(e.updatedAt);
+        final hasNewChildren =
+            await _db!.folderHasContentNewerThan(t.entityId, t.deletedAt);
+        if (editedAfter || hasNewChildren) {
+          // Cancel the deletion; revive so the folder wins and comes back on
+          // the deleting peer at the next sync (union of both devices' content).
+          await _db!.touchFolder(t.entityId);
+          await _db!.clearTombstone(t.entityId, 'folder');
+          continue;
+        }
+        await _db!.deleteFolderRow(t.entityId, tombstone: false);
+        fDel++;
         await _db!.recordTombstone(t.entityId, 'folder', t.deletedAt);
       }
     });

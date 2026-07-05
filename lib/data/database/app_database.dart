@@ -34,6 +34,10 @@ class AppDatabase extends _$AppDatabase {
     instance = this;
   }
 
+  /// Test-only constructor with an injectable executor (e.g. an in-memory
+  /// database). Does not register the static [instance].
+  AppDatabase.forTesting(super.e);
+
   static QueryExecutor _openConnection() {
     return LazyDatabase(() async {
       final dir = await getAppStorageDir();
@@ -672,13 +676,19 @@ class AppDatabase extends _$AppDatabase {
   Future<bool> updateQuestion(QuestionsCompanion entry) =>
       update(questions).replace(entry);
 
-  Future<void> deleteQuestion(String id, {bool tombstone = true}) async {
+  Future<void> deleteQuestion(String id,
+      {bool tombstone = true, bool touchQuizzes = true}) async {
     // Bump updatedAt on every quiz that referenced this question so the
-    // membership change wins last-write-wins during sync.
-    final refs = await (select(quizQuestions)
-      ..where((t) => t.questionId.equals(id))).get();
-    for (final quizId in refs.map((r) => r.quizId).toSet()) {
-      await _touchQuiz(quizId);
+    // membership change wins last-write-wins during sync. Skipped from the
+    // tombstone-apply path (touchQuizzes:false): bumping the parent quiz there
+    // would make it look newer than the incoming quiz tombstone and wrongly
+    // spare it from deletion.
+    if (touchQuizzes) {
+      final refs = await (select(quizQuestions)
+        ..where((t) => t.questionId.equals(id))).get();
+      for (final quizId in refs.map((r) => r.quizId).toSet()) {
+        await _touchQuiz(quizId);
+      }
     }
     await (delete(quizQuestions)..where((t) => t.questionId.equals(id))).go();
     await (delete(questions)..where((t) => t.id.equals(id))).go();
@@ -716,6 +726,30 @@ class AppDatabase extends _$AppDatabase {
 
   Future<Set<String>> getFolderSubtreeIds(String folderId) =>
       _collectFolderSubtree(folderId);
+
+  /// Bumps a folder's [updatedAt] so a revived folder wins last-write-wins.
+  Future<void> touchFolder(String id) =>
+      (update(folders)..where((t) => t.id.equals(id)))
+          .write(FoldersCompanion(updatedAt: Value(DateTime.now())));
+
+  /// True if the folder's live subtree contains any subfolder or quiz whose
+  /// updatedAt is strictly newer than [when] — i.e. content a peer added or
+  /// changed after the deletion recorded at [when]. Used to cancel an incoming
+  /// folder-deletion tombstone so newly added content is preserved.
+  Future<bool> folderHasContentNewerThan(String id, DateTime when) async {
+    final subtree = await getFolderSubtreeIds(id); // includes id itself
+    final newerSub = await (select(folders)
+          ..where((t) =>
+              t.parentFolderId.isIn(subtree) &
+              t.updatedAt.isBiggerThanValue(when)))
+        .get();
+    if (newerSub.isNotEmpty) return true;
+    final newerQuiz = await (select(quizzes)
+          ..where((t) =>
+              t.folderId.isIn(subtree) & t.updatedAt.isBiggerThanValue(when)))
+        .get();
+    return newerQuiz.isNotEmpty;
+  }
 
   /// Deletes every row from every content table. Used by the dev wipe tool.
   /// Also clears tombstones so a wipe is a true clean slate (a leftover

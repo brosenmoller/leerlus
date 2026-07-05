@@ -89,6 +89,17 @@ class _QuestionDisplayScreenState extends State<QuestionDisplayScreen>
     }
   }
 
+  // Flashcards in SRS mode never route through _handleAnswer — the card's
+  // quality buttons answer directly — so record the daily/answer-type stats
+  // here. "again" counts as an incorrect answer; hard/good/easy as correct.
+  // Either way the question counts as answered.
+  void _handleFlashcardSrsAnswered(SrsQuality quality) {
+    final wasCorrect = quality != SrsQuality.again;
+    StatisticsService().recordAnswer(
+        widget.question.answerType.name, wasCorrect, widget.spacedRepetitionMode);
+    widget.onContinue(wasCorrect, quality);
+  }
+
   void _showSrsBottomSheet() {
     showModalBottomSheet(
       context: context,
@@ -186,7 +197,7 @@ class _QuestionDisplayScreenState extends State<QuestionDisplayScreen>
                         onAnswered: _handleAnswer,
                         spacedRepetitionMode: widget.spacedRepetitionMode,
                         onFlashcardSrsAnswered: widget.spacedRepetitionMode
-                            ? (quality) => widget.onContinue(true, quality)
+                            ? _handleFlashcardSrsAnswered
                             : null,
                       ),
                     ),

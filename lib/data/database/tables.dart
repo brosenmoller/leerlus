@@ -58,7 +58,7 @@ class Questions extends Table {
   // clientDefault (not withDefault): drift supplies the value from Dart on
   // every insert, so the column needs no SQL expression default. SQLite's
   // ALTER TABLE ADD COLUMN forbids expression defaults, so this is required to
-  // let the v10 migration add the column to existing databases.
+  // let the .v10 migration add the column to existing databases
   DateTimeColumn get updatedAt => dateTime().clientDefault(() => DateTime.now())();
   @override
   Set<Column> get primaryKey => {id};
