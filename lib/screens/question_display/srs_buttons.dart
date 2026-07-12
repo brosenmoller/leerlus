@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:leerlus/l10n/app_localizations.dart';
 import 'package:leerlus/models/question_data.dart';
 import 'package:leerlus/models/user_question_data.dart';
+import 'package:leerlus/services/settings_service.dart';
 import 'package:leerlus/services/srs_service.dart';
 
 class SrsButtons extends StatefulWidget {
@@ -129,15 +130,18 @@ class _SrsButtonsState extends State<SrsButtons> {
   DateTime _computeNextReviewForQuality(SrsQuality quality) {
     final userData = SrsService().getUserData(widget.question);
     final simulated = userData.copy();
-    simulated.updateAfterAnswer(quality);
+    simulated.updateAfterAnswer(quality, SettingsService().srsSettings);
     return simulated.nextReview;
   }
 
   String _formatDuration(DateTime nextReview, AppLocalizations l10n) {
     final diff = nextReview.difference(DateTime.now());
-    if (diff.inMinutes < 60) return l10n.durationMinutes(diff.inMinutes);
-    if (diff.inHours < 24) return l10n.durationHours(diff.inHours);
-    return l10n.durationDays(diff.inDays);
+    final minutes = (diff.inSeconds / 60).round();
+    if (minutes < 60) return l10n.durationMinutes(minutes);
+    final hours = (diff.inMinutes / 60).round();
+    if (hours < 24) return l10n.durationHours(hours);
+    final days = (diff.inHours / 24).round();
+    return l10n.durationDays(days);
   }
 }
 

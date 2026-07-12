@@ -49,6 +49,7 @@ class SettingsService {
   static const _kEaseEasy = 'srs_ease_easy';
   static const _kInitialEase = 'srs_initial_ease';
   static const _kMaxDays = 'srs_max_days';
+  static const _kEasyMin = 'srs_easy_min_days';
 
   SrsSettings get srsSettings => SrsSettings(
     lapseMultiplier:
@@ -65,6 +66,8 @@ class SettingsService {
         (_box.get(_kInitialEase) as double?) ?? SrsSettings.defaultInitialEase,
     maxIntervalDays:
         (_box.get(_kMaxDays) as int?) ?? SrsSettings.defaultMaxIntervalDays,
+    easyMinIntervalDays: (_box.get(_kEasyMin) as int?) ??
+        SrsSettings.defaultEasyMinIntervalDays,
   );
 
   Future<void> setSrsSettings(SrsSettings s) async {
@@ -75,6 +78,7 @@ class SettingsService {
     await _box.put(_kEaseEasy, s.easeEasy);
     await _box.put(_kInitialEase, s.initialEase);
     await _box.put(_kMaxDays, s.maxIntervalDays);
+    await _box.put(_kEasyMin, s.easyMinIntervalDays);
   }
 
   // ── Default quiz language ─────────────────────────────────────────────────
@@ -126,6 +130,7 @@ class SettingsService {
       _kEaseEasy,
       _kInitialEase,
       _kMaxDays,
+      _kEasyMin,
     ]) {
       await _box.delete(key);
     }
