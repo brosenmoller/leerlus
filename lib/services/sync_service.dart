@@ -254,7 +254,12 @@ class SyncService {
         }
       }
 
-      _acceptorResult = (await _importPayload(payload, overwriteState: hardSync))
+      // Folders whose incoming deletion we cancelled because we hold newer child
+      // content. Reported back so the (deleting) initiator can pull them and
+      // re-parent the content it is about to fetch instead of orphaning it.
+      final revivedFolders = <String>[];
+      _acceptorResult = (await _importPayload(payload,
+              overwriteState: hardSync, revivedFoldersOut: revivedFolders))
           .withImagesFailed(imagesFailed);
       _scheduleAcceptorFallback();
       await QuestionService().refresh();
@@ -266,6 +271,7 @@ class SyncService {
           'streakData': _buildStreakData(),
           'statisticsData': StatisticsService().exportForSync(),
           'srsData': _buildSrsData(),
+          'revivedFolderIds': revivedFolders,
         }),
         headers: {'content-type': 'application/json'},
       );
@@ -534,7 +540,13 @@ class SyncService {
     // from the post-deletion state. Hard sync keeps our own state untouched.
     final tombDel = !hardSync
         ? await _applyIncomingTombstones(remoteManifest.tombstones)
-        : (folders: 0, quizzes: 0, questions: 0, favorites: 0);
+        : (
+            folders: 0,
+            quizzes: 0,
+            questions: 0,
+            favorites: 0,
+            revivedFolders: const <String>[],
+          );
 
     final localManifest = await _buildManifest();
 
@@ -712,6 +724,19 @@ class SyncService {
                 ?.map((e) => Map<String, dynamic>.from(e as Map))
                 .toList() ??
             const <Map<String, dynamic>>[];
+        // Folders the acceptor resurrected because it holds newer content inside
+        // a folder we deleted. Pull them too so the content we're about to fetch
+        // (e.g. a quiz the peer added inside the folder) re-parents correctly
+        // instead of being orphaned to the root.
+        final revivedRemoteFolders = (respData['revivedFolderIds'] as List?)
+                ?.map((e) => e as String)
+                .toList() ??
+            const <String>[];
+        for (final id in revivedRemoteFolders) {
+          if (!localFolderIds.contains(id) && !toFetchFolderIds.contains(id)) {
+            toFetchFolderIds.add(id);
+          }
+        }
         // Merge stats first (practice-day history), then carry the peer's
         // highest streak and recompute our streak from the combined history.
         statsMergedBack = await _applyStatistics(statsBack, overwrite: false);
@@ -961,9 +986,17 @@ class SyncService {
   /// Applies incoming tombstones: records each (keeping the latest deletedAt)
   /// and deletes any local entity that is present and older than the deletion.
   /// Returns how many of each entity type were actually deleted.
-  Future<({int folders, int quizzes, int questions, int favorites})>
+  Future<
+          ({
+            int folders,
+            int quizzes,
+            int questions,
+            int favorites,
+            List<String> revivedFolders
+          })>
       _applyIncomingTombstones(List<SyncTombstone> tombs) async {
     int fDel = 0, qzDel = 0, qDel = 0, favDel = 0;
+    final revivedFolders = <String>[];
     final questionsT = tombs.where((t) => t.entityType == 'question');
     final quizzesT = tombs.where((t) => t.entityType == 'quiz');
     final foldersT = tombs.where((t) => t.entityType == 'folder');
@@ -1010,6 +1043,7 @@ class SyncService {
           // the deleting peer at the next sync (union of both devices' content).
           await _db!.touchFolder(t.entityId);
           await _db!.clearTombstone(t.entityId, 'folder');
+          revivedFolders.add(t.entityId);
           continue;
         }
         await _db!.deleteFolderRow(t.entityId, tombstone: false);
@@ -1023,7 +1057,13 @@ class SyncService {
       await FavoritesService().applyFavoriteTombstone(t.entityId, t.deletedAt);
       if (had && !FavoritesService().isFavorite(t.entityId)) favDel++;
     }
-    return (folders: fDel, quizzes: qzDel, questions: qDel, favorites: favDel);
+    return (
+      folders: fDel,
+      quizzes: qzDel,
+      questions: qDel,
+      favorites: favDel,
+      revivedFolders: revivedFolders,
+    );
   }
 
   // ── Payload building ─────────────────────────────────────────
@@ -1267,6 +1307,7 @@ class SyncService {
     bool applyNonContentState = true,
     bool overwriteState = false,
     bool applyTombstones = true,
+    List<String>? revivedFoldersOut,
   }) async {
     int foldersAdded = 0, quizzesAdded = 0, questionsAdded = 0;
     int foldersUpdated = 0, quizzesUpdated = 0, questionsUpdated = 0;
@@ -1563,6 +1604,7 @@ class SyncService {
       qzDel = d.quizzes;
       qDel = d.questions;
       favDel = d.favorites;
+      revivedFoldersOut?.addAll(d.revivedFolders);
     }
 
     return SyncResult(

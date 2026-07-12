@@ -93,8 +93,18 @@ class _FlashcardWidgetState extends State<FlashcardWidget>
         ? SrsButtons(
             question: widget.question,
             autofocus: _controller.isCompleted,
-            onAnswered: (quality) =>
-                widget.onSrsAnswered?.call(quality) ?? widget.onAnswered(true),
+            // Branch explicitly: onSrsAnswered is a void callback, so
+            // `onSrsAnswered?.call(...) ?? onAnswered(true)` would fire BOTH
+            // (the call returns null, triggering the ?? fallback) and record
+            // the answer twice.
+            onAnswered: (quality) {
+              final onSrs = widget.onSrsAnswered;
+              if (onSrs != null) {
+                onSrs(quality);
+              } else {
+                widget.onAnswered(true);
+              }
+            },
           )
         : Center(
             child: FittedBox(

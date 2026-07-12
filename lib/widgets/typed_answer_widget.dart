@@ -131,16 +131,19 @@ class _TypedAnswerWidgetState extends State<TypedAnswerWidget> {
                   if (answered && !isCorrect) ...[
                     const SizedBox(height: 8),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Icon(Icons.lightbulb_outline,
                             size: 16, color: Colors.green.shade600),
                         const SizedBox(width: 6),
-                        Text(
-                          'Correct answer: '
-                              '${widget.question.typedAnswerConfig!.acceptedAnswers.join(' / ')}',
-                          style: TextStyle(
-                            color: Colors.green.shade700,
-                            fontWeight: FontWeight.w600,
+                        Expanded(
+                          child: Text(
+                            'Correct answer: '
+                                '${widget.question.typedAnswerConfig!.acceptedAnswers.join(' / ')}',
+                            style: TextStyle(
+                              color: Colors.green.shade700,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ],
