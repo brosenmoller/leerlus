@@ -975,9 +975,26 @@ class AppLocalizationsNl extends AppLocalizations {
   String get sortingItemsLabel => 'Items (juiste volgorde, boven → onder)';
 
   @override
+  String get sortingItemsHelp =>
+      'De eerste is het juiste item; voeg alternatieven toe, gescheiden door komma\'s.';
+
+  @override
   String sortingItemN(int n) {
     return 'Item $n';
   }
+
+  @override
+  String get sortingManualAddItems => 'Laat studenten items zelf toevoegen';
+
+  @override
+  String get sortingManualAddItemsSubtitle =>
+      'Verberg het aantal items; studenten voegen en ordenen elk item zelf';
+
+  @override
+  String get sortingAtLeastTwo => 'Minstens 2 items vereist';
+
+  @override
+  String get sortingEntryHint => 'Typ een item…';
 
   @override
   String get addItem => 'Item toevoegen';

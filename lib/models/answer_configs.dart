@@ -149,23 +149,71 @@ class SortingConfig {
   /// Items in the correct order (top → bottom).
   final List<String> items;
 
+  /// Extra accepted forms, parallel to [items]. `alternatives[i]` widens the
+  /// matching for `items[i]` in typed mode without surfacing to the student.
+  final List<List<String>> alternatives;
+
   /// When true, the quiz shows items scrambled as draggable chips.
-  /// When false, the quiz shows blank text fields the user must fill in.
+  /// When false, the quiz shows text fields the user must fill in.
   final bool showPreFilled;
 
-  SortingConfig({required this.items, this.showPreFilled = true});
+  /// Typed mode only: when true the student is not shown a fixed number of
+  /// blank fields (which would leak the item count) and instead adds each
+  /// entry manually before ordering them.
+  final bool manualAddItems;
+
+  SortingConfig({
+    required this.items,
+    List<List<String>>? alternatives,
+    this.showPreFilled = true,
+    this.manualAddItems = false,
+  }) : alternatives = _sizeAlternatives(items, alternatives);
+
+  static List<List<String>> _sizeAlternatives(
+      List<String> items, List<List<String>>? alternatives) {
+    return [
+      for (var i = 0; i < items.length; i++)
+        (alternatives != null && i < alternatives.length)
+            ? List<String>.from(alternatives[i])
+            : <String>[],
+    ];
+  }
+
+  static String _normalize(String text) {
+    return text.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+  }
+
+  /// All accepted spellings for slot [i] (canonical item first).
+  List<String> formsAt(int i) => [items[i], ...alternatives[i]];
+
+  /// Whether [input] matches the item at position [i] (normalized, so
+  /// case- and punctuation-insensitive), taking alternatives into account.
+  bool matchesAt(int i, String input) {
+    final norm = _normalize(input);
+    return formsAt(i).any((f) => _normalize(f) == norm);
+  }
 
   factory SortingConfig.fromJson(Map<String, dynamic> json) {
+    List<List<String>>? alternatives;
+    if (json['alternatives'] is List) {
+      alternatives = [
+        for (final e in json['alternatives'] as List) List<String>.from(e ?? []),
+      ];
+    }
     return SortingConfig(
       items: List<String>.from(json['items'] ?? []),
+      alternatives: alternatives,
       showPreFilled: json['showPreFilled'] as bool? ?? true,
+      manualAddItems: json['manualAddItems'] as bool? ?? false,
     );
   }
 
   Map<String, dynamic> toJson() => {
-    'items': items,
-    'showPreFilled': showPreFilled,
-  };
+        'items': items,
+        if (alternatives.any((a) => a.isNotEmpty)) 'alternatives': alternatives,
+        'showPreFilled': showPreFilled,
+        if (manualAddItems) 'manualAddItems': manualAddItems,
+      };
 }
 
 /// One required Set slot: a canonical answer plus alternative accepted forms.

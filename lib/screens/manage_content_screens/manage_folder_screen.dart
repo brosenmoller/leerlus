@@ -271,7 +271,6 @@ class _FolderTileState extends State<_FolderTile> {
               ),
             ],
           ),
-          const Icon(Icons.chevron_right),
         ],
       ),
       onTap: () => Navigator.push(
@@ -492,7 +491,6 @@ class _QuizTileState extends State<_QuizTile> {
               ),
             ],
           ),
-          const Icon(Icons.chevron_right),
         ],
       ),
       onTap: () => Navigator.push(

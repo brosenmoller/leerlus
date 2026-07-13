@@ -467,12 +467,17 @@
   "setAdd": "Add",
   "setMissed": "Missed",
   "sortingItemsLabel": "Items (correct order, top → bottom)",
+  "sortingItemsHelp": "First entry is the correct item; add comma-separated alternatives.",
   "sortingItemN": "Item {n}",
   "@sortingItemN": {
     "placeholders": {
       "n": { "type": "int" }
     }
   },
+  "sortingManualAddItems": "Let students add items manually",
+  "sortingManualAddItemsSubtitle": "Hide the number of items; students add and order each item themselves",
+  "sortingAtLeastTwo": "At least 2 items required",
+  "sortingEntryHint": "Type an item…",
   "addItem": "Add item",
   "showPreFilled": "Show items pre-filled",
   "showPreFilledSubtitle": "Students drag items into the correct order; disable to have them type each item",

@@ -969,9 +969,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sortingItemsLabel => 'Items (correct order, top → bottom)';
 
   @override
+  String get sortingItemsHelp =>
+      'First entry is the correct item; add comma-separated alternatives.';
+
+  @override
   String sortingItemN(int n) {
     return 'Item $n';
   }
+
+  @override
+  String get sortingManualAddItems => 'Let students add items manually';
+
+  @override
+  String get sortingManualAddItemsSubtitle =>
+      'Hide the number of items; students add and order each item themselves';
+
+  @override
+  String get sortingAtLeastTwo => 'At least 2 items required';
+
+  @override
+  String get sortingEntryHint => 'Type an item…';
 
   @override
   String get addItem => 'Add item';

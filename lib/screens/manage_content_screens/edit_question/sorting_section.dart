@@ -7,6 +7,8 @@ class SortingSection extends StatelessWidget {
   final List<FocusNode> focusNodes;
   final bool showPreFilled;
   final ValueChanged<bool> onShowPreFilledChanged;
+  final bool manualAddItems;
+  final ValueChanged<bool> onManualAddItemsChanged;
   final VoidCallback onAddItem;
   final ValueChanged<int> onRemoveItem;
 
@@ -16,6 +18,8 @@ class SortingSection extends StatelessWidget {
     required this.focusNodes,
     required this.showPreFilled,
     required this.onShowPreFilledChanged,
+    required this.manualAddItems,
+    required this.onManualAddItemsChanged,
     required this.onAddItem,
     required this.onRemoveItem,
   });
@@ -38,6 +42,11 @@ class SortingSection extends StatelessWidget {
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          l10n.sortingItemsHelp,
+          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
         ),
         const SizedBox(height: 8),
 
@@ -120,6 +129,16 @@ class SortingSection extends StatelessWidget {
           value: showPreFilled,
           onChanged: onShowPreFilledChanged,
         ),
+
+        // Manual-add only applies to typed mode; drag mode always shows the chips.
+        if (!showPreFilled)
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(l10n.sortingManualAddItems),
+            subtitle: Text(l10n.sortingManualAddItemsSubtitle),
+            value: manualAddItems,
+            onChanged: onManualAddItemsChanged,
+          ),
       ],
     );
   }

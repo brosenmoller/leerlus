@@ -83,6 +83,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
   // Sorting
   late final List<TextEditingController> _sortingControllers;
   bool _sortingShowPreFilled = true;
+  bool _sortingManualAddItems = false;
 
   // Set
   late final List<TextEditingController> _setControllers;
@@ -217,12 +218,16 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
 
       if (_answerType == 'sorting') {
         final sc = SortingConfig.fromJson(config);
-        _sortingControllers =
-            sc.items.map((s) => TextEditingController(text: s)).toList();
+        _sortingControllers = [
+          for (var i = 0; i < sc.items.length; i++)
+            TextEditingController(
+                text: [sc.items[i], ...sc.alternatives[i]].join(', ')),
+        ];
         while (_sortingControllers.length < 2) {
           _sortingControllers.add(TextEditingController());
         }
         _sortingShowPreFilled = sc.showPreFilled;
+        _sortingManualAddItems = sc.manualAddItems;
       } else {
         _sortingControllers =
             List.generate(4, (_) => TextEditingController());
@@ -574,6 +579,11 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                       showPreFilled: _sortingShowPreFilled,
                       onShowPreFilledChanged: (v) => setState(() {
                         _sortingShowPreFilled = v;
+                        _isDirty = true;
+                      }),
+                      manualAddItems: _sortingManualAddItems,
+                      onManualAddItemsChanged: (v) => setState(() {
+                        _sortingManualAddItems = v;
                         _isDirty = true;
                       }),
                       onAddItem: () {
@@ -1105,9 +1115,32 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
         randomizeSides: _flashcardRandomizeSides,
       ).toJson());
     } else if (_answerType == 'sorting') {
+      // Each field is comma-separated: first form = canonical item, rest = alternatives.
+      final items = <String>[];
+      final alternatives = <List<String>>[];
+      for (final c in _sortingControllers) {
+        final forms = <String>[];
+        final seen = <String>{};
+        for (final part in c.text.split(',')) {
+          final trimmed = part.trim();
+          if (trimmed.isEmpty) continue;
+          if (seen.add(trimmed.toLowerCase())) forms.add(trimmed);
+        }
+        if (forms.isEmpty) continue;
+        items.add(forms.first);
+        alternatives.add(forms.sublist(1));
+      }
+      if (items.length < 2) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.sortingAtLeastTwo)),
+        );
+        return;
+      }
       answerConfig = jsonEncode(SortingConfig(
-        items: _sortingControllers.map((c) => c.text.trim()).toList(),
+        items: items,
+        alternatives: alternatives,
         showPreFilled: _sortingShowPreFilled,
+        manualAddItems: _sortingManualAddItems,
       ).toJson());
     } else if (_answerType == 'set') {
       // Each field is comma-separated: first form = canonical, rest = alternatives.

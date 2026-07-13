@@ -1646,11 +1646,41 @@ abstract class AppLocalizations {
   /// **'Items (correct order, top → bottom)'**
   String get sortingItemsLabel;
 
+  /// No description provided for @sortingItemsHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'First entry is the correct item; add comma-separated alternatives.'**
+  String get sortingItemsHelp;
+
   /// No description provided for @sortingItemN.
   ///
   /// In en, this message translates to:
   /// **'Item {n}'**
   String sortingItemN(int n);
+
+  /// No description provided for @sortingManualAddItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Let students add items manually'**
+  String get sortingManualAddItems;
+
+  /// No description provided for @sortingManualAddItemsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide the number of items; students add and order each item themselves'**
+  String get sortingManualAddItemsSubtitle;
+
+  /// No description provided for @sortingAtLeastTwo.
+  ///
+  /// In en, this message translates to:
+  /// **'At least 2 items required'**
+  String get sortingAtLeastTwo;
+
+  /// No description provided for @sortingEntryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type an item…'**
+  String get sortingEntryHint;
 
   /// No description provided for @addItem.
   ///
