@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:leerlus/l10n/app_localizations.dart';
@@ -31,9 +33,17 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
   final _fabFocusNode = FocusNode();
   final _searchController = TextEditingController();
   String? _highlightId;
+  Timer? _highlightTimer;
   bool _pendingScrollToEnd = false;
   bool _pendingScrollToHighlight = false;
   final _highlightKey = GlobalKey();
+
+  /// Question to scroll into view on open (set when navigating here from the
+  /// global content search). This — not [_highlightId] — decides which tile
+  /// carries [_highlightKey], because it never changes after initState: a tile
+  /// gaining or losing a key is rebuilt from scratch, which unmounts an open
+  /// PopupMenuButton and makes it silently drop its onSelected callback.
+  String? _scrollTargetId;
   bool _searching = false;
   String _query = '';
   bool _selectionMode = false;
@@ -45,15 +55,27 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
     super.initState();
     if (widget.highlightQuestionId != null) {
       _highlightId = widget.highlightQuestionId;
+      _scrollTargetId = widget.highlightQuestionId;
       _pendingScrollToHighlight = true;
-      Future.delayed(const Duration(milliseconds: 1800), () {
-        if (mounted) setState(() => _highlightId = null);
-      });
+      _startHighlightTimer();
     }
+  }
+
+  /// Clears the highlight after a moment. Always restart through here: a bare
+  /// `Future.delayed` can't be cancelled, so a timer left over from an earlier
+  /// edit fires late and wipes the *next* highlight — possibly before the
+  /// stream has delivered the new row, stranding [_pendingScrollToEnd] and
+  /// making the duplicate look like it did nothing.
+  void _startHighlightTimer() {
+    _highlightTimer?.cancel();
+    _highlightTimer = Timer(const Duration(milliseconds: 1800), () {
+      if (mounted) setState(() => _highlightId = null);
+    });
   }
 
   @override
   void dispose() {
+    _highlightTimer?.cancel();
     _scrollController.dispose();
     _fabFocusNode.dispose();
     _searchController.dispose();
@@ -139,9 +161,7 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
       _highlightId = id;
       _pendingScrollToEnd = isNew;
     });
-    Future.delayed(const Duration(milliseconds: 1800), () {
-      if (mounted) setState(() => _highlightId = null);
-    });
+    _startHighlightTimer();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _fabFocusNode.requestFocus();
     });
@@ -276,26 +296,30 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
           }
 
           // Scroll to the end once the newly added question appears in the list.
-          if (query.isEmpty &&
-              _pendingScrollToEnd &&
+          // Clear the flag as soon as the row exists — even when an active
+          // search filters it out — so a stale pending scroll can't fire later.
+          if (_pendingScrollToEnd &&
+              _highlightId != null &&
               questions.any((q) => q.id == _highlightId)) {
             _pendingScrollToEnd = false;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (_scrollController.hasClients) {
-                _scrollController.animateTo(
-                  _scrollController.position.maxScrollExtent,
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOut,
-                );
-              }
-            });
+            if (filtered.any((q) => q.id == _highlightId)) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (_scrollController.hasClients) {
+                  _scrollController.animateTo(
+                    _scrollController.position.maxScrollExtent,
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOut,
+                  );
+                }
+              });
+            }
           }
 
           // Scroll an arbitrary highlighted question into view (e.g. when
           // navigating here from the global search). Tiles vary in height, so
           // use ensureVisible on the tile's key rather than an index estimate.
           if (_pendingScrollToHighlight &&
-              filtered.any((q) => q.id == _highlightId)) {
+              filtered.any((q) => q.id == _scrollTargetId)) {
             _pendingScrollToHighlight = false;
             WidgetsBinding.instance.addPostFrameCallback((_) {
               final ctx = _highlightKey.currentContext;
@@ -323,7 +347,16 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
                   final isHighlighted = question.id == _highlightId;
                   final isSelected = _selectedIds.contains(question.id);
                   return ListTile(
-                    key: isHighlighted ? _highlightKey : null,
+                    // One stable key per question for the tile's whole life.
+                    // A key that appears/disappears (as the highlight one used
+                    // to) makes the sliver rebuild the tile from scratch, which
+                    // unmounts an open PopupMenuButton — and an unmounted
+                    // PopupMenuButton silently drops its onSelected callback,
+                    // so "Duplicate" would do nothing. _scrollTargetId is set
+                    // once in initState and never changes, so this never flips.
+                    key: question.id == _scrollTargetId
+                        ? _highlightKey
+                        : ValueKey(question.id),
                     tileColor: isHighlighted || isSelected
                         ? Theme.of(context)
                             .colorScheme
