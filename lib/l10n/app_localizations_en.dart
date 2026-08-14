@@ -208,6 +208,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchHint => 'Search folders, quizzes & questions…';
 
   @override
+  String get searchBrowseHint => 'Search folders & quizzes…';
+
+  @override
   String get searchNoResults => 'No results found.';
 
   @override

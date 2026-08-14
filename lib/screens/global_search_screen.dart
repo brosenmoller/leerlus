@@ -41,7 +41,7 @@ class GlobalSearchDelegate extends SearchDelegate<void> {
     final q = query.toLowerCase().trim();
 
     if (q.isEmpty) {
-      return Center(child: Text(l10n.searchHint));
+      return Center(child: Text(l10n.searchBrowseHint));
     }
 
     final folders = _service

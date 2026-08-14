@@ -210,6 +210,9 @@ class AppLocalizationsNl extends AppLocalizations {
   String get searchHint => 'Zoek mappen, quizzen & vragen…';
 
   @override
+  String get searchBrowseHint => 'Zoek mappen & quizzen…';
+
+  @override
   String get searchNoResults => 'Geen resultaten gevonden.';
 
   @override

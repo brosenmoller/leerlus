@@ -7,6 +7,7 @@ import 'package:leerlus/services/settings_service.dart';
 import 'package:leerlus/utils/language_data.dart';
 import 'package:leerlus/utils/text_field_selection_fix.dart';
 import 'package:leerlus/widgets/image_picker_field.dart';
+import 'package:leerlus/widgets/screen_shortcuts.dart';
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
@@ -32,6 +33,7 @@ class _EditQuizScreenState extends State<EditQuizScreen> {
   final _pickerKey = GlobalKey<ImagePickerFieldState>();
   late final TextEditingController _titleController;
   late final TextEditingController _languageController;
+  final _titleFocusNode = FocusNode();
   String? _imagePath;
 
   @override
@@ -45,12 +47,22 @@ class _EditQuizScreenState extends State<EditQuizScreen> {
     _languageController =
         TextEditingController(text: codeToDisplay(defaultLang));
     _imagePath = widget.existing?.imagePath;
+
+    // Focus the title on open, like the question field in EditQuestionScreen.
+    // Has to be an explicit request rather than `autofocus: true`: the
+    // ScreenShortcuts wrapper autofocuses itself, and whichever autofocus is
+    // registered first wins — the ancestor. An imperative requestFocus does not
+    // race, it just takes the focus.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _titleFocusNode.requestFocus();
+    });
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _languageController.dispose();
+    _titleFocusNode.dispose();
     super.dispose();
   }
 
@@ -58,7 +70,9 @@ class _EditQuizScreenState extends State<EditQuizScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final isEditing = widget.existing != null;
-    return Scaffold(
+    return ScreenShortcuts(
+      onSave: _save,
+      child: Scaffold(
       appBar: AppBar(
         title: Text(
             isEditing ? l10n.editQuizAppBarTitle : l10n.addQuizAppBarTitle),
@@ -74,12 +88,12 @@ class _EditQuizScreenState extends State<EditQuizScreen> {
               children: [
                 TextFormField(
                   controller: _titleController,
+                  focusNode: _titleFocusNode,
                   onTap: collapseSelectionOnTap(_titleController),
                   decoration: InputDecoration(
                     labelText: l10n.titleLabel,
                     border: const OutlineInputBorder(),
                   ),
-                  autofocus: !isEditing,
                   validator: (v) =>
                       v!.trim().isEmpty ? l10n.required : null,
                 ),
@@ -124,6 +138,7 @@ class _EditQuizScreenState extends State<EditQuizScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

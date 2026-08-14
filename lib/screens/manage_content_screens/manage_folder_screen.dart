@@ -5,17 +5,20 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:leerlus/l10n/app_localizations.dart';
 import 'package:leerlus/data/database/app_database.dart';
+import 'package:leerlus/screens/manage_content_screens/content_search_view.dart';
 import 'package:leerlus/screens/manage_content_screens/edit_folder_screen.dart';
 import 'package:leerlus/screens/manage_content_screens/edit_quiz_screen.dart';
 import 'package:leerlus/screens/manage_content_screens/manage_questions_screen.dart';
 import 'package:leerlus/services/question_service.dart';
 import 'package:leerlus/utils/lus_export_flow.dart';
+import 'package:leerlus/utils/text_field_selection_fix.dart';
 import 'package:leerlus/widgets/app_image.dart';
+import 'package:leerlus/widgets/screen_shortcuts.dart';
 import 'package:path/path.dart' as p;
 
 /// Shows the contents (subfolders + quizzes) of a folder, or the root if
 /// [folder] is null. Navigating into a subfolder pushes another instance.
-class ManageFolderScreen extends StatelessWidget {
+class ManageFolderScreen extends StatefulWidget {
   final AppDatabase db;
   /// null = root level
   final Folder? folder;
@@ -23,12 +26,95 @@ class ManageFolderScreen extends StatelessWidget {
   const ManageFolderScreen({super.key, required this.db, this.folder});
 
   @override
+  State<ManageFolderScreen> createState() => _ManageFolderScreenState();
+}
+
+class _ManageFolderScreenState extends State<ManageFolderScreen> {
+  AppDatabase get db => widget.db;
+  Folder? get folder => widget.folder;
+
+  final _searchController = TextEditingController();
+  final _searchFocusNode = FocusNode();
+  bool _searching = false;
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  /// Ctrl+F and the search action. Pressing it again with the bar already open
+  /// puts the caret back in the field instead of doing nothing.
+  void _startSearch() {
+    setState(() => _searching = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocusNode.requestFocus();
+    });
+  }
+
+  void _stopSearch() {
+    setState(() {
+      _searching = false;
+      _query = '';
+      _searchController.clear();
+    });
+  }
+
+  void _newFolder() => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => EditFolderScreen(db: db, parentFolderId: folder?.id),
+        ),
+      );
+
+  void _newQuiz() => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => EditQuizScreen(db: db, folderId: folder?.id),
+        ),
+      );
+
+  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    return ScreenShortcuts(
+      onSearch: _startSearch,
+      // The create shortcuts mirror the FABs, which are hidden while searching.
+      onNew: _searching ? null : _newQuiz,
+      onNewFolder: _searching ? null : _newFolder,
+      // Escape / back closes the search bar before leaving the screen.
+      onEscape: _searching ? _stopSearch : null,
+      child: _buildScaffold(l10n),
+    );
+  }
+
+  Widget _buildScaffold(AppLocalizations l10n) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(folder?.title ?? l10n.manageContentTitle),
-        bottom: folder != null
+        title: _searching
+            ? TextField(
+                controller: _searchController,
+                focusNode: _searchFocusNode,
+                autofocus: true,
+                onTap: collapseSelectionOnTap(_searchController),
+                onChanged: (value) => setState(() => _query = value),
+                style: const TextStyle(fontSize: 18),
+                decoration: InputDecoration(
+                  hintText: l10n.searchHint,
+                  border: InputBorder.none,
+                ),
+              )
+            : Text(folder?.title ?? l10n.manageContentTitle),
+        actions: [
+          IconButton(
+            icon: Icon(_searching ? Icons.close : Icons.search),
+            tooltip: l10n.searchTooltip,
+            onPressed: _searching ? _stopSearch : _startSearch,
+          ),
+        ],
+        bottom: folder != null && !_searching
             ? PreferredSize(
                 preferredSize: const Size.fromHeight(20),
                 child: Padding(
@@ -39,37 +125,37 @@ class ManageFolderScreen extends StatelessWidget {
               )
             : null,
       ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          FloatingActionButton.extended(
-            heroTag: 'add_folder_${folder?.id}',
-            icon: const Icon(Icons.create_new_folder_outlined),
-            label: Text(l10n.addFolder),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) =>
-                    EditFolderScreen(db: db, parentFolderId: folder?.id),
-              ),
+      floatingActionButton: _searching
+          ? null
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                FloatingActionButton.extended(
+                  heroTag: 'add_folder_${folder?.id}',
+                  icon: const Icon(Icons.create_new_folder_outlined),
+                  label: Text(l10n.addFolder),
+                  onPressed: _newFolder,
+                ),
+                const SizedBox(height: 12),
+                FloatingActionButton.extended(
+                  heroTag: 'add_quiz_${folder?.id}',
+                  icon: const Icon(Icons.quiz_outlined),
+                  label: Text(l10n.addQuiz),
+                  onPressed: _newQuiz,
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton.extended(
-            heroTag: 'add_quiz_${folder?.id}',
-            icon: const Icon(Icons.quiz_outlined),
-            label: Text(l10n.addQuiz),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => EditQuizScreen(db: db, folderId: folder?.id),
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: FolderContentsBody(db: db, folder: folder),
+      // Results are scoped to this folder's subtree, so searching inside a
+      // folder stays about that folder instead of the whole app.
+      body: _searching
+          ? ContentSearchView(
+              db: db,
+              query: _query,
+              scopeFolderId: folder?.id,
+              emptyQueryChild: FolderContentsBody(db: db, folder: folder),
+            )
+          : FolderContentsBody(db: db, folder: folder),
     );
   }
 }

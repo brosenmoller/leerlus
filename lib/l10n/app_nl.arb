@@ -84,6 +84,7 @@
 
   "searchTooltip": "Zoeken",
   "searchHint": "Zoek mappen, quizzen & vragen…",
+  "searchBrowseHint": "Zoek mappen & quizzen…",
   "searchNoResults": "Geen resultaten gevonden.",
   "searchQuestionsHint": "Zoek vragen…",
 

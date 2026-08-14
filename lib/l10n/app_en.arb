@@ -84,6 +84,7 @@
 
   "searchTooltip": "Search",
   "searchHint": "Search folders, quizzes & questions…",
+  "searchBrowseHint": "Search folders & quizzes…",
   "searchNoResults": "No results found.",
   "searchQuestionsHint": "Search questions…",
 

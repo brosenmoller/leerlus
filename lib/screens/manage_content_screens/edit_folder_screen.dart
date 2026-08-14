@@ -5,6 +5,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:leerlus/services/question_service.dart';
 import 'package:leerlus/utils/text_field_selection_fix.dart';
 import 'package:leerlus/widgets/image_picker_field.dart';
+import 'package:leerlus/widgets/screen_shortcuts.dart';
 
 class EditFolderScreen extends StatefulWidget {
   final AppDatabase db;
@@ -27,6 +28,7 @@ class _EditFolderScreenState extends State<EditFolderScreen> {
   final _formKey = GlobalKey<FormState>();
   final _pickerKey = GlobalKey<ImagePickerFieldState>();
   late final TextEditingController _titleController;
+  final _titleFocusNode = FocusNode();
   String? _imagePath;
 
   @override
@@ -35,11 +37,21 @@ class _EditFolderScreenState extends State<EditFolderScreen> {
     _titleController =
         TextEditingController(text: widget.existing?.title ?? '');
     _imagePath = widget.existing?.imagePath;
+
+    // Focus the title on open, like the question field in EditQuestionScreen.
+    // Has to be an explicit request rather than `autofocus: true`: the
+    // ScreenShortcuts wrapper autofocuses itself, and whichever autofocus is
+    // registered first wins — the ancestor. An imperative requestFocus does not
+    // race, it just takes the focus.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _titleFocusNode.requestFocus();
+    });
   }
 
   @override
   void dispose() {
     _titleController.dispose();
+    _titleFocusNode.dispose();
     super.dispose();
   }
 
@@ -47,7 +59,9 @@ class _EditFolderScreenState extends State<EditFolderScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final isEditing = widget.existing != null;
-    return Scaffold(
+    return ScreenShortcuts(
+      onSave: _save,
+      child: Scaffold(
       appBar: AppBar(
         title: Text(isEditing ? l10n.editFolderAppBarTitle : l10n.addFolderAppBarTitle),
       ),
@@ -62,12 +76,12 @@ class _EditFolderScreenState extends State<EditFolderScreen> {
           children: [
             TextFormField(
               controller: _titleController,
+              focusNode: _titleFocusNode,
               onTap: collapseSelectionOnTap(_titleController),
               decoration: InputDecoration(
                 labelText: l10n.folderNameLabel,
                 border: const OutlineInputBorder(),
               ),
-              autofocus: !isEditing,
               validator: (v) => v!.trim().isEmpty ? l10n.required : null,
             ),
             const SizedBox(height: 20),
@@ -87,6 +101,7 @@ class _EditFolderScreenState extends State<EditFolderScreen> {
         ),
           ),
         ),
+      ),
       ),
     );
   }

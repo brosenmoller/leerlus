@@ -470,6 +470,12 @@ abstract class AppLocalizations {
   /// **'Search folders, quizzes & questions…'**
   String get searchHint;
 
+  /// No description provided for @searchBrowseHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search folders & quizzes…'**
+  String get searchBrowseHint;
+
   /// No description provided for @searchNoResults.
   ///
   /// In en, this message translates to:

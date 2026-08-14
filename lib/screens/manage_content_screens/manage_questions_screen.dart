@@ -2,13 +2,13 @@ import 'dart:async';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:leerlus/l10n/app_localizations.dart';
 import 'package:leerlus/data/database/app_database.dart';
 import 'package:leerlus/screens/manage_content_screens/edit_question_screen.dart';
 import 'package:leerlus/services/question_service.dart';
 import 'package:leerlus/services/srs_service.dart';
 import 'package:leerlus/utils/text_field_selection_fix.dart';
+import 'package:leerlus/widgets/screen_shortcuts.dart';
 
 class ManageQuestionsScreen extends StatefulWidget {
   final AppDatabase db;
@@ -33,6 +33,7 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
   final _scrollController = ScrollController();
   final _fabFocusNode = FocusNode();
   final _searchController = TextEditingController();
+  final _searchFocusNode = FocusNode();
   String? _highlightId;
   Timer? _highlightTimer;
   bool _pendingScrollToEnd = false;
@@ -80,7 +81,17 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
     _scrollController.dispose();
     _fabFocusNode.dispose();
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
+  }
+
+  /// Ctrl+F and the search action. Pressing it again with the bar already open
+  /// puts the caret back in the field instead of doing nothing.
+  void _startSearch() {
+    setState(() => _searching = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocusNode.requestFocus();
+    });
   }
 
   void _stopSearch() {
@@ -173,6 +184,7 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
       title: _searching
           ? TextField(
               controller: _searchController,
+              focusNode: _searchFocusNode,
               autofocus: true,
               onTap: collapseSelectionOnTap(_searchController),
               onChanged: (value) => setState(() => _query = value),
@@ -200,7 +212,7 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
               IconButton(
                 icon: const Icon(Icons.search),
                 tooltip: l10n.searchTooltip,
-                onPressed: () => setState(() => _searching = true),
+                onPressed: _startSearch,
               ),
             ],
       bottom: _searching
@@ -251,29 +263,21 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
     );
   }
 
-  /// Ctrl+Space opens the add-question screen — same action as the FAB, so it
-  /// is a no-op while the FAB is hidden in selection mode.
-  void _addQuestionShortcut() {
-    if (_selectionMode) return;
-    _openAddScreen();
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.space, control: true):
-            _addQuestionShortcut,
-      },
-      // Without a focused descendant the key event never travels up to the
-      // bindings above, and this screen has no autofocusing field of its own
-      // until the search box opens. This node claims focus on entry so the
-      // shortcut works immediately.
-      child: Focus(
-        autofocus: true,
-        child: _buildScaffold(l10n),
-      ),
+    return ScreenShortcuts(
+      onSearch: _selectionMode ? null : _startSearch,
+      // Ctrl+Space mirrors the FAB, which is hidden in selection mode.
+      onNew: _selectionMode ? null : _openAddScreen,
+      // Escape / back backs out of search or selection mode — whichever is
+      // active — before leaving the screen.
+      onEscape: _searching
+          ? _stopSearch
+          : _selectionMode
+              ? _exitSelection
+              : null,
+      child: _buildScaffold(l10n),
     );
   }
 

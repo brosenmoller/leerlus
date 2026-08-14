@@ -8,6 +8,7 @@ import 'package:leerlus/services/question_service.dart';
 import 'package:leerlus/widgets/collapsible_app_bar_title.dart';
 import 'package:leerlus/widgets/folder_tile.dart';
 import 'package:leerlus/widgets/quiz_tile.dart';
+import 'package:leerlus/widgets/screen_shortcuts.dart';
 
 /// Browsable folder/quiz screen. Pass [folder] = null to show the root level.
 class FolderBrowserScreen extends StatelessWidget {
@@ -42,6 +43,11 @@ class FolderBrowserScreen extends StatelessWidget {
     );
   }
 
+  void _openSearch(BuildContext context, AppLocalizations l10n) => showSearch(
+        context: context,
+        delegate: GlobalSearchDelegate(hint: l10n.searchBrowseHint),
+      );
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -61,7 +67,9 @@ class FolderBrowserScreen extends StatelessWidget {
       mainAxisSpacing: 12,
     );
 
-    return Scaffold(
+    return ScreenShortcuts(
+      onSearch: () => _openSearch(context, l10n),
+      child: Scaffold(
       body: LayoutBuilder(
         builder: (context, constraints) {
           final double hPad = constraints.maxWidth > 900
@@ -79,10 +87,7 @@ class FolderBrowserScreen extends StatelessWidget {
                   IconButton(
                     tooltip: l10n.searchTooltip,
                     icon: Icon(Icons.search, color: colorScheme.onPrimary),
-                    onPressed: () => showSearch(
-                      context: context,
-                      delegate: GlobalSearchDelegate(hint: l10n.searchHint),
-                    ),
+                    onPressed: () => _openSearch(context, l10n),
                   ),
                 ],
                 flexibleSpace: FlexibleSpaceBar(
@@ -206,6 +211,7 @@ class FolderBrowserScreen extends StatelessWidget {
             ],
           );
         },
+      ),
       ),
     );
   }

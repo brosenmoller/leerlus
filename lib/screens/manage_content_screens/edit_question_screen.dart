@@ -14,6 +14,7 @@ import 'package:leerlus/utils/text_field_selection_fix.dart';
 import 'package:leerlus/widgets/app_image.dart';
 import 'package:leerlus/widgets/image_browser_dialog.dart';
 import 'package:leerlus/widgets/image_picker_field.dart';
+import 'package:leerlus/widgets/screen_shortcuts.dart';
 import 'package:leerlus/widgets/unsaved_changes_guard.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -382,10 +383,8 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.keyS, control: true): _save,
-      },
+    return ScreenShortcuts(
+      onSave: _save,
       child: UnsavedChangesGuard(
       hasChanges: _hasChanges,
       message: l10n.unsavedChangesQuestion,
