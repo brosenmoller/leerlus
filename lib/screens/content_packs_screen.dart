@@ -42,11 +42,9 @@ class _ContentPacksScreenState extends State<ContentPacksScreen> {
   Future<void> _importPack(_PackMeta pack) async {
     final assetPath = 'assets/content_packs/${pack.file}';
     final l10n = AppLocalizations.of(context);
-    String packMessage(int count) => count == 0
-        ? l10n.contentPacksAlreadyUpToDate
-        : l10n.contentPacksImportedCount(count);
 
     // .lus packs can be large — decode behind the debounced progress dialog.
+    // (runLusImport asks for the import options itself.)
     if (p.extension(pack.file).toLowerCase() == '.lus') {
       await runLusImport(
         context,
@@ -58,20 +56,23 @@ class _ContentPacksScreenState extends State<ContentPacksScreen> {
           );
         },
         startImport: widget.db.startImportFromLus,
-        successMessage: packMessage,
       );
       return;
     }
+
+    final updateExisting = await askImportOptions(context);
+    if (updateExisting == null || !mounted) return;
 
     // JSON packs are small; import inline without a progress dialog.
     try {
       final raw = await rootBundle.loadString(assetPath);
       final data = jsonDecode(raw) as Map<String, dynamic>;
-      final count = await widget.db.importFromJson(data);
+      final result = await widget.db
+          .importFromJson(data, updateExisting: updateExisting);
       await QuestionService().refresh();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(packMessage(count))),
+          SnackBar(content: Text(importSummary(l10n, result))),
         );
       }
     } catch (e) {

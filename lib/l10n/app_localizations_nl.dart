@@ -661,6 +661,26 @@ class AppLocalizationsNl extends AppLocalizations {
   String get importSuccess => 'Importeren geslaagd';
 
   @override
+  String importUpdatedCount(int count) {
+    return '$count bestaande items bijgewerkt';
+  }
+
+  @override
+  String importInsertedAndUpdatedCount(int inserted, int updated) {
+    return '$inserted nieuwe items geïmporteerd, $updated bijgewerkt';
+  }
+
+  @override
+  String get importOptionsTitle => 'Importeren';
+
+  @override
+  String get importUpdateExisting => 'Bestaande items bijwerken';
+
+  @override
+  String get importUpdateExistingSubtitle =>
+      'Overschrijf items die al in je bibliotheek staan met de versie uit dit bestand. Je voortgang blijft behouden.';
+
+  @override
   String get importInProgress => 'Bezig met importeren…';
 
   @override

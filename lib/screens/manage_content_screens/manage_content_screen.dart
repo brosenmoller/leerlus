@@ -358,7 +358,6 @@ class _ManageContentScreenState extends State<ManageContentScreen> {
   // ── Import (.lus) ────────────────────────────────────────────────
 
   Future<void> _importJson(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
     return runLusImport(
       context,
       loadBytes: () async {
@@ -371,7 +370,6 @@ class _ManageContentScreenState extends State<ManageContentScreen> {
         return File(path).readAsBytes();
       },
       startImport: db.startImportFromLus,
-      successMessage: (_) => l10n.importSuccess,
     );
   }
 }

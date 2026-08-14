@@ -1,0 +1,138 @@
+LEERLUS — SUGGESTIONS
+=====================
+Findings from an external audit of the .lus export/import round trip,
+done while building ../lus_checker (Aug 2026). Nothing in this file has
+been applied to the app; each entry is a proposal.
+
+Format per entry:
+  ## [SEVERITY] Title
+  Problem  — what is wrong
+  Evidence — how it was observed
+  Fix      — concrete change
+  Impact   — what breaks until it is fixed
+
+
+## [CRITICAL] `set` and `sorting` answers are destroyed by both export and import
+
+Problem
+  Question answer configs are round-tripped through a switch on
+  `answerType` that only knows four of the six types. `set` and `sorting`
+  fall through silently:
+
+    - Export (lib/data/database/app_database.dart:290-299) has cases for
+      multipleChoice / typed / imageClick / flashcard only. For a `set` or
+      `sorting` question no *Config key is written at all, so the answers
+      simply are not in the exported content.json.
+
+    - Import (lib/data/database/app_database.dart:334-340) has the same
+      four cases plus `_ => '{}'`. So a `set` or `sorting` question is
+      imported with an EMPTY answerConfig — it becomes an unanswerable
+      question rather than failing loudly.
+
+  Combined, this means: export a folder, re-import it into a fresh
+  install, and every set/sorting question comes back blank. The data is
+  lost at export time, so no import fix alone can recover it.
+
+  Note the models are fine — `SetConfig` (lib/models/answer_configs.dart:230)
+  and `SortingConfig` (:148) both have toJson/fromJson and are written
+  correctly to the DB by edit_question_screen.dart:1117-1165. Only the
+  two switches are incomplete.
+
+Fix
+  Two symmetric additions.
+
+  1. Export — app_database.dart, in the switch at :290
+
+       switch (question.answerType) {
+         case 'multipleChoice':
+           questionJson['multipleChoiceConfig'] = config;
+         case 'typed':
+           questionJson['typedAnswerConfig'] = config;
+         case 'imageClick':
+           questionJson['imageClickConfig'] = config;
+         case 'flashcard':
+           questionJson['flashcardConfig'] = config;
+    +    case 'set':
+    +      questionJson['setConfig'] = config;
+    +    case 'sorting':
+    +      questionJson['sortingConfig'] = config;
+       }
+
+  2. Import — app_database.dart, in the switch at :334
+
+       final String answerConfig = switch (answerType) {
+         'multipleChoice' => jsonEncode(q['multipleChoiceConfig']),
+         'typed'          => jsonEncode(q['typedAnswerConfig']),
+         'imageClick'     => jsonEncode(q['imageClickConfig']),
+         'flashcard'      => jsonEncode(q['flashcardConfig']),
+    +    'set'            => jsonEncode(q['setConfig']),
+    +    'sorting'        => jsonEncode(q['sortingConfig']),
+         _                => '{}',
+       };
+
+  Worth considering as well: make the `_` default throw or log rather than
+  silently produce '{}'. That is what let this go unnoticed — a seventh
+  answer type added later would fail the same way. A switch over a sealed
+  enum, or an assert on the unknown branch, prevents the next occurrence.
+
+
+## [HIGH] Import has no update path, so corrections can never be delivered
+
+Problem
+  `importFromJson` (app_database.dart:313) is documented as idempotent:
+  "Items whose id is already present in the DB are skipped". At :327-331
+
+    final existing = await getQuestionById(importedId);
+    if (existing != null) {
+      questionIdMap[importedId] = existing.id;
+      continue;
+    }
+
+  This makes re-import safe, but it also makes it impossible to ship a
+  *corrected* version of a question. Importing a .lus in which a question
+  keeps its id and gets fixed text does nothing at all, and reports
+  0 inserted — which reads as "already up to date" rather than
+  "your changes were discarded".
+
+  The only workarounds today are both lossy: mint new UUIDs (the old wrong
+  question stays behind, and the SRS history keyed by questionId in
+  srs_service.dart is orphaned), or delete the folder and re-import (all
+  spaced-repetition progress for that folder is reset).
+
+Fix
+  An opt-in update mode. `updateQuestion` already exists at
+  app_database.dart:676, so the change is small:
+
+    Future<int> importFromJson(
+      Map<String, dynamic> data, {
+      bool updateExisting = false,
+    }) async { ... }
+
+    final existing = await getQuestionById(importedId);
+    if (existing != null) {
+      if (updateExisting) {
+        await updateQuestion(QuestionsCompanion(
+          id: Value(existing.id),
+          questionText: ...,       // same companion the insert path builds
+          answerConfig: ...,
+          ...
+        ));
+      }
+      questionIdMap[importedId] = existing.id;
+      continue;
+    }
+
+  Build the companion once and share it between the insert and update
+  branches so the two cannot drift apart.
+
+  Surface it as a checkbox on the import flow in
+  content_packs_screen.dart:70 — something like "Bestaande vragen
+  bijwerken", defaulting to off so today's behaviour is unchanged.
+
+  Two details worth getting right:
+    - Report updated and inserted counts separately. A silent "0 new
+      items" after a corrections import is the confusing case today.
+    - Preserve SRS data on update. Because the question id is unchanged
+      the Hive entry in srs_service.dart survives automatically — that is
+      the whole point of updating in place rather than re-creating. Do not
+      call deleteUserData on this path

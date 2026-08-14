@@ -265,6 +265,22 @@
   "contentPacksAlreadyUpToDate": "Al up-to-date",
   "contentPacksNoneAvailable": "Geen inhoudspakketten beschikbaar",
   "importSuccess": "Importeren geslaagd",
+  "importUpdatedCount": "{count} bestaande items bijgewerkt",
+  "@importUpdatedCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "importInsertedAndUpdatedCount": "{inserted} nieuwe items geïmporteerd, {updated} bijgewerkt",
+  "@importInsertedAndUpdatedCount": {
+    "placeholders": {
+      "inserted": { "type": "int" },
+      "updated": { "type": "int" }
+    }
+  },
+  "importOptionsTitle": "Importeren",
+  "importUpdateExisting": "Bestaande items bijwerken",
+  "importUpdateExistingSubtitle": "Overschrijf items die al in je bibliotheek staan met de versie uit dit bestand. Je voortgang blijft behouden.",
   "importInProgress": "Bezig met importeren…",
   "importCancelled": "Import geannuleerd",
   "importFailed": "Importeren mislukt: {error}",

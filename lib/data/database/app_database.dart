@@ -5,22 +5,38 @@ import 'package:drift/native.dart';
 import 'package:path/path.dart' as path_dart;
 import 'package:uuid/uuid.dart';
 import 'package:leerlus/utils/app_storage.dart';
+import 'package:leerlus/models/answer_type.dart';
 import 'package:leerlus/services/lus_archive_service.dart';
 import 'package:leerlus/services/srs_service.dart';
 import 'tables.dart';
 
 part 'app_database.g.dart';
 
+/// Outcome of an import: how many records were newly created, and how many
+/// already-present ones were overwritten (only ever non-zero when the import
+/// ran with `updateExisting: true`).
+class ImportResult {
+  final int inserted;
+  final int updated;
+
+  const ImportResult({this.inserted = 0, this.updated = 0});
+
+  bool get isEmpty => inserted == 0 && updated == 0;
+
+  @override
+  String toString() => 'ImportResult(inserted: $inserted, updated: $updated)';
+}
+
 /// Wraps a background [CancellableLusDecode] with the main-isolate DB import
-/// that follows it. [result] completes with the number of new items inserted;
-/// [cancel] aborts the (heavy, cancellable) decode before any DB write happens.
+/// that follows it. [result] completes with the import counts; [cancel] aborts
+/// the (heavy, cancellable) decode before any DB write happens.
 class CancellableLusImport {
   final CancellableLusDecode _decode;
-  final Future<int> Function(Map<String, dynamic>) _import;
+  final Future<ImportResult> Function(Map<String, dynamic>) _import;
 
   CancellableLusImport._(this._decode, this._import);
 
-  Future<int> get result async => _import(await _decode.result);
+  Future<ImportResult> get result async => _import(await _decode.result);
 
   void cancel() => _decode.cancel();
 }
@@ -220,15 +236,19 @@ class AppDatabase extends _$AppDatabase {
       CancellableLusEncode.start(await LusArchiveService.gatherEntries(
           await exportQuizToJsonMap(quizId)));
 
-  Future<int> importFromLus(Uint8List lusBytes) async =>
-      importFromJson(await LusArchiveService.unpackFromLus(lusBytes));
+  Future<ImportResult> importFromLus(Uint8List lusBytes,
+          {bool updateExisting = false}) async =>
+      importFromJson(await LusArchiveService.unpackFromLus(lusBytes),
+          updateExisting: updateExisting);
 
   /// Starts a cancellable background decode of [bytes] and returns a handle
   /// whose [CancellableLusImport.result] runs the DB import (on this isolate)
-  /// and completes with the number of new items inserted.
-  Future<CancellableLusImport> startImportFromLus(Uint8List bytes) async {
+  /// and completes with the insert/update counts.
+  Future<CancellableLusImport> startImportFromLus(Uint8List bytes,
+      {bool updateExisting = false}) async {
     final decode = await CancellableLusDecode.start(bytes);
-    return CancellableLusImport._(decode, importFromJson);
+    return CancellableLusImport._(
+        decode, (data) => importFromJson(data, updateExisting: updateExisting));
   }
 
   // ─── Internal helpers ─────────────────────────────────────────
@@ -287,16 +307,11 @@ class AppDatabase extends _$AppDatabase {
             'occlusionConfig': jsonDecode(question.occlusionConfig!),
         };
 
-        switch (question.answerType) {
-          case 'multipleChoice':
-            questionJson['multipleChoiceConfig'] = config;
-          case 'typed':
-            questionJson['typedAnswerConfig'] = config;
-          case 'imageClick':
-            questionJson['imageClickConfig'] = config;
-          case 'flashcard':
-            questionJson['flashcardConfig'] = config;
-        }
+        final type = answerTypeFromName(question.answerType);
+        assert(type != null,
+            'Unknown answerType "${question.answerType}" — its answer config '
+            'would be dropped from the export');
+        if (type != null) questionJson[type.configJsonKey] = config;
 
         questionsJson.add(questionJson);
       }
@@ -308,10 +323,18 @@ class AppDatabase extends _$AppDatabase {
   // ─── Import ───────────────────────────────────────────────────
 
   /// Imports content from a JSON map.
-  /// Returns the number of new items inserted.
-  /// Items whose id is already present in the DB are skipped (idempotent).
-  Future<int> importFromJson(Map<String, dynamic> data) async {
+  ///
+  /// Items whose id is already present in the DB are skipped, so re-importing
+  /// the same file is idempotent. Pass [updateExisting] to overwrite them with
+  /// the incoming version instead — this is how a corrected pack is delivered.
+  /// The ids stay the same, so the SRS history (keyed by question id in Hive)
+  /// survives; nothing on this path touches user data.
+  Future<ImportResult> importFromJson(
+    Map<String, dynamic> data, {
+    bool updateExisting = false,
+  }) async {
     int inserted = 0;
+    int updated = 0;
 
     await transaction(() async {
       final questionsRaw = data['questions'] as List;
@@ -324,43 +347,49 @@ class AppDatabase extends _$AppDatabase {
       for (final q in questionsRaw) {
         final importedId = q['id'] as String;
 
+        final answerType = q['answerType'] as String;
+        final type = answerTypeFromName(answerType);
+        assert(type != null,
+            'Unknown answerType "$answerType" — its answer config cannot be '
+            'imported and the question would end up unanswerable');
+        final rawConfig = type != null ? q[type.configJsonKey] : null;
+
+        final variants = (q['questionVariants'] as List?)?.cast<String>();
+        final importedVariants = q['imagePathVariants'] as List?;
+
+        // Built once and shared by the insert and update branches so the two
+        // cannot drift apart. Every column is present (never absent) so an
+        // update also clears fields the incoming version dropped.
+        final companion = QuestionsCompanion(
+          id: Value(importedId),
+          questionText: Value(variants?.first ?? ''),
+          questionVariants: Value(variants != null && variants.length > 1
+              ? jsonEncode(variants)
+              : null),
+          answerType: Value(answerType),
+          answerConfig: Value(rawConfig != null ? jsonEncode(rawConfig) : '{}'),
+          explanation: Value(q['explanation'] as String?),
+          imagePath: Value(q['imagePath'] as String?),
+          imagePathVariants: Value(importedVariants != null
+              ? jsonEncode(importedVariants.cast<String>())
+              : null),
+          occlusionConfig: Value(q['occlusionConfig'] != null
+              ? jsonEncode(q['occlusionConfig'])
+              : null),
+          updatedAt: Value(DateTime.now()),
+        );
+
         final existing = await getQuestionById(importedId);
         if (existing != null) {
           questionIdMap[importedId] = existing.id;
+          if (updateExisting) {
+            await updateQuestion(companion);
+            updated++;
+          }
           continue;
         }
 
-        final answerType = q['answerType'] as String;
-        final String answerConfig = switch (answerType) {
-          'multipleChoice' => jsonEncode(q['multipleChoiceConfig']),
-          'typed'          => jsonEncode(q['typedAnswerConfig']),
-          'imageClick'     => jsonEncode(q['imageClickConfig']),
-          'flashcard'      => jsonEncode(q['flashcardConfig']),
-          _                => '{}',
-        };
-
-        final variants = (q['questionVariants'] as List?)?.cast<String>();
-        final questionText = variants?.first ?? '';
-
-        final importedVariants = q['imagePathVariants'] as List?;
-        final newId = await insertQuestion(QuestionsCompanion(
-          id: Value(importedId),
-          questionText: Value(questionText),
-          questionVariants: variants != null && variants.length > 1
-              ? Value(jsonEncode(variants))
-              : const Value.absent(),
-          answerType: Value(answerType),
-          answerConfig: Value(answerConfig),
-          explanation: Value(q['explanation'] as String?),
-          imagePath: Value(q['imagePath'] as String?),
-          imagePathVariants: importedVariants != null
-              ? Value(jsonEncode(importedVariants.cast<String>()))
-              : const Value.absent(),
-          occlusionConfig: q['occlusionConfig'] != null
-              ? Value(jsonEncode(q['occlusionConfig']))
-              : const Value.absent(),
-        ));
-        questionIdMap[importedId] = newId;
+        questionIdMap[importedId] = await insertQuestion(companion);
         await clearTombstone(importedId, 'question');
         inserted++;
       }
@@ -375,6 +404,21 @@ class AppDatabase extends _$AppDatabase {
           final existing = await getFolderById(importedId);
           if (existing != null) {
             folderIdMap[importedId] = existing.id;
+            if (updateExisting) {
+              await updateFolder(FoldersCompanion(
+                id: Value(existing.id),
+                // Re-parenting is the second pass' job (below), same as for
+                // freshly inserted folders.
+                parentFolderId: Value(existing.parentFolderId),
+                title: Value(f['title'] as String),
+                imagePath: Value(f['imagePath'] as String?),
+                // replace() resets columns it isn't given to their SQL default,
+                // which for createdAt would mean "now".
+                createdAt: Value(existing.createdAt),
+                updatedAt: Value(DateTime.now()),
+              ));
+              updated++;
+            }
             continue;
           }
 
@@ -416,12 +460,6 @@ class AppDatabase extends _$AppDatabase {
       for (final quiz in quizzesRaw) {
         final importedId = quiz['id'] as String;
 
-        final existing = await getQuizById(importedId);
-        if (existing != null) {
-          // Quiz already exists — skip entirely (junction rows already set)
-          continue;
-        }
-
         String? targetFolderId;
         if (quiz.containsKey('folderId') && quiz['folderId'] != null) {
           targetFolderId = folderIdMap[quiz['folderId'] as String];
@@ -439,6 +477,32 @@ class AppDatabase extends _$AppDatabase {
           }
         }
 
+        // Support both new 'questionIds' and legacy 'questionSyncIds'
+        final questionIdList = (quiz['questionIds'] ?? quiz['questionSyncIds']) as List? ?? [];
+
+        final existing = await getQuizById(importedId);
+        if (existing != null) {
+          if (updateExisting) {
+            await updateQuiz(QuizzesCompanion(
+              id: Value(existing.id),
+              // Keep the quiz where it is when the imported folder isn't part
+              // of this file (targetFolderId unresolved).
+              folderId: Value(targetFolderId ?? existing.folderId),
+              title: Value(quiz['title'] as String),
+              imagePath: Value(quiz['imagePath'] as String?),
+              languageCode: Value(quiz['languageCode'] as String?),
+              // replace() would otherwise reset createdAt to its SQL default.
+              createdAt: Value(existing.createdAt),
+              updatedAt: Value(DateTime.now()),
+            ));
+            await _linkMissingQuizQuestions(
+                existing.id, questionIdList, questionIdMap);
+            updated++;
+          }
+          // Otherwise skip entirely (junction rows already set).
+          continue;
+        }
+
         final newQuizId = await insertQuiz(QuizzesCompanion(
           id: Value(importedId),
           folderId: Value(targetFolderId),
@@ -449,8 +513,6 @@ class AppDatabase extends _$AppDatabase {
         await clearTombstone(importedId, 'quiz');
         inserted++;
 
-        // Support both new 'questionIds' and legacy 'questionSyncIds'
-        final questionIdList = (quiz['questionIds'] ?? quiz['questionSyncIds']) as List? ?? [];
         int order = 0;
         for (final qStringId in questionIdList) {
           final qId = questionIdMap[qStringId as String];
@@ -464,7 +526,34 @@ class AppDatabase extends _$AppDatabase {
       }
     });
 
-    return inserted;
+    return ImportResult(inserted: inserted, updated: updated);
+  }
+
+  /// Appends the questions of an update-mode import that the existing quiz
+  /// doesn't contain yet. Current members keep their position, so a local
+  /// reorder and locally added questions survive the update; without this a
+  /// question added to an already-imported quiz would land in the DB with no
+  /// junction row at all and be unreachable.
+  Future<void> _linkMissingQuizQuestions(
+    String quizId,
+    List<dynamic> importedQuestionIds,
+    Map<String, String> questionIdMap,
+  ) async {
+    final rows = await (select(quizQuestions)
+          ..where((t) => t.quizId.equals(quizId)))
+        .get();
+    final present = rows.map((r) => r.questionId).toSet();
+    var order = rows.fold<int>(-1, (max, r) => r.sortOrder > max ? r.sortOrder : max);
+
+    for (final importedQuestionId in importedQuestionIds) {
+      final qId = questionIdMap[importedQuestionId as String];
+      if (qId == null || !present.add(qId)) continue;
+      await into(quizQuestions).insert(QuizQuestionsCompanion.insert(
+        quizId: quizId,
+        questionId: qId,
+        sortOrder: Value(++order),
+      ));
+    }
   }
 
   // ─── Folders ──────────────────────────────────────────────────

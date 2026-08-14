@@ -320,6 +320,22 @@
   "contentPacksAlreadyUpToDate": "Already up to date",
   "contentPacksNoneAvailable": "No content packs available",
   "importSuccess": "Import successful",
+  "importUpdatedCount": "Updated {count} existing items",
+  "@importUpdatedCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "importInsertedAndUpdatedCount": "Imported {inserted} new items, updated {updated}",
+  "@importInsertedAndUpdatedCount": {
+    "placeholders": {
+      "inserted": { "type": "int" },
+      "updated": { "type": "int" }
+    }
+  },
+  "importOptionsTitle": "Import",
+  "importUpdateExisting": "Update existing items",
+  "importUpdateExistingSubtitle": "Overwrite items already in your library with the version from this file. Your study progress is kept.",
   "importInProgress": "Importing…",
   "importCancelled": "Import cancelled",
   "importFailed": "Import failed: {error}",

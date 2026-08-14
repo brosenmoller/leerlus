@@ -1112,6 +1112,36 @@ abstract class AppLocalizations {
   /// **'Import successful'**
   String get importSuccess;
 
+  /// No description provided for @importUpdatedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated {count} existing items'**
+  String importUpdatedCount(int count);
+
+  /// No description provided for @importInsertedAndUpdatedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported {inserted} new items, updated {updated}'**
+  String importInsertedAndUpdatedCount(int inserted, int updated);
+
+  /// No description provided for @importOptionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get importOptionsTitle;
+
+  /// No description provided for @importUpdateExisting.
+  ///
+  /// In en, this message translates to:
+  /// **'Update existing items'**
+  String get importUpdateExisting;
+
+  /// No description provided for @importUpdateExistingSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Overwrite items already in your library with the version from this file. Your study progress is kept.'**
+  String get importUpdateExistingSubtitle;
+
   /// No description provided for @importInProgress.
   ///
   /// In en, this message translates to:

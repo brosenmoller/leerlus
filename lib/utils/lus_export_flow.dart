@@ -145,20 +145,70 @@ Future<void> runLusExport(
   }
 }
 
-/// Runs a `.lus` import end-to-end with a debounced cancellable progress dialog
-/// (mirroring [runLusExport]). The heavy ZIP decode runs in a background
-/// isolate so the progress bar stays animated.
+/// Asks whether items already in the library should be overwritten by the ones
+/// in the file being imported. Returns the choice, or `null` if the user backed
+/// out of the import entirely.
+///
+/// Defaults to off, so confirming without touching the checkbox keeps the
+/// long-standing "skip what's already there" behaviour.
+Future<bool?> askImportOptions(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
+  return showDialog<bool>(
+    context: context,
+    builder: (dialogContext) {
+      var updateExisting = false;
+      return StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text(l10n.importOptionsTitle),
+          contentPadding: const EdgeInsets.fromLTRB(8, 20, 8, 0),
+          content: CheckboxListTile(
+            value: updateExisting,
+            onChanged: (v) => setState(() => updateExisting = v ?? false),
+            controlAffinity: ListTileControlAffinity.leading,
+            title: Text(l10n.importUpdateExisting),
+            subtitle: Text(l10n.importUpdateExistingSubtitle),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(updateExisting),
+              child: Text(l10n.contentPacksImport),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+/// Snackbar text for a finished import, reporting inserts and updates
+/// separately — a bare "0 new items" after an update-mode import reads as
+/// "already up to date" when it is anything but.
+String importSummary(AppLocalizations l10n, ImportResult result) {
+  if (result.isEmpty) return l10n.contentPacksAlreadyUpToDate;
+  if (result.updated == 0) return l10n.contentPacksImportedCount(result.inserted);
+  if (result.inserted == 0) return l10n.importUpdatedCount(result.updated);
+  return l10n.importInsertedAndUpdatedCount(result.inserted, result.updated);
+}
+
+/// Runs a `.lus` import end-to-end with the import-options dialog and a
+/// debounced cancellable progress dialog (mirroring [runLusExport]). The heavy
+/// ZIP decode runs in a background isolate so the progress bar stays animated.
 ///
 /// [loadBytes] provides the archive bytes (e.g. from a file picker or a bundled
 /// asset); returning `null` aborts silently (nothing selected). [startImport]
 /// begins the cancellable background decode + DB import and completes with the
-/// number of new items inserted. On success [successMessage] builds the snackbar
-/// text to show (given that count).
+/// insert/update counts, which are reported in the success snackbar.
 Future<void> runLusImport(
   BuildContext context, {
   required Future<Uint8List?> Function() loadBytes,
-  required Future<CancellableLusImport> Function(Uint8List bytes) startImport,
-  required String Function(int count) successMessage,
+  required Future<CancellableLusImport> Function(
+    Uint8List bytes, {
+    required bool updateExisting,
+  }) startImport,
 }) async {
   final l10n = AppLocalizations.of(context);
   final messenger = ScaffoldMessenger.of(context);
@@ -167,12 +217,17 @@ Future<void> runLusImport(
     final bytes = await loadBytes();
     if (bytes == null) return; // nothing selected
 
-    final import = await startImport(bytes);
+    if (!context.mounted) return;
+    final updateExisting = await askImportOptions(context);
+    if (updateExisting == null) return; // backed out
+    if (!context.mounted) return;
+
+    final import = await startImport(bytes, updateExisting: updateExisting);
     var cancelled = false;
 
-    int count;
+    ImportResult result;
     try {
-      count = await _awaitWithProgress<int>(
+      result = await _awaitWithProgress<ImportResult>(
         context,
         result: import.result,
         onCancel: () {
@@ -189,7 +244,7 @@ Future<void> runLusImport(
     if (cancelled) return; // raced: cancel pressed just as decode finished
 
     await QuestionService().refresh();
-    messenger.showSnackBar(SnackBar(content: Text(successMessage(count))));
+    messenger.showSnackBar(SnackBar(content: Text(importSummary(l10n, result))));
   } catch (e) {
     messenger.showSnackBar(SnackBar(content: Text(l10n.importFailed(e))));
   }

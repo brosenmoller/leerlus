@@ -656,6 +656,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get importSuccess => 'Import successful';
 
   @override
+  String importUpdatedCount(int count) {
+    return 'Updated $count existing items';
+  }
+
+  @override
+  String importInsertedAndUpdatedCount(int inserted, int updated) {
+    return 'Imported $inserted new items, updated $updated';
+  }
+
+  @override
+  String get importOptionsTitle => 'Import';
+
+  @override
+  String get importUpdateExisting => 'Update existing items';
+
+  @override
+  String get importUpdateExistingSubtitle =>
+      'Overwrite items already in your library with the version from this file. Your study progress is kept.';
+
+  @override
   String get importInProgress => 'Importing…';
 
   @override
