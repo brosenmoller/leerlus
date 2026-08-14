@@ -70,7 +70,14 @@ class _QuestionDisplayScreenState extends State<QuestionDisplayScreen>
     final srsSheetWillAppear = widget.spacedRepetitionMode &&
         isCorrect &&
         widget.question.answerType != AnswerType.flashcard;
-    if (!srsSheetWillAppear) {
+
+    // Flashcards grade themselves with explicit Correct/Incorrect buttons, so
+    // there is nothing left to read once one is pressed — advance immediately
+    // like the SRS quality buttons do, rather than showing the continue button.
+    final autoContinue = widget.question.answerType == AnswerType.flashcard &&
+        !widget.spacedRepetitionMode;
+
+    if (!srsSheetWillAppear && !autoContinue) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _continueFocusNode.requestFocus();
       });
@@ -78,7 +85,9 @@ class _QuestionDisplayScreenState extends State<QuestionDisplayScreen>
 
     if (!isCorrect) {
       _shakeController.forward(from: 0);
-    } else if (SettingsService().animationsEnabled) {
+    } else if (SettingsService().animationsEnabled && !autoContinue) {
+      // No confetti on flashcards: they advance straight away, and pausing for
+      // the burst breaks the review flow.
       _confettiController.play();
     }
 
@@ -87,6 +96,8 @@ class _QuestionDisplayScreenState extends State<QuestionDisplayScreen>
         if (mounted) _showSrsBottomSheet();
       });
     }
+
+    if (autoContinue) _handleContinue();
   }
 
   // Flashcards in SRS mode never route through _handleAnswer — the card's
@@ -136,8 +147,11 @@ class _QuestionDisplayScreenState extends State<QuestionDisplayScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Flashcards never show the continue button: in SRS mode the quality
+    // buttons advance, otherwise Correct/Incorrect auto-continue.
     final showContinue = answerState != AnswerState.unanswered &&
-        !(widget.spacedRepetitionMode && answerState == AnswerState.correct);
+        !(widget.spacedRepetitionMode && answerState == AnswerState.correct) &&
+        widget.question.answerType != AnswerType.flashcard;
 
     return Scaffold(
       appBar: AppBar(

@@ -34,6 +34,11 @@ class _FlashcardWidgetState extends State<FlashcardWidget>
   late bool _sidesSwapped;
   late AnimationController _controller;
 
+  // True once the card has been flipped at least once. Distinct from
+  // _controller.isDismissed, which is also true after flipping back to the
+  // front — the answer buttons must stay live in that case.
+  bool _hasFlipped = false;
+
   @override
   void initState() {
     super.initState();
@@ -56,9 +61,16 @@ class _FlashcardWidgetState extends State<FlashcardWidget>
     super.dispose();
   }
 
+  // Flips either way: the card can be turned back and forth freely until an
+  // answer is given (which locks it). Taps mid-animation are ignored.
   void _flip() {
-    if (widget.locked || !_controller.isDismissed) return;
-    _controller.forward();
+    if (widget.locked || _controller.isAnimating) return;
+    if (!_hasFlipped) setState(() => _hasFlipped = true);
+    if (_controller.isCompleted) {
+      _controller.reverse();
+    } else {
+      _controller.forward();
+    }
   }
 
   @override
@@ -85,14 +97,17 @@ class _FlashcardWidgetState extends State<FlashcardWidget>
     final cardAspectRatio = (frontHasBoth || backHasBoth) ? 4 / 5 : 5 / 4;
 
     // The answer buttons are always in the layout tree to anchor the button
-    // section height. They fade in on completion; the flip button is overlaid
-    // as a positioned child so it never affects layout height.
+    // section height. They fade in on the first flip; the flip button is
+    // overlaid as a positioned child so it never affects layout height.
     // This keeps the Expanded card area — and therefore card position — stable
     // across all three states: before flip, during flip, and after flip.
     final answerButtons = widget.spacedRepetitionMode
         ? SrsButtons(
             question: widget.question,
-            autofocus: _controller.isCompleted,
+            // _hasFlipped, not isCompleted: SrsButtons claims focus on a
+            // false→true edge and has no release path, so this must only
+            // transition once — not on every flip back to the front.
+            autofocus: _hasFlipped,
             // Branch explicitly: onSrsAnswered is a void callback, so
             // `onSrsAnswered?.call(...) ?? onAnswered(true)` would fire BOTH
             // (the call returns null, triggering the ?? fallback) and record
@@ -202,6 +217,8 @@ class _FlashcardWidgetState extends State<FlashcardWidget>
                                         label: backLabel,
                                         text: backText,
                                         imagePath: backImagePath,
+                                        tapToFlip: !widget.locked,
+                                        onTap: _flip,
                                       ),
                               ),
                             ],
@@ -215,21 +232,22 @@ class _FlashcardWidgetState extends State<FlashcardWidget>
                 Stack(
                   children: [
                     // Answer buttons: always in layout (height anchor).
-                    // Non-interactive and invisible until animation completes.
+                    // Non-interactive and invisible until the first flip; from
+                    // then on they stay live, including on the front face.
                     ExcludeFocus(
-                      excluding: !_controller.isCompleted,
+                      excluding: !_hasFlipped,
                       child: IgnorePointer(
-                        ignoring: !_controller.isCompleted,
+                        ignoring: !_hasFlipped,
                         child: AnimatedOpacity(
-                          opacity: _controller.isCompleted ? 1.0 : 0.0,
+                          opacity: _hasFlipped ? 1.0 : 0.0,
                           duration: const Duration(milliseconds: 200),
                           child: answerButtons,
                         ),
                       ),
                     ),
-                    // Flip button: positioned overlay, only present when dismissed.
-                    // Does not contribute to Stack height.
-                    if (_controller.isDismissed)
+                    // Flip button: positioned overlay, only present before the
+                    // first flip. Does not contribute to Stack height.
+                    if (!_hasFlipped)
                       Positioned.fill(
                         child: Center(
                           child: OutlinedButton.icon(
