@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:leerlus/l10n/app_localizations.dart';
 import 'package:leerlus/data/database/app_database.dart';
 import 'package:leerlus/screens/manage_content_screens/edit_question_screen.dart';
@@ -250,9 +251,33 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
     );
   }
 
+  /// Ctrl+Space opens the add-question screen — same action as the FAB, so it
+  /// is a no-op while the FAB is hidden in selection mode.
+  void _addQuestionShortcut() {
+    if (_selectionMode) return;
+    _openAddScreen();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.space, control: true):
+            _addQuestionShortcut,
+      },
+      // Without a focused descendant the key event never travels up to the
+      // bindings above, and this screen has no autofocusing field of its own
+      // until the search box opens. This node claims focus on entry so the
+      // shortcut works immediately.
+      child: Focus(
+        autofocus: true,
+        child: _buildScaffold(l10n),
+      ),
+    );
+  }
+
+  Widget _buildScaffold(AppLocalizations l10n) {
     return Scaffold(
       appBar: _selectionMode ? _buildSelectionAppBar(l10n) : _buildAppBar(l10n),
       floatingActionButton: _selectionMode
