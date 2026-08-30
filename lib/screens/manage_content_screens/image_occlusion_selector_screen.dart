@@ -54,7 +54,7 @@ class _ImageOcclusionSelectorScreenState
     extends State<ImageOcclusionSelectorScreen> {
   // ── Mode / tool state (shared across images) ──────────────────────────────
   _Mode _mode = _Mode.hide;
-  _HideTool _hideTool = _HideTool.polygon;
+  _HideTool _hideTool = _HideTool.rectangle;
   _HighlightTool _highlightTool = _HighlightTool.rect;
   MaterialColor _highlightColor = _kHighlightColors[0];
 
@@ -319,6 +319,44 @@ class _ImageOcclusionSelectorScreenState
       (_mode == _Mode.hide && _current.selectedHideIndex != null) ||
       (_mode == _Mode.highlight && _current.selectedHighlightIndex != null);
 
+  bool get _canClearCurrent =>
+      _current.hiddenPolygons.isNotEmpty || _current.highlights.isNotEmpty;
+
+  Future<void> _clearCurrentImage() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Clear all occlusions?'),
+        content: Text(widget.images.length > 1
+            ? 'All hidden areas and highlights on "${widget.images[_currentIndex].label}" '
+                'will be removed. Other images are not affected.'
+            : 'All hidden areas and highlights on this image will be removed.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade600),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() {
+      _current.hiddenPolygons.clear();
+      _current.highlights.clear();
+      _current.drawingPoints = [];
+      _current.firstRectCorner = null;
+      _current.firstHighlightCorner = null;
+      _current.selectedHideIndex = null;
+      _current.selectedHighlightIndex = null;
+      _current.isDirty = true;
+    });
+  }
+
   String get _statusText {
     if (_mode == _Mode.hide) {
       if (_hideTool == _HideTool.rectangle) {
@@ -374,6 +412,13 @@ class _ImageOcclusionSelectorScreenState
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Occlusion Areas'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.delete_sweep_outlined),
+              tooltip: 'Clear all occlusions on this image',
+              onPressed: _canClearCurrent ? _clearCurrentImage : null,
+            ),
+          ],
         ),
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
