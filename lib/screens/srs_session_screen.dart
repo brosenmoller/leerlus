@@ -80,6 +80,8 @@ class _SrsSessionScreenState extends State<SrsSessionScreen> {
       key: ValueKey(currentIndex),
       question: question,
       spacedRepetitionMode: true,
+      questionNumber: currentIndex + 1,
+      totalQuestions: _questions.length,
       onContinue: (wasCorrect, quality) async {
         if (quality != null) {
           await StatisticsService().recordSrsQuality(quality);

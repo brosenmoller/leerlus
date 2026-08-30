@@ -1319,6 +1319,22 @@ class AppLocalizationsNl extends AppLocalizations {
       'Toon confetti en andere visuele effecten';
 
   @override
+  String get settingsSessionProgress => 'Sessievoortgang';
+
+  @override
+  String get settingsSessionProgressSubtitle =>
+      'Hoe voortgang door een sessie wordt getoond';
+
+  @override
+  String get settingsSessionProgressBar => 'Balk';
+
+  @override
+  String get settingsSessionProgressNumber => 'Cijfer';
+
+  @override
+  String get settingsSessionProgressNone => 'Geen';
+
+  @override
   String get settingsDefaultQuizLanguage => 'Standaard quiztaal';
 
   @override

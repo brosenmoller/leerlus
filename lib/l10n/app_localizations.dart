@@ -2078,6 +2078,36 @@ abstract class AppLocalizations {
   /// **'Show confetti and other visual effects'**
   String get settingsAnimationsSubtitle;
 
+  /// No description provided for @settingsSessionProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Session progress'**
+  String get settingsSessionProgress;
+
+  /// No description provided for @settingsSessionProgressSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How progress through a session is shown'**
+  String get settingsSessionProgressSubtitle;
+
+  /// No description provided for @settingsSessionProgressBar.
+  ///
+  /// In en, this message translates to:
+  /// **'Bar'**
+  String get settingsSessionProgressBar;
+
+  /// No description provided for @settingsSessionProgressNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Number'**
+  String get settingsSessionProgressNumber;
+
+  /// No description provided for @settingsSessionProgressNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get settingsSessionProgressNone;
+
   /// No description provided for @settingsDefaultQuizLanguage.
   ///
   /// In en, this message translates to:

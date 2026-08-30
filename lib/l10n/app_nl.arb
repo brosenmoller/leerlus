@@ -541,6 +541,11 @@
 
   "settingsAnimations": "Animaties",
   "settingsAnimationsSubtitle": "Toon confetti en andere visuele effecten",
+  "settingsSessionProgress": "Sessievoortgang",
+  "settingsSessionProgressSubtitle": "Hoe voortgang door een sessie wordt getoond",
+  "settingsSessionProgressBar": "Balk",
+  "settingsSessionProgressNumber": "Cijfer",
+  "settingsSessionProgressNone": "Geen",
   "settingsDefaultQuizLanguage": "Standaard quiztaal",
   "settingsDefaultQuizLanguageNone": "Geen (niet instellen)",
 

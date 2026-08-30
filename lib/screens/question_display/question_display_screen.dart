@@ -3,6 +3,7 @@ import 'package:confetti/confetti.dart';
 import 'package:leerlus/models/answer_state.dart';
 import 'package:leerlus/models/answer_type.dart';
 import 'package:leerlus/models/question_data.dart';
+import 'package:leerlus/models/session_progress_style.dart';
 import 'package:leerlus/models/user_question_data.dart';
 import 'package:leerlus/screens/question_display/answer_area.dart';
 import 'package:leerlus/screens/question_display/continue_button.dart';
@@ -16,11 +17,19 @@ class QuestionDisplayScreen extends StatefulWidget {
   final bool spacedRepetitionMode;
   final Function(bool wasCorrect, SrsQuality? quality) onContinue;
 
+  /// 1-based position of this question within the session, and the session
+  /// length. Null when the caller has no session context; the progress
+  /// indicator is then hidden regardless of the setting.
+  final int? questionNumber;
+  final int? totalQuestions;
+
   const QuestionDisplayScreen({
     super.key,
     required this.question,
     required this.onContinue,
     this.spacedRepetitionMode = false,
+    this.questionNumber,
+    this.totalQuestions,
   });
 
   @override
@@ -145,6 +154,59 @@ class _QuestionDisplayScreenState extends State<QuestionDisplayScreen>
     widget.onContinue(wasCorrect, null);
   }
 
+  /// The session progress readout shown in the AppBar, or null when there is
+  /// no progress to show or the user turned the indicator off.
+  Widget? _buildProgress(BuildContext context) {
+    final style = SettingsService().sessionProgressStyle;
+    final number = widget.questionNumber;
+    final total = widget.totalQuestions;
+    if (style == SessionProgressStyle.none ||
+        number == null ||
+        total == null ||
+        total <= 0) {
+      return null;
+    }
+
+    if (style == SessionProgressStyle.number) {
+      return Text(
+        '$number/$total',
+        style: Theme.of(context).textTheme.titleMedium,
+      );
+    }
+
+    final cs = Theme.of(context).colorScheme;
+    // Phones keep the compact width the bar already fits well at; wider
+    // desktop windows let it grow to ~3/5 of the app bar, still centred and
+    // well clear of the back button.
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final maxBarWidth = screenWidth < 600 ? 220.0 : screenWidth * 0.6;
+    Widget bar(double value) => ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxBarWidth),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: value,
+              minHeight: 10,
+              backgroundColor: cs.primary.withValues(alpha: 0.15),
+              valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
+            ),
+          ),
+        );
+
+    final fraction = number / total;
+    if (!SettingsService().animationsEnabled) return bar(fraction);
+
+    // A fresh QuestionDisplayScreen is built per question (the session screens
+    // key it on the index), so tweening from the previous question's fraction
+    // slides the fill forward on every advance.
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: (number - 1) / total, end: fraction),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+      builder: (context, value, _) => bar(value),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Flashcards never show the continue button: in SRS mode the quality
@@ -155,10 +217,12 @@ class _QuestionDisplayScreenState extends State<QuestionDisplayScreen>
 
     return Scaffold(
       appBar: AppBar(
+        centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
+        title: _buildProgress(context),
       ),
       body: Stack(
         children: [

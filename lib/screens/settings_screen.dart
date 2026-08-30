@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:leerlus/data/database/app_database.dart';
 import 'package:leerlus/l10n/app_localizations.dart';
+import 'package:leerlus/models/session_progress_style.dart';
 import 'package:leerlus/models/srs_settings.dart';
 import 'package:leerlus/screens/image_management_screen.dart';
 import 'package:leerlus/screens/sync_screen.dart';
@@ -36,6 +37,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late bool _notifsSound;
   late bool _notifsVibration;
   late bool _animationsEnabled;
+  late SessionProgressStyle _progressStyle;
   late final TextEditingController _defaultLangController;
   final FocusNode _defaultLangFocusNode = FocusNode();
   String? _defaultLangCode;
@@ -50,6 +52,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _notifsSound = _streak.notifsSound;
     _notifsVibration = _streak.notifsVibration;
     _animationsEnabled = _settings.animationsEnabled;
+    _progressStyle = _settings.sessionProgressStyle;
     _defaultLangCode = _settings.defaultQuizLanguageCode;
     _defaultLangController = TextEditingController(
       text: codeToDisplay(_defaultLangCode),
@@ -232,6 +235,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onChanged: (v) async {
                 await _settings.setAnimationsEnabled(v);
                 setState(() => _animationsEnabled = v);
+              },
+            ),
+            const SizedBox(height: 8),
+
+            // ── Session progress indicator ────────────────────────
+            DropdownButtonFormField<SessionProgressStyle>(
+              value: _progressStyle,
+              decoration: InputDecoration(
+                labelText: l10n.settingsSessionProgress,
+                helperText: l10n.settingsSessionProgressSubtitle,
+                border: const OutlineInputBorder(),
+              ),
+              items: [
+                DropdownMenuItem(
+                  value: SessionProgressStyle.bar,
+                  child: Text(l10n.settingsSessionProgressBar),
+                ),
+                DropdownMenuItem(
+                  value: SessionProgressStyle.number,
+                  child: Text(l10n.settingsSessionProgressNumber),
+                ),
+                DropdownMenuItem(
+                  value: SessionProgressStyle.none,
+                  child: Text(l10n.settingsSessionProgressNone),
+                ),
+              ],
+              onChanged: (style) async {
+                if (style == null) return;
+                await _settings.setSessionProgressStyle(style);
+                if (mounted) setState(() => _progressStyle = style);
               },
             ),
             const SizedBox(height: 12),

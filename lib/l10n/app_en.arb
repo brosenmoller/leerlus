@@ -651,6 +651,11 @@
 
   "settingsAnimations": "Animations",
   "settingsAnimationsSubtitle": "Show confetti and other visual effects",
+  "settingsSessionProgress": "Session progress",
+  "settingsSessionProgressSubtitle": "How progress through a session is shown",
+  "settingsSessionProgressBar": "Bar",
+  "settingsSessionProgressNumber": "Number",
+  "settingsSessionProgressNone": "None",
   "settingsDefaultQuizLanguage": "Default quiz language",
   "settingsDefaultQuizLanguageNone": "None (don't set)",
 

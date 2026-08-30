@@ -95,6 +95,8 @@ class _QuizSessionScreenState extends State<QuizSessionScreen> {
       key: ValueKey(currentIndex),
       question: questions[currentIndex],
       spacedRepetitionMode: false,
+      questionNumber: currentIndex + 1,
+      totalQuestions: totalQuestions,
       onContinue: (wasCorrect, _) {
         _nextQuestion(wasCorrect);
       },

@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:leerlus/models/session_progress_style.dart';
 import 'package:leerlus/models/srs_settings.dart';
 
 class SettingsService {
@@ -120,6 +121,23 @@ class SettingsService {
 
   Future<void> setAnimationsEnabled(bool value) =>
       _box.put(_kAnimationsEnabled, value);
+
+  // ── Session progress indicator ───────────────────────────────────────────
+
+  static const _kSessionProgressStyle = 'session_progress_style';
+
+  /// Stored by enum name; an unknown or missing value falls back to the
+  /// default rather than throwing.
+  SessionProgressStyle get sessionProgressStyle {
+    final name = _box.get(_kSessionProgressStyle) as String?;
+    return SessionProgressStyle.values.firstWhere(
+      (s) => s.name == name,
+      orElse: () => SessionProgressStyle.number,
+    );
+  }
+
+  Future<void> setSessionProgressStyle(SessionProgressStyle value) =>
+      _box.put(_kSessionProgressStyle, value.name);
 
   Future<void> resetSrsSettings() async {
     for (final key in [

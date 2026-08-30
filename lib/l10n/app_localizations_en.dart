@@ -1312,6 +1312,22 @@ class AppLocalizationsEn extends AppLocalizations {
       'Show confetti and other visual effects';
 
   @override
+  String get settingsSessionProgress => 'Session progress';
+
+  @override
+  String get settingsSessionProgressSubtitle =>
+      'How progress through a session is shown';
+
+  @override
+  String get settingsSessionProgressBar => 'Bar';
+
+  @override
+  String get settingsSessionProgressNumber => 'Number';
+
+  @override
+  String get settingsSessionProgressNone => 'None';
+
+  @override
   String get settingsDefaultQuizLanguage => 'Default quiz language';
 
   @override
