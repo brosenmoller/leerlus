@@ -4,9 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:leerlus/data/database/app_database.dart';
 import 'package:leerlus/l10n/app_localizations.dart';
+import 'package:leerlus/utils/image_storage.dart';
 import 'package:leerlus/widgets/app_image.dart';
 
 class ImageManagementScreen extends StatefulWidget {
@@ -108,13 +108,7 @@ class _ImageManagementScreenState extends State<ImageManagementScreen> {
     });
   }
 
-  Future<String?> _getImagesDir() async {
-    if (kDebugMode) {
-      return '${Directory.current.path}/assets/images';
-    }
-    final docDir = await getApplicationDocumentsDirectory();
-    return p.join(docDir.path, 'images');
-  }
+  Future<String?> _getImagesDir() async => (await appImagesDir()).path;
 
   bool _isImageFile(String path) {
     final ext = p.extension(path).toLowerCase();
@@ -135,17 +129,7 @@ class _ImageManagementScreenState extends State<ImageManagementScreen> {
     final sourcePath = result.files.first.path;
     if (sourcePath == null) return;
 
-    final fileName = p.basename(sourcePath);
-    if (kDebugMode) {
-      final dest = Directory(p.join(Directory.current.path, 'assets', 'images'));
-      if (!dest.existsSync()) dest.createSync(recursive: true);
-      await File(sourcePath).copy(p.join(dest.path, fileName));
-    } else {
-      final docDir = await getApplicationDocumentsDirectory();
-      final dest = Directory(p.join(docDir.path, 'images'));
-      if (!dest.existsSync()) dest.createSync(recursive: true);
-      await File(sourcePath).copy(p.join(dest.path, fileName));
-    }
+    await copyImageIntoStorage(sourcePath);
 
     if (mounted) {
       final l10n = AppLocalizations.of(context);
@@ -182,7 +166,7 @@ class _ImageManagementScreenState extends State<ImageManagementScreen> {
     if (confirm != true || !mounted) return;
 
     for (final img in unused) {
-      try { await File(img.path).delete(); } catch (_) {}
+      await deleteAppImageFile(img.path);
     }
 
     if (!mounted) return;
@@ -202,7 +186,7 @@ class _ImageManagementScreenState extends State<ImageManagementScreen> {
         onDelete: info.isUnused && AppDatabase.isUserImagePath(info.path)
             ? () async {
                 Navigator.pop(ctx);
-                try { await File(info.path).delete(); } catch (_) {}
+                await deleteAppImageFile(info.path);
                 await _load();
               }
             : null,

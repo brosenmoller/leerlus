@@ -1,9 +1,6 @@
-import 'dart:io';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+import 'package:leerlus/utils/image_storage.dart';
 import 'app_image.dart';
 import 'image_browser_dialog.dart';
 
@@ -43,7 +40,7 @@ class ImagePickerFieldState extends State<ImagePickerField> {
   /// the saved path. Otherwise returns the current path unchanged.
   Future<String?> applyAutoName(String suggestedName) async {
     if (_pendingSourcePath != null) {
-      final saved = await _saveImage(_pendingSourcePath!);
+      final saved = await copyImageIntoStorage(_pendingSourcePath!);
       if (mounted) {
         setState(() {
           _currentPath = saved;
@@ -55,26 +52,10 @@ class ImagePickerFieldState extends State<ImagePickerField> {
     return _currentPath;
   }
 
-  Future<String> _saveImage(String sourcePath) async {
-    final fileName = p.basename(sourcePath);
-    if (kDebugMode) {
-      final dest = Directory(p.join(Directory.current.path, 'assets', 'images'));
-      if (!dest.existsSync()) dest.createSync(recursive: true);
-      await File(sourcePath).copy(p.join(dest.path, fileName));
-      return 'assets/images/$fileName';
-    } else {
-      final dir = await getApplicationDocumentsDirectory();
-      final dest = Directory(p.join(dir.path, 'images'));
-      if (!dest.existsSync()) dest.createSync(recursive: true);
-      final destPath = p.join(dest.path, fileName);
-      await File(sourcePath).copy(destPath);
-      return destPath;
-    }
-  }
-
   Future<void> _pickFromExisting() async {
     final picked = await ImageBrowserDialog.show(context);
     if (picked == null) return;
+    await evictImageCache(picked);
     await Future.delayed(const Duration(milliseconds: 250));
     if (mounted) {
       setState(() => _currentPath = picked);
@@ -86,6 +67,9 @@ class ImagePickerFieldState extends State<ImagePickerField> {
     final result = await FilePicker.platform.pickFiles(type: FileType.image);
     if (result?.files.single.path == null) return;
     final sourcePath = result!.files.single.path!;
+    // The file behind this path may well have changed since it was last shown
+    // here — the cache keys on the path alone and would serve the old picture.
+    await evictImageCache(sourcePath);
     await Future.delayed(const Duration(milliseconds: 250));
     if (mounted) {
       setState(() {

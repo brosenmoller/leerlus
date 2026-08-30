@@ -10,6 +10,7 @@ import 'package:leerlus/screens/manage_content_screens/edit_folder_screen.dart';
 import 'package:leerlus/screens/manage_content_screens/edit_quiz_screen.dart';
 import 'package:leerlus/screens/manage_content_screens/manage_questions_screen.dart';
 import 'package:leerlus/services/question_service.dart';
+import 'package:leerlus/utils/image_storage.dart';
 import 'package:leerlus/utils/lus_export_flow.dart';
 import 'package:leerlus/utils/text_field_selection_fix.dart';
 import 'package:leerlus/widgets/app_image.dart';
@@ -449,7 +450,7 @@ class _FolderTileState extends State<_FolderTile> {
     await db.deleteFolder(f.id);
     if (deleteOrphans) {
       for (final path in orphans) {
-        try { await File(path).delete(); } catch (_) {}
+        await deleteAppImageFile(path);
       }
     }
     await QuestionService().refresh();
@@ -665,7 +666,7 @@ class _QuizTileState extends State<_QuizTile> {
     await db.deleteQuiz(q.id);
     if (deleteOrphans) {
       for (final path in orphans) {
-        try { await File(path).delete(); } catch (_) {}
+        await deleteAppImageFile(path);
       }
     }
     await QuestionService().refresh();

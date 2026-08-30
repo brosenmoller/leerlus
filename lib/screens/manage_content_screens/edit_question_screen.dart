@@ -1,7 +1,5 @@
 ﻿import 'dart:convert';
-import 'dart:io';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:leerlus/l10n/app_localizations.dart';
@@ -10,14 +8,13 @@ import 'package:drift/drift.dart' show Value;
 import 'package:leerlus/models/answer_configs.dart' show FlashcardConfig, ImageClickConfig, MultipleChoiceConfig, SetConfig, SortingConfig, TypedAnswerConfig;
 import 'package:leerlus/services/question_service.dart';
 import 'package:leerlus/services/srs_service.dart';
+import 'package:leerlus/utils/image_storage.dart';
 import 'package:leerlus/utils/text_field_selection_fix.dart';
 import 'package:leerlus/widgets/app_image.dart';
 import 'package:leerlus/widgets/image_browser_dialog.dart';
 import 'package:leerlus/widgets/image_picker_field.dart';
 import 'package:leerlus/widgets/screen_shortcuts.dart';
 import 'package:leerlus/widgets/unsaved_changes_guard.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:leerlus/models/occlusion_data.dart' show OcclusionData, OcclusionImageEntry;
 import 'edit_question/answer_type_selector.dart';
 import 'edit_question/multiple_choice_section.dart';
@@ -69,7 +66,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
   // Image variants (for multipleChoice, typed, sorting, set)
   late List<String> _imagePathVariants;
   final Set<String> _pendingVariantSources = {};
-  final Set<String> _removedSavedVariants = {};
+
 
   // Image click — list of polygons in normalized (0–1) coordinates
   List<List<Offset>> _selectedImageAreas = [];
@@ -476,6 +473,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                       imagePath: _imagePath,
                       selectedImageAreas: _selectedImageAreas,
                       onImageChanged: (path) {
+                        final previous = _imagePath;
                         final isPending = _pickerKey.currentState?.hasPendingSource ?? false;
                         setState(() {
                           _imagePath = path;
@@ -483,6 +481,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                           _selectedImageAreas = [];
                           _isDirty = true;
                         });
+                        if (previous != path) _discardImage(previous);
                       },
                       onAreasChanged: (areas) => setState(() {
                         _selectedImageAreas = areas;
@@ -529,6 +528,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                       frontPickerKey: _flashcardFrontPickerKey,
                       backPickerKey: _flashcardBackPickerKey,
                       onFrontImageChanged: (path) {
+                        final previous = _flashcardFrontImagePath;
                         final isPending = _flashcardFrontPickerKey.currentState?.hasPendingSource ?? false;
                         setState(() {
                           if (path == null) _occlusionDataByImage.remove('front');
@@ -536,8 +536,10 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                           _flashcardFrontImagePending = path != null && isPending;
                           _isDirty = true;
                         });
+                        if (previous != path) _discardImage(previous);
                       },
                       onBackImageChanged: (path) {
+                        final previous = _flashcardBackImagePath;
                         final isPending = _flashcardBackPickerKey.currentState?.hasPendingSource ?? false;
                         setState(() {
                           if (path == null) _occlusionDataByImage.remove('back');
@@ -545,6 +547,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                           _flashcardBackImagePending = path != null && isPending;
                           _isDirty = true;
                         });
+                        if (previous != path) _discardImage(previous);
                       },
                     ),
 
@@ -705,16 +708,18 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                     top: 4,
                     right: 4,
                     child: GestureDetector(
-                      onTap: () => setState(() {
-                        final removedPath = _imagePathVariants.removeAt(index);
-                        _occlusionDataByImage.remove(removedPath);
-                        if (_pendingVariantSources.remove(removedPath)) {
-                          // Was a pending source — never copied, nothing to track.
-                        } else if (widget.isEditing) {
-                          _removedSavedVariants.add(removedPath);
-                        }
-                        _isDirty = true;
-                      }),
+                      onTap: () {
+                        final removedPath = _imagePathVariants[index];
+                        setState(() {
+                          _imagePathVariants.removeAt(index);
+                          _occlusionDataByImage.remove(removedPath);
+                          // A pending source was never copied anywhere, so
+                          // dropping it from the list is all there is to undo.
+                          _pendingVariantSources.remove(removedPath);
+                          _isDirty = true;
+                        });
+                        _discardImage(removedPath);
+                      },
                       child: Container(
                         width: 22,
                         height: 22,
@@ -764,6 +769,10 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
         await FilePicker.platform.pickFiles(type: FileType.image);
     if (result?.files.single.path == null) return;
     final sourcePath = result!.files.single.path!;
+    // The picture behind this path may have been replaced since it was last
+    // shown here — the cache keys on the path alone and would serve the old
+    // decode, in the preview and in the occlusion editor alike.
+    await evictImageCache(sourcePath);
     if (mounted) {
       setState(() {
         _imagePathVariants.add(sourcePath);
@@ -776,6 +785,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
   Future<void> _addExistingImageVariant() async {
     final picked = await ImageBrowserDialog.show(context);
     if (picked == null) return;
+    await evictImageCache(picked);
     await Future.delayed(const Duration(milliseconds: 250));
     if (mounted) {
       setState(() {
@@ -785,26 +795,41 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
     }
   }
 
-  Future<String?> _saveImageToStorage(String sourcePath) async {
-    final fileName = p.basename(sourcePath);
-    try {
-      if (kDebugMode) {
-        final dest = Directory(
-            p.join(Directory.current.path, 'assets', 'images'));
-        if (!dest.existsSync()) dest.createSync(recursive: true);
-        await File(sourcePath).copy(p.join(dest.path, fileName));
-        return 'assets/images/$fileName';
-      } else {
-        final dir = await getApplicationDocumentsDirectory();
-        final dest = Directory(p.join(dir.path, 'images'));
-        if (!dest.existsSync()) dest.createSync(recursive: true);
-        final destPath = p.join(dest.path, fileName);
-        await File(sourcePath).copy(destPath);
-        return destPath;
-      }
-    } catch (_) {
-      return null;
-    }
+  /// Every image path the form still points at, so an image dropped from one
+  /// slot isn't deleted while another slot (or the other flashcard side, or a
+  /// duplicate variant) still shows it.
+  Set<String> get _pathsStillInForm => {
+        if (_imagePath != null) _imagePath!,
+        if (_flashcardFrontImagePath != null) _flashcardFrontImagePath!,
+        if (_flashcardBackImagePath != null) _flashcardBackImagePath!,
+        ..._imagePathVariants,
+      };
+
+  /// Called when [path] is removed from a slot (the X button) or replaced.
+  ///
+  /// Always forgets the cached decode. Deletes the file too, but only when it
+  /// is safe on every count:
+  ///
+  ///  1. not a bundled asset;
+  ///  2. inside app storage — a picked image is not copied until save, so its
+  ///     path still points at the user's *own* file and deleting it would
+  ///     destroy something we never owned;
+  ///  3. not one this question already had when the screen opened — those keep
+  ///     going through the save-time orphan prompt, so removing one and then
+  ///     discarding the edit can't strand the saved question on a deleted file;
+  ///  4. not still shown somewhere else in this form;
+  ///  5. not referenced by any other question, quiz or folder — an "existing
+  ///     image" picked from the library is shared, and stays.
+  Future<void> _discardImage(String? path) async {
+    if (path == null || path.isEmpty) return;
+    await evictImageCache(path);
+    if (!AppDatabase.isUserImagePath(path)) return;
+    if (!await isInAppImageStorage(path)) return;
+    if (_originalImagePaths.contains(path)) return;
+    if (_pathsStillInForm.contains(path)) return;
+    final referenced = await widget.db.getAllReferencedUserImagePaths();
+    if (referenced.contains(path)) return;
+    await deleteAppImageFile(path);
   }
 
   Future<void> _showOrphanPromptAndDelete(Set<String> removedPaths) async {
@@ -855,7 +880,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
     );
     if (confirmed == true && deleteOrphans) {
       for (final path in orphaned) {
-        try { await File(path).delete(); } catch (_) {}
+        await deleteAppImageFile(path);
       }
     }
   }
@@ -970,6 +995,11 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
       carryIsPending = _pendingVariantSources.contains(carryImage);
     }
 
+    // The switch keeps at most carryImage; everything else the old type held is
+    // being dropped and gets the same treatment as the X button.
+    final droppedPaths = _pathsStillInForm
+        .difference({if (carryImage != null) carryImage});
+
     final newOcclusion = _remapOcclusionForTypeSwitch(newType, carryImage);
 
     // Carry text across the flashcard boundary so it isn't lost on switch.
@@ -999,14 +1029,6 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
         _imageClickImagePending = false;
         _selectedImageAreas = [];
       } else {
-        // variant-based: track non-pending removed variants for orphan detection
-        if (widget.isEditing) {
-          for (final path in _imagePathVariants) {
-            if (!_pendingVariantSources.contains(path)) {
-              _removedSavedVariants.add(path);
-            }
-          }
-        }
         _imagePathVariants.clear();
         _pendingVariantSources.clear();
       }
@@ -1029,6 +1051,10 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
       _answerType = newType;
       _isDirty = true;
     });
+
+    for (final path in droppedPaths) {
+      await _discardImage(path);
+    }
   }
 
   Future<void> _save() async {
@@ -1060,7 +1086,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
       });
     } else if (_answerType == 'imageClick') {
       if (_imageClickImagePending && _imagePath != null) {
-        singleImagePath = await _saveImageToStorage(_imagePath!);
+        singleImagePath = await copyImageIntoStorage(_imagePath!);
         if (mounted) setState(() { _imagePath = singleImagePath; _imageClickImagePending = false; });
       } else {
         singleImagePath = await _pickerKey.currentState
@@ -1079,7 +1105,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
       // Auto-populate questionText from front side (used in list views)
       questionText = frontText.isNotEmpty ? frontText : backText.isNotEmpty ? backText : 'Flashcard';
       if (_flashcardFrontImagePending && _flashcardFrontImagePath != null) {
-        resolvedFrontImagePath = await _saveImageToStorage(_flashcardFrontImagePath!);
+        resolvedFrontImagePath = await copyImageIntoStorage(_flashcardFrontImagePath!);
         if (mounted) setState(() { _flashcardFrontImagePath = resolvedFrontImagePath; _flashcardFrontImagePending = false; });
       } else {
         resolvedFrontImagePath = await _flashcardFrontPickerKey.currentState
@@ -1087,7 +1113,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
             ?? _flashcardFrontImagePath;
       }
       if (_flashcardBackImagePending && _flashcardBackImagePath != null) {
-        resolvedBackImagePath = await _saveImageToStorage(_flashcardBackImagePath!);
+        resolvedBackImagePath = await copyImageIntoStorage(_flashcardBackImagePath!);
         if (mounted) setState(() { _flashcardBackImagePath = resolvedBackImagePath; _flashcardBackImagePending = false; });
       } else {
         resolvedBackImagePath = await _flashcardBackPickerKey.currentState
@@ -1181,7 +1207,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
       final resolved = <String>[];
       for (final path in _imagePathVariants) {
         if (_pendingVariantSources.contains(path)) {
-          resolved.add(await _saveImageToStorage(path) ?? path);
+          resolved.add(await copyImageIntoStorage(path) ?? path);
         } else {
           resolved.add(path);
         }
@@ -1283,7 +1309,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
 
     String? frontImagePath;
     if (_flashcardFrontImagePending && _flashcardFrontImagePath != null) {
-      frontImagePath = await _saveImageToStorage(_flashcardFrontImagePath!);
+      frontImagePath = await copyImageIntoStorage(_flashcardFrontImagePath!);
       if (mounted) setState(() { _flashcardFrontImagePath = frontImagePath; _flashcardFrontImagePending = false; });
     } else {
       frontImagePath = await _flashcardFrontPickerKey.currentState
@@ -1292,7 +1318,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
     }
     String? backImagePath;
     if (_flashcardBackImagePending && _flashcardBackImagePath != null) {
-      backImagePath = await _saveImageToStorage(_flashcardBackImagePath!);
+      backImagePath = await copyImageIntoStorage(_flashcardBackImagePath!);
       if (mounted) setState(() { _flashcardBackImagePath = backImagePath; _flashcardBackImagePending = false; });
     } else {
       backImagePath = await _flashcardBackPickerKey.currentState

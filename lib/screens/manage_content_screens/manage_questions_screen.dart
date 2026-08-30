@@ -58,8 +58,10 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
     if (widget.highlightQuestionId != null) {
       _highlightId = widget.highlightQuestionId;
       _scrollTargetId = widget.highlightQuestionId;
+      // The tint timer starts when the scroll lands (see _scrollToHighlight),
+      // not here: the row does not exist until the stream delivers it, so on a
+      // slow first load half the 1800 ms would be spent before it appears.
       _pendingScrollToHighlight = true;
-      _startHighlightTimer();
     }
   }
 
@@ -73,6 +75,40 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
     _highlightTimer = Timer(const Duration(milliseconds: 1800), () {
       if (mounted) setState(() => _highlightId = null);
     });
+  }
+
+  /// Brings the search target into view. A lazy ListView only builds tiles near
+  /// the viewport, so on open the target usually has no element yet and
+  /// [Scrollable.ensureVisible] silently does nothing — which is why this used
+  /// to fail for anything below the fold. So jump into the neighbourhood first
+  /// using the index and the sliver's own extent estimate, let it build, then
+  /// retry: each jump lets the sliver measure more children, so maxScrollExtent
+  /// (an average of the built extents) converges. ensureVisible then finishes
+  /// the job exactly, which matters because tiles vary in height (a one-line
+  /// title is shorter than a wrapped two-line one).
+  void _scrollToHighlight(int index, int count, [int attempt = 0]) {
+    if (!mounted || !_scrollController.hasClients) return;
+    final ctx = _highlightKey.currentContext;
+    if (ctx != null) {
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+        alignment: 0.3,
+      );
+      _startHighlightTimer();
+      return;
+    }
+    final position = _scrollController.position;
+    if (attempt >= 8 || count < 2 || position.maxScrollExtent <= 0) return;
+    final target = (position.maxScrollExtent * index / (count - 1))
+        .clamp(0.0, position.maxScrollExtent);
+    // The estimate stopped moving but the tile still isn't there — stop rather
+    // than spin on the same offset for the remaining attempts.
+    if ((target - position.pixels).abs() < 1.0) return;
+    _scrollController.jumpTo(target);
+    WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _scrollToHighlight(index, count, attempt + 1));
   }
 
   @override
@@ -345,22 +381,16 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
           }
 
           // Scroll an arbitrary highlighted question into view (e.g. when
-          // navigating here from the global search). Tiles vary in height, so
-          // use ensureVisible on the tile's key rather than an index estimate.
-          if (_pendingScrollToHighlight &&
-              filtered.any((q) => q.id == _scrollTargetId)) {
-            _pendingScrollToHighlight = false;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              final ctx = _highlightKey.currentContext;
-              if (ctx != null) {
-                Scrollable.ensureVisible(
-                  ctx,
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeOut,
-                  alignment: 0.3,
-                );
-              }
-            });
+          // navigating here from the global search).
+          if (_pendingScrollToHighlight) {
+            final index =
+                filtered.indexWhere((q) => q.id == _scrollTargetId);
+            if (index >= 0) {
+              _pendingScrollToHighlight = false;
+              final count = filtered.length;
+              WidgetsBinding.instance.addPostFrameCallback(
+                  (_) => _scrollToHighlight(index, count));
+            }
           }
 
           return Align(

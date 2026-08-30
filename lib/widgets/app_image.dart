@@ -1,12 +1,10 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:leerlus/utils/image_storage.dart';
 
 Future<double> resolveImageAspectRatio(String path) {
   final completer = Completer<double>();
-  final ImageProvider provider = path.startsWith('assets/')
-      ? AssetImage(path) as ImageProvider
-      : FileImage(File(path));
+  final provider = imageProviderFor(path);
   final stream = provider.resolve(ImageConfiguration.empty);
   late ImageStreamListener listener;
   listener = ImageStreamListener((info, _) {
@@ -43,18 +41,11 @@ class AppImage extends StatelessWidget {
     final fallback = errorBuilder ??
             (_, __, ___) => const Icon(Icons.broken_image);
 
-    if (path!.startsWith('assets/')) {
-      return Image.asset(
-        path!,
-        fit: fit,
-        width: width,
-        height: height,
-        errorBuilder: fallback,
-      );
-    }
-
-    return Image.file(
-      File(path!),
+    // Built through imageProviderFor so the widget and evictImageCache derive
+    // the exact same cache key — otherwise an eviction can miss the entry the
+    // widget is actually holding.
+    return Image(
+      image: imageProviderFor(path!),
       fit: fit,
       width: width,
       height: height,
