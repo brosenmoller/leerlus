@@ -634,5 +634,43 @@
   "statsUniqueQuestions": "Unieke vragen geoefend",
   "statsPerfectSessions": "Perfecte sessies",
   "statsNoData": "Nog geen activiteit. Start een quiz om je statistieken te zien!",
-  "syncResultStatisticsUpdated": "Statistieken gesynchroniseerd"
+  "syncResultStatisticsUpdated": "Statistieken gesynchroniseerd",
+
+  "attachmentsTooltip": "Media toevoegen",
+  "attachmentsAddImage": "Afbeelding toevoegen",
+  "attachmentsAddAudio": "Audiofragment toevoegen",
+  "attachmentsAddVideo": "Video toevoegen",
+  "attachmentsReplaceImage": "Vervangen door afbeelding",
+  "attachmentsReplaceAudio": "Vervangen door audiofragment",
+  "attachmentsReplaceVideo": "Vervangen door video",
+  "attachmentsNewImage": "Nieuwe afbeelding…",
+  "attachmentsExistingImage": "Bestaande afbeelding…",
+  "attachmentsNewAudio": "Nieuw audiofragment…",
+  "attachmentsExistingAudio": "Bestaand audiofragment…",
+  "attachmentsNewVideo": "Nieuwe video…",
+  "attachmentsExistingVideo": "Bestaande video…",
+  "attachmentsManage": "Bijlagen beheren ({count})",
+  "@attachmentsManage": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "attachmentsView": "Bekijken",
+  "attachmentsRemove": "Verwijderen",
+  "attachmentsRemoveTooltip": "Bijlage verwijderen",
+  "attachmentsRandomizedHint": "Elke keer dat deze vraag verschijnt wordt er willekeurig één bijlage gekozen. Voeg er meerdere van hetzelfde onderwerp toe, zodat studenten het concept leren en niet één specifieke afbeelding of fragment.",
+  "attachmentsLargeFileTitle": "Groot bestand",
+  "attachmentsLargeFileContent": "\"{name}\" is {size} MB. Grote bijlagen vertragen het synchroniseren en maken .lus-exports veel groter. Toch toevoegen?",
+  "@attachmentsLargeFileContent": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "size": { "type": "String" }
+    }
+  },
+  "attachmentsAttachAnyway": "Toch toevoegen",
+  "attachmentsUnsupportedForType": "Audio en video kunnen niet bij dit antwoordtype worden gebruikt.",
+  "mediaPlay": "Afspelen",
+  "mediaPause": "Pauzeren",
+  "mediaReplay": "Opnieuw afspelen",
+  "close": "Sluiten"
 }

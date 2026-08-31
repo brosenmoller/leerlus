@@ -1493,4 +1493,88 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get syncResultStatisticsUpdated => 'Statistics synced';
+
+  @override
+  String get attachmentsTooltip => 'Attach media';
+
+  @override
+  String get attachmentsAddImage => 'Add image';
+
+  @override
+  String get attachmentsAddAudio => 'Add audio clip';
+
+  @override
+  String get attachmentsAddVideo => 'Add video';
+
+  @override
+  String get attachmentsReplaceImage => 'Replace with image';
+
+  @override
+  String get attachmentsReplaceAudio => 'Replace with audio clip';
+
+  @override
+  String get attachmentsReplaceVideo => 'Replace with video';
+
+  @override
+  String get attachmentsNewImage => 'New image…';
+
+  @override
+  String get attachmentsExistingImage => 'Existing image…';
+
+  @override
+  String get attachmentsNewAudio => 'New audio clip…';
+
+  @override
+  String get attachmentsExistingAudio => 'Existing audio clip…';
+
+  @override
+  String get attachmentsNewVideo => 'New video…';
+
+  @override
+  String get attachmentsExistingVideo => 'Existing video…';
+
+  @override
+  String attachmentsManage(int count) {
+    return 'Manage attachments ($count)';
+  }
+
+  @override
+  String get attachmentsView => 'View';
+
+  @override
+  String get attachmentsRemove => 'Remove';
+
+  @override
+  String get attachmentsRemoveTooltip => 'Remove attachment';
+
+  @override
+  String get attachmentsRandomizedHint =>
+      'One attachment is picked at random each time this question appears. Add several of the same subject so students learn the concept, not one specific picture or clip.';
+
+  @override
+  String get attachmentsLargeFileTitle => 'Large file';
+
+  @override
+  String attachmentsLargeFileContent(String name, String size) {
+    return '\"$name\" is $size MB. Large attachments slow down syncing and make .lus exports much bigger. Attach it anyway?';
+  }
+
+  @override
+  String get attachmentsAttachAnyway => 'Attach anyway';
+
+  @override
+  String get attachmentsUnsupportedForType =>
+      'Audio and video can\'t be used with this answer type.';
+
+  @override
+  String get mediaPlay => 'Play';
+
+  @override
+  String get mediaPause => 'Pause';
+
+  @override
+  String get mediaReplay => 'Replay';
+
+  @override
+  String get close => 'Close';
 }

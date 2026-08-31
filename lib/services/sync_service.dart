@@ -346,6 +346,20 @@ class SyncService {
       '.png' => 'image/png',
       '.webp' => 'image/webp',
       '.gif' => 'image/gif',
+      '.bmp' => 'image/bmp',
+      // Attachments are not only images any more. The receiver writes bytes
+      // straight to disk either way, so this is about being honest on the
+      // wire rather than something the transfer depends on.
+      '.mp3' => 'audio/mpeg',
+      '.m4a' || '.aac' => 'audio/mp4',
+      '.wav' => 'audio/wav',
+      '.ogg' || '.oga' => 'audio/ogg',
+      '.opus' => 'audio/opus',
+      '.flac' => 'audio/flac',
+      '.mp4' || '.m4v' => 'video/mp4',
+      '.mov' => 'video/quicktime',
+      '.webm' => 'video/webm',
+      '.mkv' => 'video/x-matroska',
       _ => 'application/octet-stream',
     };
     return Response.ok(bytes, headers: {'content-type': contentType});

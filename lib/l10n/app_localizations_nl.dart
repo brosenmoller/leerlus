@@ -1500,4 +1500,88 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get syncResultStatisticsUpdated => 'Statistieken gesynchroniseerd';
+
+  @override
+  String get attachmentsTooltip => 'Media toevoegen';
+
+  @override
+  String get attachmentsAddImage => 'Afbeelding toevoegen';
+
+  @override
+  String get attachmentsAddAudio => 'Audiofragment toevoegen';
+
+  @override
+  String get attachmentsAddVideo => 'Video toevoegen';
+
+  @override
+  String get attachmentsReplaceImage => 'Vervangen door afbeelding';
+
+  @override
+  String get attachmentsReplaceAudio => 'Vervangen door audiofragment';
+
+  @override
+  String get attachmentsReplaceVideo => 'Vervangen door video';
+
+  @override
+  String get attachmentsNewImage => 'Nieuwe afbeelding…';
+
+  @override
+  String get attachmentsExistingImage => 'Bestaande afbeelding…';
+
+  @override
+  String get attachmentsNewAudio => 'Nieuw audiofragment…';
+
+  @override
+  String get attachmentsExistingAudio => 'Bestaand audiofragment…';
+
+  @override
+  String get attachmentsNewVideo => 'Nieuwe video…';
+
+  @override
+  String get attachmentsExistingVideo => 'Bestaande video…';
+
+  @override
+  String attachmentsManage(int count) {
+    return 'Bijlagen beheren ($count)';
+  }
+
+  @override
+  String get attachmentsView => 'Bekijken';
+
+  @override
+  String get attachmentsRemove => 'Verwijderen';
+
+  @override
+  String get attachmentsRemoveTooltip => 'Bijlage verwijderen';
+
+  @override
+  String get attachmentsRandomizedHint =>
+      'Elke keer dat deze vraag verschijnt wordt er willekeurig één bijlage gekozen. Voeg er meerdere van hetzelfde onderwerp toe, zodat studenten het concept leren en niet één specifieke afbeelding of fragment.';
+
+  @override
+  String get attachmentsLargeFileTitle => 'Groot bestand';
+
+  @override
+  String attachmentsLargeFileContent(String name, String size) {
+    return '\"$name\" is $size MB. Grote bijlagen vertragen het synchroniseren en maken .lus-exports veel groter. Toch toevoegen?';
+  }
+
+  @override
+  String get attachmentsAttachAnyway => 'Toch toevoegen';
+
+  @override
+  String get attachmentsUnsupportedForType =>
+      'Audio en video kunnen niet bij dit antwoordtype worden gebruikt.';
+
+  @override
+  String get mediaPlay => 'Afspelen';
+
+  @override
+  String get mediaPause => 'Pauzeren';
+
+  @override
+  String get mediaReplay => 'Opnieuw afspelen';
+
+  @override
+  String get close => 'Sluiten';
 }

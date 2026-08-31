@@ -14,9 +14,12 @@ import 'package:leerlus/services/srs_service.dart' show SrsService;
 import 'package:leerlus/services/statistics_service.dart';
 import 'package:leerlus/services/streak_service.dart';
 import 'package:leerlus/utils/app_storage.dart';
+import 'package:media_kit/media_kit.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Sets up the native audio/video backend used by attachment playback.
+  MediaKit.ensureInitialized();
 
   final storageDir = await getAppStorageDir();
   Hive.init(storageDir.path);

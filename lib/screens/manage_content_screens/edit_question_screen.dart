@@ -1,5 +1,4 @@
 ﻿import 'dart:convert';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:leerlus/l10n/app_localizations.dart';
@@ -10,8 +9,8 @@ import 'package:leerlus/services/question_service.dart';
 import 'package:leerlus/services/srs_service.dart';
 import 'package:leerlus/utils/image_storage.dart';
 import 'package:leerlus/utils/text_field_selection_fix.dart';
-import 'package:leerlus/widgets/app_image.dart';
-import 'package:leerlus/widgets/image_browser_dialog.dart';
+import 'package:leerlus/models/media_kind.dart';
+import 'package:leerlus/widgets/media_attachment_button.dart';
 import 'package:leerlus/widgets/image_picker_field.dart';
 import 'package:leerlus/widgets/screen_shortcuts.dart';
 import 'package:leerlus/widgets/unsaved_changes_guard.dart';
@@ -46,8 +45,6 @@ class EditQuestionScreen extends StatefulWidget {
 class _EditQuestionScreenState extends State<EditQuestionScreen> {
   final _formKey = GlobalKey<FormState>();
   final _pickerKey = GlobalKey<ImagePickerFieldState>();
-  final _flashcardFrontPickerKey = GlobalKey<ImagePickerFieldState>();
-  final _flashcardBackPickerKey = GlobalKey<ImagePickerFieldState>();
   late final TextEditingController _questionController;
   late final TextEditingController _explanationController;
   late String _answerType;
@@ -118,15 +115,21 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
     if (_answerType == 'imageClick') return [];
     if (_answerType == 'flashcard') {
       return [
-        if (_flashcardFrontImagePath?.isNotEmpty == true)
+        if (_flashcardFrontImagePath?.isNotEmpty == true &&
+            mediaKindOf(_flashcardFrontImagePath!).isImage)
           OcclusionImageEntry(key: 'front', label: 'Front', imagePath: _flashcardFrontImagePath!),
-        if (_flashcardBackImagePath?.isNotEmpty == true)
+        if (_flashcardBackImagePath?.isNotEmpty == true &&
+            mediaKindOf(_flashcardBackImagePath!).isImage)
           OcclusionImageEntry(key: 'back', label: 'Back', imagePath: _flashcardBackImagePath!),
       ];
     }
-    return _imagePathVariants.asMap().entries.map((e) => OcclusionImageEntry(
+    // Occlusion only makes sense on a still picture, so audio and video
+    // attachments are filtered out before the editor ever sees them.
+    final images =
+        _imagePathVariants.where((p) => mediaKindOf(p).isImage).toList();
+    return images.asMap().entries.map((e) => OcclusionImageEntry(
       key: e.value,
-      label: _imagePathVariants.length == 1 ? 'Image' : 'Image ${e.key + 1}',
+      label: images.length == 1 ? 'Image' : 'Image ${e.key + 1}',
       imagePath: e.value,
     )).toList();
   }
@@ -401,16 +404,40 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                   if (_answerType != 'flashcard') ...[
-                    TextFormField(
-                      controller: _questionController,
-                      focusNode: _questionFocusNode,
-                      onTap: collapseSelectionOnTap(_questionController),
-                      decoration: InputDecoration(
-                        labelText: l10n.questionLabel,
-                        border: const OutlineInputBorder(),
-                      ),
-                      maxLines: null,
-                      validator: (v) => v!.trim().isEmpty ? l10n.required : null,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _questionController,
+                            focusNode: _questionFocusNode,
+                            onTap: collapseSelectionOnTap(_questionController),
+                            decoration: InputDecoration(
+                              labelText: l10n.questionLabel,
+                              border: const OutlineInputBorder(),
+                            ),
+                            maxLines: null,
+                            validator: (v) =>
+                                v!.trim().isEmpty ? l10n.required : null,
+                          ),
+                        ),
+                        // imageClick owns its own single image (the one the
+                        // click areas are drawn on), so it gets no clip button.
+                        if (_answerType != 'imageClick') ...[
+                          const SizedBox(width: 4),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Tooltip(
+                              message: l10n.attachmentsRandomizedHint,
+                              child: MediaAttachmentButton(
+                                attachments: _imagePathVariants,
+                                onAttach: _attachMediaVariant,
+                                onRemove: _removeMediaVariant,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 16),
                   ],
@@ -525,30 +552,12 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                       backFocusNode: _flashcardBackFocusNode,
                       frontImagePath: _flashcardFrontImagePath,
                       backImagePath: _flashcardBackImagePath,
-                      frontPickerKey: _flashcardFrontPickerKey,
-                      backPickerKey: _flashcardBackPickerKey,
-                      onFrontImageChanged: (path) {
-                        final previous = _flashcardFrontImagePath;
-                        final isPending = _flashcardFrontPickerKey.currentState?.hasPendingSource ?? false;
-                        setState(() {
-                          if (path == null) _occlusionDataByImage.remove('front');
-                          _flashcardFrontImagePath = path;
-                          _flashcardFrontImagePending = path != null && isPending;
-                          _isDirty = true;
-                        });
-                        if (previous != path) _discardImage(previous);
-                      },
-                      onBackImageChanged: (path) {
-                        final previous = _flashcardBackImagePath;
-                        final isPending = _flashcardBackPickerKey.currentState?.hasPendingSource ?? false;
-                        setState(() {
-                          if (path == null) _occlusionDataByImage.remove('back');
-                          _flashcardBackImagePath = path;
-                          _flashcardBackImagePending = path != null && isPending;
-                          _isDirty = true;
-                        });
-                        if (previous != path) _discardImage(previous);
-                      },
+                      onAttachFront: (kind, path) =>
+                          _attachFlashcardMedia(front: true, path: path),
+                      onAttachBack: (kind, path) =>
+                          _attachFlashcardMedia(front: false, path: path),
+                      onRemoveFront: (_) => _removeFlashcardMedia(front: true),
+                      onRemoveBack: (_) => _removeFlashcardMedia(front: false),
                     ),
 
                   if (_answerType == 'set')
@@ -607,12 +616,6 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                       }),
                     ),
 
-                  if (_answerType != 'imageClick' && _answerType != 'flashcard') ...[
-                    const SizedBox(height: 8),
-                    _buildImageVariantsEditor(),
-                    const SizedBox(height: 16),
-                  ],
-
                   if (_occlusionImages.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     OcclusionSection(
@@ -662,137 +665,80 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
   );
   }
 
-  Widget _buildImageVariantsEditor() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Text(
-              'Question images (randomized)',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(width: 6),
-            const Tooltip(
-              message:
-                  'A random image is shown each time this question appears.\n'
-                  'Add multiple images of the same subject so students learn\n'
-                  'the concept, not a specific image.',
-              child: Icon(Icons.help_outline, size: 16),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        if (_imagePathVariants.isNotEmpty)
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _imagePathVariants.asMap().entries.map((entry) {
-              final index = entry.key;
-              final path = entry.value;
-              return Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: SizedBox(
-                      width: 100,
-                      height: 100,
-                      child: AppImage(
-                        path: path,
-                        fit: BoxFit.cover,
-                        width: 100,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 4,
-                    right: 4,
-                    child: GestureDetector(
-                      onTap: () {
-                        final removedPath = _imagePathVariants[index];
-                        setState(() {
-                          _imagePathVariants.removeAt(index);
-                          _occlusionDataByImage.remove(removedPath);
-                          // A pending source was never copied anywhere, so
-                          // dropping it from the list is all there is to undo.
-                          _pendingVariantSources.remove(removedPath);
-                          _isDirty = true;
-                        });
-                        _discardImage(removedPath);
-                      },
-                      child: Container(
-                        width: 22,
-                        height: 22,
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.close,
-                            size: 14, color: Colors.white),
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            }).toList(),
-          ),
-        if (_imagePathVariants.isNotEmpty) const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _addNewImageVariant,
-                icon: const Icon(Icons.file_open_outlined, size: 16),
-                label: const Text('New image'),
-                style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 8)),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _addExistingImageVariant,
-                icon: const Icon(Icons.photo_library_outlined, size: 16),
-                label: const Text('Existing image'),
-                style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 8)),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+  // ── Attachment handling ────────────────────────────────────────────────────
 
-  Future<void> _addNewImageVariant() async {
-    final result =
-        await FilePicker.platform.pickFiles(type: FileType.image);
-    if (result?.files.single.path == null) return;
-    final sourcePath = result!.files.single.path!;
-    // The picture behind this path may have been replaced since it was last
-    // shown here — the cache keys on the path alone and would serve the old
-    // decode, in the preview and in the occlusion editor alike.
-    await evictImageCache(sourcePath);
-    if (mounted) {
-      setState(() {
-        _imagePathVariants.add(sourcePath);
-        _pendingVariantSources.add(sourcePath);
-        _isDirty = true;
-      });
+  /// Appends a picked attachment to the randomized list.
+  ///
+  /// The file is *not* copied into app storage yet — a picked source stays put
+  /// until save (tracked in [_pendingVariantSources]), which matters far more
+  /// now that an attachment can be a hundred-megabyte video.
+  Future<void> _attachMediaVariant(MediaKind kind, String path) async {
+    if (!mounted) return;
+    setState(() {
+      _imagePathVariants.add(path);
+      // Library picks already live in app storage; only explorer picks are
+      // pending. isInAppImageStorage is async, so key off the browser instead:
+      // a path outside the app's own images dir is by definition a fresh pick.
+      _isDirty = true;
+    });
+    if (!await isInAppImageStorage(path)) {
+      if (mounted) setState(() => _pendingVariantSources.add(path));
     }
   }
 
-  Future<void> _addExistingImageVariant() async {
-    final picked = await ImageBrowserDialog.show(context);
-    if (picked == null) return;
-    await evictImageCache(picked);
-    await Future.delayed(const Duration(milliseconds: 250));
-    if (mounted) {
-      setState(() {
-        _imagePathVariants.add(picked);
-        _isDirty = true;
-      });
-    }
+  /// Sets one flashcard side's attachment, replacing whatever it held.
+  ///
+  /// A side is a single slot, so the previous attachment is released — and its
+  /// occlusion dropped, since occlusion is keyed per image.
+  Future<void> _attachFlashcardMedia(
+      {required bool front, required String path}) async {
+    final previous =
+        front ? _flashcardFrontImagePath : _flashcardBackImagePath;
+    // A library pick already lives in app storage; an explorer pick does not
+    // and stays where it is until save.
+    final pending = !await isInAppImageStorage(path);
+    if (!mounted) return;
+    setState(() {
+      _occlusionDataByImage.remove(front ? 'front' : 'back');
+      if (front) {
+        _flashcardFrontImagePath = path;
+        _flashcardFrontImagePending = pending;
+      } else {
+        _flashcardBackImagePath = path;
+        _flashcardBackImagePending = pending;
+      }
+      _isDirty = true;
+    });
+    if (previous != path) await _discardImage(previous);
+  }
+
+  void _removeFlashcardMedia({required bool front}) {
+    final previous =
+        front ? _flashcardFrontImagePath : _flashcardBackImagePath;
+    setState(() {
+      _occlusionDataByImage.remove(front ? 'front' : 'back');
+      if (front) {
+        _flashcardFrontImagePath = null;
+        _flashcardFrontImagePending = false;
+      } else {
+        _flashcardBackImagePath = null;
+        _flashcardBackImagePending = false;
+      }
+      _isDirty = true;
+    });
+    _discardImage(previous);
+  }
+
+  void _removeMediaVariant(String path) {
+    setState(() {
+      _imagePathVariants.remove(path);
+      _occlusionDataByImage.remove(path);
+      // A pending source was never copied anywhere, so dropping it from the
+      // list is all there is to undo.
+      _pendingVariantSources.remove(path);
+      _isDirty = true;
+    });
+    _discardImage(path);
   }
 
   /// Every image path the form still points at, so an image dropped from one
@@ -1086,7 +1032,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
       });
     } else if (_answerType == 'imageClick') {
       if (_imageClickImagePending && _imagePath != null) {
-        singleImagePath = await copyImageIntoStorage(_imagePath!);
+        singleImagePath = await copyMediaIntoStorage(_imagePath!);
         if (mounted) setState(() { _imagePath = singleImagePath; _imageClickImagePending = false; });
       } else {
         singleImagePath = await _pickerKey.currentState
@@ -1105,20 +1051,16 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
       // Auto-populate questionText from front side (used in list views)
       questionText = frontText.isNotEmpty ? frontText : backText.isNotEmpty ? backText : 'Flashcard';
       if (_flashcardFrontImagePending && _flashcardFrontImagePath != null) {
-        resolvedFrontImagePath = await copyImageIntoStorage(_flashcardFrontImagePath!);
+        resolvedFrontImagePath = await copyMediaIntoStorage(_flashcardFrontImagePath!);
         if (mounted) setState(() { _flashcardFrontImagePath = resolvedFrontImagePath; _flashcardFrontImagePending = false; });
       } else {
-        resolvedFrontImagePath = await _flashcardFrontPickerKey.currentState
-            ?.applyAutoName('question_${questionText}_front')
-            ?? _flashcardFrontImagePath;
+        resolvedFrontImagePath = _flashcardFrontImagePath;
       }
       if (_flashcardBackImagePending && _flashcardBackImagePath != null) {
-        resolvedBackImagePath = await copyImageIntoStorage(_flashcardBackImagePath!);
+        resolvedBackImagePath = await copyMediaIntoStorage(_flashcardBackImagePath!);
         if (mounted) setState(() { _flashcardBackImagePath = resolvedBackImagePath; _flashcardBackImagePending = false; });
       } else {
-        resolvedBackImagePath = await _flashcardBackPickerKey.currentState
-            ?.applyAutoName('question_${questionText}_back')
-            ?? _flashcardBackImagePath;
+        resolvedBackImagePath = _flashcardBackImagePath;
       }
 
       if (frontText.isEmpty && (resolvedFrontImagePath == null || resolvedFrontImagePath.isEmpty)) {
@@ -1207,7 +1149,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
       final resolved = <String>[];
       for (final path in _imagePathVariants) {
         if (_pendingVariantSources.contains(path)) {
-          resolved.add(await copyImageIntoStorage(path) ?? path);
+          resolved.add(await copyMediaIntoStorage(path) ?? path);
         } else {
           resolved.add(path);
         }
@@ -1309,21 +1251,17 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
 
     String? frontImagePath;
     if (_flashcardFrontImagePending && _flashcardFrontImagePath != null) {
-      frontImagePath = await copyImageIntoStorage(_flashcardFrontImagePath!);
+      frontImagePath = await copyMediaIntoStorage(_flashcardFrontImagePath!);
       if (mounted) setState(() { _flashcardFrontImagePath = frontImagePath; _flashcardFrontImagePending = false; });
     } else {
-      frontImagePath = await _flashcardFrontPickerKey.currentState
-          ?.applyAutoName('question_${questionText}_front')
-          ?? _flashcardFrontImagePath;
+      frontImagePath = _flashcardFrontImagePath;
     }
     String? backImagePath;
     if (_flashcardBackImagePending && _flashcardBackImagePath != null) {
-      backImagePath = await copyImageIntoStorage(_flashcardBackImagePath!);
+      backImagePath = await copyMediaIntoStorage(_flashcardBackImagePath!);
       if (mounted) setState(() { _flashcardBackImagePath = backImagePath; _flashcardBackImagePending = false; });
     } else {
-      backImagePath = await _flashcardBackPickerKey.currentState
-          ?.applyAutoName('question_${questionText}_back')
-          ?? _flashcardBackImagePath;
+      backImagePath = _flashcardBackImagePath;
     }
 
     if (frontText.isEmpty && (frontImagePath == null || frontImagePath.isEmpty)) {

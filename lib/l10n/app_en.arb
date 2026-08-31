@@ -744,5 +744,43 @@
   "statsUniqueQuestions": "Unique questions practiced",
   "statsPerfectSessions": "Perfect sessions",
   "statsNoData": "No activity recorded yet. Start a quiz to see your stats!",
-  "syncResultStatisticsUpdated": "Statistics synced"
+  "syncResultStatisticsUpdated": "Statistics synced",
+
+  "attachmentsTooltip": "Attach media",
+  "attachmentsAddImage": "Add image",
+  "attachmentsAddAudio": "Add audio clip",
+  "attachmentsAddVideo": "Add video",
+  "attachmentsReplaceImage": "Replace with image",
+  "attachmentsReplaceAudio": "Replace with audio clip",
+  "attachmentsReplaceVideo": "Replace with video",
+  "attachmentsNewImage": "New image…",
+  "attachmentsExistingImage": "Existing image…",
+  "attachmentsNewAudio": "New audio clip…",
+  "attachmentsExistingAudio": "Existing audio clip…",
+  "attachmentsNewVideo": "New video…",
+  "attachmentsExistingVideo": "Existing video…",
+  "attachmentsManage": "Manage attachments ({count})",
+  "@attachmentsManage": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "attachmentsView": "View",
+  "attachmentsRemove": "Remove",
+  "attachmentsRemoveTooltip": "Remove attachment",
+  "attachmentsRandomizedHint": "One attachment is picked at random each time this question appears. Add several of the same subject so students learn the concept, not one specific picture or clip.",
+  "attachmentsLargeFileTitle": "Large file",
+  "attachmentsLargeFileContent": "\"{name}\" is {size} MB. Large attachments slow down syncing and make .lus exports much bigger. Attach it anyway?",
+  "@attachmentsLargeFileContent": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "size": { "type": "String" }
+    }
+  },
+  "attachmentsAttachAnyway": "Attach anyway",
+  "attachmentsUnsupportedForType": "Audio and video can't be used with this answer type.",
+  "mediaPlay": "Play",
+  "mediaPause": "Pause",
+  "mediaReplay": "Replay",
+  "close": "Close"
 }

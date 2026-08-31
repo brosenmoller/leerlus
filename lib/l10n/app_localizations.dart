@@ -2395,6 +2395,162 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Statistics synced'**
   String get syncResultStatisticsUpdated;
+
+  /// No description provided for @attachmentsTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach media'**
+  String get attachmentsTooltip;
+
+  /// No description provided for @attachmentsAddImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Add image'**
+  String get attachmentsAddImage;
+
+  /// No description provided for @attachmentsAddAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Add audio clip'**
+  String get attachmentsAddAudio;
+
+  /// No description provided for @attachmentsAddVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Add video'**
+  String get attachmentsAddVideo;
+
+  /// No description provided for @attachmentsReplaceImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace with image'**
+  String get attachmentsReplaceImage;
+
+  /// No description provided for @attachmentsReplaceAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace with audio clip'**
+  String get attachmentsReplaceAudio;
+
+  /// No description provided for @attachmentsReplaceVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace with video'**
+  String get attachmentsReplaceVideo;
+
+  /// No description provided for @attachmentsNewImage.
+  ///
+  /// In en, this message translates to:
+  /// **'New image…'**
+  String get attachmentsNewImage;
+
+  /// No description provided for @attachmentsExistingImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Existing image…'**
+  String get attachmentsExistingImage;
+
+  /// No description provided for @attachmentsNewAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'New audio clip…'**
+  String get attachmentsNewAudio;
+
+  /// No description provided for @attachmentsExistingAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Existing audio clip…'**
+  String get attachmentsExistingAudio;
+
+  /// No description provided for @attachmentsNewVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'New video…'**
+  String get attachmentsNewVideo;
+
+  /// No description provided for @attachmentsExistingVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Existing video…'**
+  String get attachmentsExistingVideo;
+
+  /// No description provided for @attachmentsManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage attachments ({count})'**
+  String attachmentsManage(int count);
+
+  /// No description provided for @attachmentsView.
+  ///
+  /// In en, this message translates to:
+  /// **'View'**
+  String get attachmentsView;
+
+  /// No description provided for @attachmentsRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get attachmentsRemove;
+
+  /// No description provided for @attachmentsRemoveTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove attachment'**
+  String get attachmentsRemoveTooltip;
+
+  /// No description provided for @attachmentsRandomizedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'One attachment is picked at random each time this question appears. Add several of the same subject so students learn the concept, not one specific picture or clip.'**
+  String get attachmentsRandomizedHint;
+
+  /// No description provided for @attachmentsLargeFileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Large file'**
+  String get attachmentsLargeFileTitle;
+
+  /// No description provided for @attachmentsLargeFileContent.
+  ///
+  /// In en, this message translates to:
+  /// **'\"{name}\" is {size} MB. Large attachments slow down syncing and make .lus exports much bigger. Attach it anyway?'**
+  String attachmentsLargeFileContent(String name, String size);
+
+  /// No description provided for @attachmentsAttachAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach anyway'**
+  String get attachmentsAttachAnyway;
+
+  /// No description provided for @attachmentsUnsupportedForType.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio and video can\'t be used with this answer type.'**
+  String get attachmentsUnsupportedForType;
+
+  /// No description provided for @mediaPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Play'**
+  String get mediaPlay;
+
+  /// No description provided for @mediaPause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get mediaPause;
+
+  /// No description provided for @mediaReplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Replay'**
+  String get mediaReplay;
+
+  /// No description provided for @close.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get close;
 }
 
 class _AppLocalizationsDelegate

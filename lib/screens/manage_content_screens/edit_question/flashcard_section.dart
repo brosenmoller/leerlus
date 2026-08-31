@@ -1,6 +1,6 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:leerlus/l10n/app_localizations.dart';
-import 'package:leerlus/widgets/image_picker_field.dart';
+import 'package:leerlus/models/media_kind.dart';
 import 'flashcard_side_editor.dart';
 
 class FlashcardSection extends StatelessWidget {
@@ -12,10 +12,10 @@ class FlashcardSection extends StatelessWidget {
   final FocusNode? backFocusNode;
   final String? frontImagePath;
   final String? backImagePath;
-  final GlobalKey<ImagePickerFieldState> frontPickerKey;
-  final GlobalKey<ImagePickerFieldState> backPickerKey;
-  final ValueChanged<String?> onFrontImageChanged;
-  final ValueChanged<String?> onBackImageChanged;
+  final Future<void> Function(MediaKind kind, String path) onAttachFront;
+  final Future<void> Function(MediaKind kind, String path) onAttachBack;
+  final void Function(String path) onRemoveFront;
+  final void Function(String path) onRemoveBack;
 
   const FlashcardSection({
     super.key,
@@ -27,10 +27,10 @@ class FlashcardSection extends StatelessWidget {
     this.backFocusNode,
     required this.frontImagePath,
     required this.backImagePath,
-    required this.frontPickerKey,
-    required this.backPickerKey,
-    required this.onFrontImageChanged,
-    required this.onBackImageChanged,
+    required this.onAttachFront,
+    required this.onAttachBack,
+    required this.onRemoveFront,
+    required this.onRemoveBack,
   });
 
   @override
@@ -42,23 +42,21 @@ class FlashcardSection extends StatelessWidget {
         FlashcardSideEditor(
           headerLabel: l10n.flashcardFrontSide,
           textOptionalLabel: l10n.flashcardFrontTextOptional,
-          imageOptionalLabel: l10n.flashcardFrontImageOptional,
           textController: frontTextController,
           focusNode: frontFocusNode,
-          imagePath: frontImagePath,
-          pickerKey: frontPickerKey,
-          onImageChanged: onFrontImageChanged,
+          mediaPath: frontImagePath,
+          onAttach: onAttachFront,
+          onRemove: onRemoveFront,
         ),
         const SizedBox(height: 16),
         FlashcardSideEditor(
           headerLabel: l10n.flashcardBackSide,
           textOptionalLabel: l10n.flashcardBackTextOptional,
-          imageOptionalLabel: l10n.flashcardBackImageOptional,
           textController: backTextController,
           focusNode: backFocusNode,
-          imagePath: backImagePath,
-          pickerKey: backPickerKey,
-          onImageChanged: onBackImageChanged,
+          mediaPath: backImagePath,
+          onAttach: onAttachBack,
+          onRemove: onRemoveBack,
         ),
         const SizedBox(height: 8),
         SwitchListTile(

@@ -8,6 +8,8 @@ import 'package:leerlus/screens/question_display/srs_buttons.dart';
 import 'package:leerlus/widgets/app_image.dart';
 import 'package:leerlus/widgets/auto_scale_text.dart';
 import 'package:leerlus/widgets/occluded_image.dart';
+import 'package:leerlus/models/media_kind.dart';
+import 'package:leerlus/widgets/media_player_widget.dart';
 
 class FlashcardWidget extends StatefulWidget {
   final QuestionData question;
@@ -313,6 +315,8 @@ class _CardFaceState extends State<_CardFace> {
   void _resolveAspectRatioIfNeeded() {
     final path = widget.imagePath;
     if (widget.occlusionData == null || path == null) return;
+    // Occlusion is image-only; a clip has no aspect ratio to resolve.
+    if (!mediaKindOf(path).isImage) return;
     resolveImageAspectRatio(path).then((r) {
       if (mounted) setState(() => _aspectRatio = r);
     });
@@ -331,7 +335,19 @@ class _CardFaceState extends State<_CardFace> {
     // With occlusion, paint the overlay on an AspectRatio that matches the
     // image so hidden/highlight areas land exactly on it. Until the ratio
     // resolves (or without occlusion), fall back to a plain contained image.
-    Widget buildImage(String path) {
+    Widget buildMedia(String path) {
+      final kind = mediaKindOf(path);
+      if (!kind.isImage) {
+        return Center(
+          child: MediaPlayerWidget(
+            // Keyed on the path so flipping to the other side builds a fresh
+            // player rather than reusing one still holding this side's clip.
+            key: ValueKey(path),
+            path: path,
+            autoPlay: kind.isAudio,
+          ),
+        );
+      }
       return Center(
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
@@ -362,7 +378,7 @@ class _CardFaceState extends State<_CardFace> {
                   constraints: BoxConstraints(
                     maxHeight: constraints.maxHeight * 0.5,
                   ),
-                  child: buildImage(imagePath),
+                  child: buildMedia(imagePath),
                 ),
                 const SizedBox(height: 12),
                 Expanded(
@@ -377,7 +393,7 @@ class _CardFaceState extends State<_CardFace> {
         );
       }
       if (imagePath != null) {
-        return buildImage(imagePath);
+        return buildMedia(imagePath);
       }
       if (text != null) {
         return AutoScaleText(text: text, style: theme.textTheme.titleLarge);

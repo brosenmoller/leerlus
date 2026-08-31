@@ -6,6 +6,8 @@ import 'package:flutter/painting.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import 'package:leerlus/models/media_kind.dart';
+
 /// Single home for reading, writing and forgetting user image files.
 ///
 /// The debug/release split used to be copy-pasted into every screen that
@@ -83,6 +85,9 @@ Future<String?> copyImageIntoStorage(String sourcePath) async {
 /// different bytes: on pick, on copy, on delete.
 Future<void> evictImageCache(String? path) async {
   if (path == null || path.isEmpty) return;
+  // Audio and video never enter Flutter's image cache, and building an
+  // ImageProvider for a .mp4 would only decode-fail. Nothing to forget.
+  if (!mediaKindOf(path).isImage) return;
   try {
     await imageProviderFor(path).evict();
   } catch (_) {}
@@ -107,3 +112,41 @@ Future<void> deleteAppImageFile(String path) async {
   } catch (_) {}
   await evictImageCache(path);
 }
+
+/// Copies any attachment — image, audio or video — into app storage and returns
+/// the stored path, or null if the copy failed.
+///
+/// Images keep [copyImageIntoStorage]'s behaviour exactly, including the debug
+/// build storing an `assets/images/...` asset key. Audio and video always get
+/// the **absolute** path instead: media_kit plays a real file, and a file
+/// written into the repo at runtime is not in the compiled asset bundle, so an
+/// asset key would simply fail to open in debug.
+Future<String?> copyMediaIntoStorage(String sourcePath) async {
+  if (mediaKindOf(sourcePath).isImage) return copyImageIntoStorage(sourcePath);
+  try {
+    final bytes = await File(sourcePath).readAsBytes();
+    final dir = await appImagesDir(create: true);
+    final name = hashedImageName(bytes, p.basename(sourcePath));
+    final dest = File(p.join(dir.path, name));
+    // Same name ⇒ same content, so an existing file already *is* this clip.
+    if (!dest.existsSync() || dest.lengthSync() != bytes.length) {
+      await dest.writeAsBytes(bytes, flush: true);
+    }
+    return dest.path;
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Size of the file at [sourcePath] in bytes, or null if it can't be read.
+Future<int?> mediaFileSize(String sourcePath) async {
+  try {
+    return await File(sourcePath).length();
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Attachments above this size make sync slow and bloat `.lus` exports, so the
+/// picker warns once before accepting one. It is a warning, never a block.
+const largeMediaWarningBytes = 25 * 1024 * 1024;

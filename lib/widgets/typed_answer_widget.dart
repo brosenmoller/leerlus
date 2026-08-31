@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:leerlus/models/answer_state.dart';
 import 'package:leerlus/models/question_data.dart';
 import 'package:leerlus/utils/text_field_selection_fix.dart';
-import 'package:leerlus/widgets/question_image.dart';
+import 'package:leerlus/widgets/question_media.dart';
 
 class TypedAnswerWidget extends StatefulWidget {
   final QuestionData question;
@@ -77,7 +77,7 @@ class _TypedAnswerWidgetState extends State<TypedAnswerWidget> {
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: QuestionImage(
+                  child: QuestionMedia(
                     path: _resolvedImagePath!,
                     maxHeight: double.infinity,
                     occlusionData: widget.question.occlusionDataByImage[_resolvedImagePath],

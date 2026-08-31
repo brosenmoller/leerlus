@@ -1,27 +1,31 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:leerlus/models/media_kind.dart';
 import 'package:leerlus/utils/text_field_selection_fix.dart';
-import 'package:leerlus/widgets/image_picker_field.dart';
+import 'package:leerlus/widgets/media_attachment_button.dart';
 
+/// One side of a flashcard: its text field with the attachment clip button on
+/// the same row.
+///
+/// A side holds at most one attachment, so the button runs in single mode —
+/// picking a second one replaces the first rather than appending.
 class FlashcardSideEditor extends StatelessWidget {
   final String headerLabel;
   final String textOptionalLabel;
-  final String imageOptionalLabel;
   final TextEditingController textController;
   final FocusNode? focusNode;
-  final String? imagePath;
-  final GlobalKey<ImagePickerFieldState> pickerKey;
-  final ValueChanged<String?> onImageChanged;
+  final String? mediaPath;
+  final Future<void> Function(MediaKind kind, String path) onAttach;
+  final void Function(String path) onRemove;
 
   const FlashcardSideEditor({
     super.key,
     required this.headerLabel,
     required this.textOptionalLabel,
-    required this.imageOptionalLabel,
     required this.textController,
     this.focusNode,
-    required this.imagePath,
-    required this.pickerKey,
-    required this.onImageChanged,
+    required this.mediaPath,
+    required this.onAttach,
+    required this.onRemove,
   });
 
   @override
@@ -34,24 +38,34 @@ class FlashcardSideEditor extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
         ),
         const SizedBox(height: 8),
-        TextFormField(
-          controller: textController,
-          focusNode: focusNode,
-          onTap: collapseSelectionOnTap(textController),
-          decoration: InputDecoration(
-            labelText: textOptionalLabel,
-            border: const OutlineInputBorder(),
-          ),
-          minLines: 2,
-          maxLines: null,
-          keyboardType: TextInputType.multiline,
-        ),
-        const SizedBox(height: 8),
-        ImagePickerField(
-          key: pickerKey,
-          label: imageOptionalLabel,
-          initialPath: imagePath,
-          onChanged: onImageChanged,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: textController,
+                focusNode: focusNode,
+                onTap: collapseSelectionOnTap(textController),
+                decoration: InputDecoration(
+                  labelText: textOptionalLabel,
+                  border: const OutlineInputBorder(),
+                ),
+                minLines: 2,
+                maxLines: null,
+                keyboardType: TextInputType.multiline,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: MediaAttachmentButton(
+                attachments: [if (mediaPath?.isNotEmpty == true) mediaPath!],
+                multi: false,
+                onAttach: onAttach,
+                onRemove: onRemove,
+              ),
+            ),
+          ],
         ),
       ],
     );

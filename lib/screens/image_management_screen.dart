@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
+import 'package:leerlus/models/media_kind.dart';
 import 'package:leerlus/data/database/app_database.dart';
 import 'package:leerlus/l10n/app_localizations.dart';
 import 'package:leerlus/utils/image_storage.dart';
@@ -110,10 +111,10 @@ class _ImageManagementScreenState extends State<ImageManagementScreen> {
 
   Future<String?> _getImagesDir() async => (await appImagesDir()).path;
 
-  bool _isImageFile(String path) {
-    final ext = p.extension(path).toLowerCase();
-    return ['.jpg', '.jpeg', '.png', '.webp', '.gif'].contains(ext);
-  }
+  /// Any attachable media, not only pictures — audio and video live in the
+  /// same directory and would otherwise be invisible here, leaving an orphaned
+  /// clip with no way to find or delete it.
+  bool _isImageFile(String path) => isMediaPath(path);
 
   List<_ImageInfo> get _displayed =>
       _showUnusedOnly ? _images.where((i) => i.isUnused).toList() : _images;

@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:leerlus/l10n/app_localizations.dart';
 import 'package:leerlus/models/answer_state.dart';
 import 'package:leerlus/models/question_data.dart';
-import 'package:leerlus/widgets/question_image.dart';
+import 'package:leerlus/widgets/question_media.dart';
 
 class MultipleChoiceWidget extends StatefulWidget {
   final QuestionData question;
@@ -260,7 +260,7 @@ class _MultipleChoiceWidgetState extends State<MultipleChoiceWidget> {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: QuestionImage(
+              child: QuestionMedia(
                 path: _resolvedImagePath!,
                 maxHeight: double.infinity,
                 occlusionData: widget.question.occlusionDataByImage[_resolvedImagePath],

@@ -6,7 +6,7 @@ import 'package:leerlus/l10n/app_localizations.dart';
 import 'package:leerlus/models/answer_state.dart';
 import 'package:leerlus/models/question_data.dart';
 import 'package:leerlus/utils/text_field_selection_fix.dart';
-import 'package:leerlus/widgets/question_image.dart';
+import 'package:leerlus/widgets/question_media.dart';
 
 class SortingWidget extends StatefulWidget {
   final QuestionData question;
@@ -185,7 +185,7 @@ class _SortingWidgetState extends State<SortingWidget> {
           if (widget.question.imagePath != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: QuestionImage(
+              child: QuestionMedia(
                 path: widget.question.imagePath!,
                 maxHeight: 180,
                 occlusionData: widget
