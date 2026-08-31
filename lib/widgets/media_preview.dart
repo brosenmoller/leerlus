@@ -23,6 +23,13 @@ class MediaThumbnail extends StatelessWidget {
   final String path;
   final double size;
 
+  /// Smallest tile that still fits the icon plus two lines of filename. Below
+  /// this the label is dropped and the icon takes the whole tile: two lines of
+  /// `labelSmall` alone run to roughly 30dp, so squeezing them into a 32dp
+  /// row-leading tile overflows it — and at that scale the text is unreadable
+  /// anyway, with the basename already spelled out beside the tile.
+  static const _minSizeForLabel = 72.0;
+
   const MediaThumbnail({super.key, required this.path, this.size = 100});
 
   @override
@@ -41,6 +48,8 @@ class MediaThumbnail extends StatelessWidget {
       );
     }
 
+    final showLabel = size >= _minSizeForLabel;
+
     return Container(
       width: size,
       height: size,
@@ -48,23 +57,29 @@ class MediaThumbnail extends StatelessWidget {
         color: theme.colorScheme.secondaryContainer,
         borderRadius: BorderRadius.circular(8),
       ),
-      padding: const EdgeInsets.all(6),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(iconForMediaKind(kind),
-              size: size * 0.34, color: theme.colorScheme.onSecondaryContainer),
-          const SizedBox(height: 4),
-          Text(
-            p.basename(path),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.labelSmall
-                ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
-          ),
-        ],
-      ),
+      padding: EdgeInsets.all(showLabel ? 6 : 4),
+      child: showLabel
+          ? Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(iconForMediaKind(kind),
+                    size: size * 0.34,
+                    color: theme.colorScheme.onSecondaryContainer),
+                const SizedBox(height: 4),
+                Flexible(
+                  child: Text(
+                    p.basename(path),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.labelSmall
+                        ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
+                  ),
+                ),
+              ],
+            )
+          : Icon(iconForMediaKind(kind),
+              size: size * 0.6, color: theme.colorScheme.onSecondaryContainer),
     );
   }
 }

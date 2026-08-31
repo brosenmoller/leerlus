@@ -345,6 +345,10 @@ class _CardFaceState extends State<_CardFace> {
             key: ValueKey(path),
             path: path,
             autoPlay: kind.isAudio,
+            // No cap of its own: the card face already bounds the box, and the
+            // default 260 left the picture floating in the middle of a much
+            // larger face with dead space all around it.
+            maxHeight: double.infinity,
           ),
         );
       }

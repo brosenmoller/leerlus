@@ -7,6 +7,10 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:leerlus/l10n/app_localizations.dart';
 import 'package:leerlus/models/media_kind.dart';
 
+/// How much of media_kit's control overlay a picture is big enough to carry.
+/// See [_MediaPlayerWidgetState._controlsTierFor].
+enum _ControlsTier { full, compact, none }
+
 /// Plays an audio clip or a video attachment.
 ///
 /// Audio renders as a compact transport bar (play/pause, scrubber, elapsed and
@@ -173,37 +177,144 @@ class _MediaPlayerWidgetState extends State<MediaPlayerWidget> {
         aspectRatio: _aspectRatio,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Video(
-                controller: controller,
-                // Always the real controls. media_kit's VideoState captures
-                // `controls` once into a `late final` and defines no
-                // didUpdateWidget, so a builder picked from state here freezes
-                // on whatever it was at first build — which is how the seek
-                // bar, volume and pause button went missing entirely.
-                controls: AdaptiveVideoControls,
-              ),
-              // Poster overlay: the first frame is already showing underneath,
-              // so this is just the affordance that playback needs a tap. It
-              // covers the controls, but only until that first tap.
-              if (!_started)
-                Positioned.fill(
-                  child: Material(
-                    color: Colors.black26,
-                    child: InkWell(
-                      onTap: _toggle,
-                      child: const Center(
-                        child: Icon(Icons.play_circle_fill,
-                            size: 56, color: Colors.white),
-                      ),
+          // Inside the AspectRatio the constraints are tight, so this reports
+          // the picture's real size — which is what decides how much control
+          // bar it can carry.
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final tier = _controlsTierFor(constraints.biggest);
+              return _withControlsTheme(
+                tier,
+                Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Video(
+                      controller: controller,
+                      // Always the real controls. media_kit's VideoState
+                      // captures `controls` once into a `late final` and
+                      // defines no didUpdateWidget, so a builder picked from
+                      // state here freezes on whatever it was at first build —
+                      // which is how the seek bar, volume and pause button went
+                      // missing entirely. What the bar *contains* is tuned
+                      // through the themes below, which are read live.
+                      controls: AdaptiveVideoControls,
                     ),
-                  ),
+                    // Poster overlay: the first frame is already showing
+                    // underneath, so this is just the affordance that playback
+                    // needs a tap. It covers the controls, but only until that
+                    // first tap — except at [_ControlsTier.none], where there
+                    // are no controls to cover and it stays as the only one.
+                    if (!_started || tier == _ControlsTier.none)
+                      Positioned.fill(
+                        child: Material(
+                          color: _playing ? Colors.transparent : Colors.black26,
+                          child: InkWell(
+                            onTap: _toggle,
+                            // While it plays the overlay is nothing but a tap
+                            // target: a badge parked over a picture this small
+                            // would hide more than it offers.
+                            child: _playing
+                                ? const SizedBox.expand()
+                                : Center(
+                                    child: Icon(
+                                      Icons.play_circle_fill,
+                                      size: tier == _ControlsTier.none ? 36 : 56,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// media_kit's control overlays are laid out at fixed sizes and will happily
+  /// overflow a picture that is smaller than they are: the desktop bar stacks a
+  /// 56dp top row, a 36dp seek bar and a 56dp button row, and its volume button
+  /// widens by ~70dp the moment the pointer touches it. A question thumbnail or
+  /// a flashcard face on a phone is nowhere near that big, so the overlay is
+  /// scaled back to what the picture can actually hold.
+  _ControlsTier _controlsTierFor(Size size) {
+    if (size.width >= 360 && size.height >= 200) return _ControlsTier.full;
+    if (size.width >= 180 && size.height >= 110) return _ControlsTier.compact;
+    return _ControlsTier.none;
+  }
+
+  /// Both control themes are declared, not just the one for this platform:
+  /// they are plain [InheritedWidget]s, cost nothing when unused, and this way
+  /// the widget doesn't have to duplicate `AdaptiveVideoControls`' own
+  /// platform switch. Fullscreen always gets the package defaults — there is
+  /// room for everything on a whole screen.
+  Widget _withControlsTheme(_ControlsTier tier, Widget child) {
+    final (desktop, mobile) = switch (tier) {
+      _ControlsTier.full => (
+          const MaterialDesktopVideoControlsThemeData(),
+          const MaterialVideoControlsThemeData(),
+        ),
+      _ControlsTier.compact => (
+          const MaterialDesktopVideoControlsThemeData(
+            buttonBarHeight: 36,
+            buttonBarButtonSize: 20,
+            seekBarContainerHeight: 20,
+            seekBarMargin: EdgeInsets.symmetric(horizontal: 6),
+            bottomButtonBarMargin: EdgeInsets.symmetric(horizontal: 4),
+            primaryButtonBar: [],
+            // No volume button: its hover expansion is exactly what was
+            // painting overflow stripes across the picture.
+            bottomButtonBar: [
+              MaterialDesktopPlayOrPauseButton(),
+              Spacer(),
+              MaterialDesktopPositionIndicator(),
+              SizedBox(width: 4),
+              MaterialDesktopFullscreenButton(),
+            ],
+          ),
+          const MaterialVideoControlsThemeData(
+            buttonBarHeight: 36,
+            buttonBarButtonSize: 20,
+            seekBarContainerHeight: 20,
+            bottomButtonBarMargin: EdgeInsets.symmetric(horizontal: 8),
+            primaryButtonBar: [MaterialPlayOrPauseButton(iconSize: 32)],
+            bottomButtonBar: [
+              MaterialPositionIndicator(),
+              Spacer(),
+              MaterialFullscreenButton(),
             ],
           ),
         ),
+      // Every bar emptied and the seek bar dropped, so the overlay cannot be
+      // taller or wider than the picture whatever its size. The poster overlay
+      // above stays put and carries play/pause on its own.
+      _ControlsTier.none => (
+          const MaterialDesktopVideoControlsThemeData(
+            buttonBarHeight: 0,
+            displaySeekBar: false,
+            primaryButtonBar: [],
+            bottomButtonBar: [],
+          ),
+          const MaterialVideoControlsThemeData(
+            buttonBarHeight: 0,
+            displaySeekBar: false,
+            primaryButtonBar: [],
+            bottomButtonBar: [],
+          ),
+        ),
+    };
+
+    return MaterialDesktopVideoControlsTheme(
+      normal: desktop,
+      fullscreen: const MaterialDesktopVideoControlsThemeData(),
+      child: MaterialVideoControlsTheme(
+        normal: mobile,
+        fullscreen: const MaterialVideoControlsThemeData(),
+        child: child,
       ),
     );
   }
@@ -277,14 +388,27 @@ class _MediaPlayerWidgetState extends State<MediaPlayerWidget> {
             if (constraints.maxWidth >= _stackedMaxWidth) {
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: Row(
+                // Column here for its height only. A Slider fills whatever
+                // bounded height it is handed, and a Row passes its own down
+                // as the cross-axis max — so on a tall desktop face the
+                // scrubber grew to the full height and stretched the card's
+                // background with it. A min-height Column hands the row
+                // unbounded height, which is what makes the Slider fall back
+                // to its natural size — the same path the stacked layout
+                // below already takes, hence the identical bar there.
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    playButton,
-                    replayButton,
-                    Expanded(child: seekBar),
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: timeLabel,
+                    Row(
+                      children: [
+                        playButton,
+                        replayButton,
+                        Expanded(child: seekBar),
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: timeLabel,
+                        ),
+                      ],
                     ),
                   ],
                 ),
