@@ -7,6 +7,7 @@ import 'package:leerlus/screens/srs_overview/srs_overview_data.dart';
 import 'package:leerlus/screens/srs_overview/srs_quiz_card.dart';
 import 'package:leerlus/screens/srs_session_screen.dart';
 import 'package:leerlus/services/question_service.dart';
+import 'package:leerlus/services/settings_service.dart';
 import 'package:leerlus/services/srs_service.dart';
 import 'package:leerlus/services/streak_service.dart';
 import 'package:leerlus/widgets/streak_banner.dart';
@@ -18,11 +19,21 @@ class SrsCompletionScreen extends StatefulWidget {
   final int reviewedCount;
   final StreakEvent? streakEvent;
 
+  /// Questions from the just-finished session's scope that still need work —
+  /// lapses plus anything still due. Drives the one-tap Continue button.
+  final List<QuestionData> continuePool;
+
+  /// The scope those leftovers came from, forwarded as the next session's
+  /// [SrsSessionScreen.scopePool] so batches chain indefinitely.
+  final List<QuestionData> continueScope;
+
   const SrsCompletionScreen({
     super.key,
     required this.completedQuizTitle,
     required this.reviewedCount,
     this.streakEvent,
+    this.continuePool = const [],
+    this.continueScope = const [],
   });
 
   @override
@@ -80,6 +91,21 @@ class _SrsCompletionScreenState extends State<SrsCompletionScreen> {
               if (widget.streakEvent != null)
                 StreakBanner(event: widget.streakEvent!),
               const SizedBox(height: 16),
+
+              if (SettingsService().quickReviewEnabled &&
+                  widget.continuePool.isNotEmpty) ...[
+                FilledButton.icon(
+                  onPressed: _continue,
+                  icon: const Icon(Icons.bolt),
+                  label: Text(l10n.srsContinueStillDue(widget.continuePool.length)),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colorScheme.error,
+                    foregroundColor: colorScheme.onError,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
 
               // ── Due quizzes / all-caught-up ───────────────────────────
               if (dueEntries.isEmpty) ...[
@@ -209,7 +235,14 @@ class _SrsCompletionScreenState extends State<SrsCompletionScreen> {
         SrsFolderCard(
           node: node,
           onTap: () => _openFolder(node),
-          onReview: () => _startSession(node.allDueRecursive, node.folder.title),
+          onReview: ({bool quick = false}) => _startSession(
+            quick
+                ? srsService.takeMostOverdue(
+                    node.allDueRecursive, SettingsService().srsBatchSize)
+                : node.allDueRecursive,
+            node.folder.title,
+            scope: node.allDueRecursive,
+          ),
         ),
       for (final entry in looseEntries)
         _DueQuizTile(
@@ -220,12 +253,26 @@ class _SrsCompletionScreenState extends State<SrsCompletionScreen> {
     ];
   }
 
-  void _startSession(List<QuestionData> questions, String title) {
+  /// Chains into the next batch from [widget.continuePool].
+  void _continue() {
+    _startSession(
+      srsService.takeMostOverdue(
+          widget.continuePool, SettingsService().srsBatchSize),
+      widget.completedQuizTitle,
+      scope: widget.continueScope,
+    );
+  }
+
+  void _startSession(List<QuestionData> questions, String title,
+      {List<QuestionData>? scope}) {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            SrsSessionScreen(questions: questions, sessionTitle: title),
+        builder: (_) => SrsSessionScreen(
+          questions: questions,
+          sessionTitle: title,
+          scopePool: scope ?? questions,
+        ),
       ),
     );
   }

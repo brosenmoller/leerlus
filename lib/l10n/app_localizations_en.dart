@@ -474,6 +474,37 @@ class AppLocalizationsEn extends AppLocalizations {
   String get srsAllDueTitle => 'All due questions';
 
   @override
+  String srsQuickReviewLabel(int count) {
+    return 'Quick review · $count';
+  }
+
+  @override
+  String srsQuickReviewTooltip(int count) {
+    return 'Quick review — $count most overdue';
+  }
+
+  @override
+  String srsReviewAllTooltip(int count) {
+    return 'Review all $count';
+  }
+
+  @override
+  String srsContinueStillDue(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Continue · $count still due',
+      one: 'Continue · 1 still due',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String srsQuestionCount(int count) {
+    return '$count questions';
+  }
+
+  @override
   String get srsViewListView => 'List view';
 
   @override
@@ -1303,6 +1334,16 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get settingsQuickReviewSize => 'Quick review size';
+
+  @override
+  String get settingsQuickReviewSizeDesc =>
+      'How many questions a quick session contains.';
+
+  @override
+  String get settingsQuickReviewSizeUnlimited => 'Unlimited';
 
   @override
   String get settingsAnimations => 'Animations';

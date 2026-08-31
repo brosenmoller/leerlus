@@ -3,10 +3,17 @@ import 'package:leerlus/l10n/app_localizations.dart';
 import 'package:leerlus/models/question_data.dart';
 import 'package:leerlus/models/quiz_data.dart';
 import 'package:leerlus/screens/srs_overview/srs_tag.dart';
+import 'package:leerlus/services/settings_service.dart';
 
 // ── Popup menu actions ────────────────────────────────────────────────────────
 
 enum SrsCardAction { startNormal, removeSrs }
+
+/// Starts an SRS session. [quick] asks the caller to cap the list to the
+/// configured quick-review size (most overdue first); false reviews everything.
+typedef SrsStartCallback = void Function(
+    BuildContext context, List<QuestionData> questions, String title,
+    {bool quick});
 
 // ── Data class ────────────────────────────────────────────────────────────────
 
@@ -34,7 +41,7 @@ class SrsQuizEntry {
 
 class SrsQuizCard extends StatelessWidget {
   final SrsQuizEntry entry;
-  final void Function(BuildContext, List<QuestionData>, String) onStart;
+  final SrsStartCallback onStart;
   final void Function(BuildContext, QuizData) onStartNormal;
   final void Function(BuildContext, SrsQuizEntry) onRemoveSrs;
 
@@ -146,19 +153,7 @@ class SrsQuizCard extends StatelessWidget {
 
                           // Action buttons
                           const SizedBox(width: 8),
-                          if (hasDue)
-                            FilledButton(
-                              onPressed: () => onStart(
-                                  context,
-                                  entry.dueQuestions,
-                                  entry.quizTitle),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: colorScheme.error,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 10),
-                              ),
-                              child: Text(l10n.start),
-                            ),
+                          if (hasDue) _buildStartButtons(context, colorScheme, l10n),
                           PopupMenuButton<SrsCardAction>(
                             icon: const Icon(Icons.more_vert),
                             onSelected: (action) {
@@ -203,6 +198,58 @@ class SrsQuizCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  /// One Start button normally. When quick review is on and the due pile is
+  /// bigger than a quick session, it splits into a prominent capped start plus
+  /// a secondary "review everything" — so the extra button only appears on the
+  /// cards that are actually overwhelming.
+  Widget _buildStartButtons(
+      BuildContext context, ColorScheme colorScheme, AppLocalizations l10n) {
+    final settings = SettingsService();
+    final batchSize = settings.srsBatchSize;
+    final dueCount = entry.dueQuestions.length;
+    final split = settings.quickReviewEnabled && dueCount > batchSize;
+
+    if (!split) {
+      return FilledButton(
+        onPressed: () =>
+            onStart(context, entry.dueQuestions, entry.quizTitle, quick: false),
+        style: FilledButton.styleFrom(
+          backgroundColor: colorScheme.error,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        ),
+        child: Text(l10n.start),
+      );
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Tooltip(
+          message: l10n.srsQuickReviewTooltip(batchSize),
+          child: FilledButton.icon(
+            onPressed: () => onStart(
+                context, entry.dueQuestions, entry.quizTitle,
+                quick: true),
+            icon: const Icon(Icons.bolt, size: 20),
+            label: Text('$batchSize'),
+            style: FilledButton.styleFrom(
+              backgroundColor: colorScheme.error,
+              foregroundColor: colorScheme.onError,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            ),
+          ),
+        ),
+        const SizedBox(width: 4),
+        IconButton.filledTonal(
+          tooltip: l10n.srsReviewAllTooltip(dueCount),
+          onPressed: () =>
+              onStart(context, entry.dueQuestions, entry.quizTitle, quick: false),
+          icon: const Icon(Icons.play_arrow_rounded),
+        ),
+      ],
     );
   }
 

@@ -38,6 +38,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late bool _notifsVibration;
   late bool _animationsEnabled;
   late SessionProgressStyle _progressStyle;
+
+  /// Quick-review batch size; 0 means unlimited (feature off).
+  late int _batchSize;
   late final TextEditingController _defaultLangController;
   final FocusNode _defaultLangFocusNode = FocusNode();
   String? _defaultLangCode;
@@ -53,6 +56,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _notifsVibration = _streak.notifsVibration;
     _animationsEnabled = _settings.animationsEnabled;
     _progressStyle = _settings.sessionProgressStyle;
+    _batchSize = _settings.srsBatchSize;
     _defaultLangCode = _settings.defaultQuizLanguageCode;
     _defaultLangController = TextEditingController(
       text: codeToDisplay(_defaultLangCode),
@@ -469,6 +473,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ],
                 ],
+              ),
+            ),
+
+            // ── Quick review ─────────────────────────────────────
+            // Deliberately outside the SRS Algorithm ExpansionTile below:
+            // that tile is collapsed by default and full of ease-factor knobs,
+            // while this is a setting users are meant to find and change.
+            Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              clipBehavior: Clip.hardEdge,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: _SrsSliderRow(
+                  key: ValueKey('batch_$_batchSize'),
+                  label: l10n.settingsQuickReviewSize,
+                  // The rightmost stop (55) is "Unlimited", stored as 0.
+                  initialValue: (_batchSize == 0 ? 55 : _batchSize).toDouble(),
+                  min: 5,
+                  max: 55,
+                  divisions: 10,
+                  formatValue: (v) => v.round() > 50
+                      ? l10n.settingsQuickReviewSizeUnlimited
+                      : l10n.srsQuestionCount(v.round()),
+                  description: l10n.settingsQuickReviewSizeDesc,
+                  onChangeEnd: (v) async {
+                    setState(() => _batchSize = v.round() > 50 ? 0 : v.round());
+                    await _settings.setSrsBatchSize(_batchSize);
+                  },
+                ),
               ),
             ),
 

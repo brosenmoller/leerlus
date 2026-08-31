@@ -10,6 +10,8 @@ import 'package:leerlus/screens/srs_overview/srs_folder_card.dart';
 import 'package:leerlus/screens/srs_overview/srs_folder_screen.dart';
 import 'package:leerlus/screens/srs_overview/srs_overview_data.dart';
 import 'package:leerlus/screens/srs_overview/srs_quiz_card.dart';
+import 'package:leerlus/screens/srs_overview/srs_review_fab.dart';
+import 'package:leerlus/services/settings_service.dart';
 import 'package:leerlus/services/question_service.dart';
 import 'package:leerlus/services/srs_service.dart';
 import 'package:leerlus/widgets/collapsible_app_bar_title.dart';
@@ -56,12 +58,12 @@ class _SrsOverviewScreenState extends State<SrsOverviewScreen> {
 
     return Scaffold(
       floatingActionButton: allDueQuestions.isNotEmpty
-          ? FloatingActionButton.extended(
-              onPressed: () => _start(context, allDueQuestions, l10n.srsAllDueTitle),
-              icon: const Icon(Icons.play_arrow_rounded),
-              label: Text(l10n.srsReviewAll),
-              backgroundColor: colorScheme.error,
-              foregroundColor: colorScheme.onError,
+          ? SrsReviewFab(
+              dueCount: allDueQuestions.length,
+              heroPrefix: 'srs-overview',
+              onReview: ({bool quick = false}) => _start(
+                  context, allDueQuestions, l10n.srsAllDueTitle,
+                  quick: quick),
             )
           : null,
       body: Stack(
@@ -221,8 +223,11 @@ class _SrsOverviewScreenState extends State<SrsOverviewScreen> {
               child: SrsFolderCard(
                 node: nodes[index],
                 onTap: () => _openFolder(context, nodes[index]),
-                onReview: () => _start(context, nodes[index].allDueRecursive,
-                    nodes[index].folder.title),
+                onReview: ({bool quick = false}) => _start(
+                    context,
+                    nodes[index].allDueRecursive,
+                    nodes[index].folder.title,
+                    quick: quick),
               ),
             );
           }
@@ -263,13 +268,21 @@ class _SrsOverviewScreenState extends State<SrsOverviewScreen> {
     });
   }
 
-  void _start(BuildContext context, List<QuestionData> questions,
-      String title) {
+  void _start(BuildContext context, List<QuestionData> questions, String title,
+      {bool quick = false}) {
+    // takeMostOverdue returns everything for a limit of 0, so this stays
+    // correct even if a quick call arrives while quick review is off.
+    final batch = quick
+        ? srsService.takeMostOverdue(questions, SettingsService().srsBatchSize)
+        : questions;
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            SrsSessionScreen(questions: questions, sessionTitle: title),
+        builder: (_) => SrsSessionScreen(
+          questions: batch,
+          sessionTitle: title,
+          scopePool: questions,
+        ),
       ),
     ).then((_) {
       if (mounted) setState(() {});

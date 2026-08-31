@@ -136,6 +136,20 @@ class SrsService {
         .toList();
   }
 
+  /// The [limit] most-overdue questions from [questions] — soonest [nextReview]
+  /// first. Returns a copy of everything when [limit] is <= 0 (unlimited) or
+  /// >= the list length.
+  ///
+  /// Deliberately does not shuffle: [SrsSessionScreen] runs the result through
+  /// `scrambleQuestions`, which also keeps chained flashcards apart. Sort here,
+  /// slice, and let the session randomise presentation order.
+  List<QuestionData> takeMostOverdue(List<QuestionData> questions, int limit) {
+    final sorted = [...questions]..sort(
+        (a, b) => getUserData(a).nextReview.compareTo(getUserData(b).nextReview));
+    if (limit <= 0 || limit >= sorted.length) return sorted;
+    return sorted.sublist(0, limit);
+  }
+
   /// Return all due questions across all categories/quizzes
   List<QuestionData> getAllDueQuestions() {
     final allQuestions = _questionService.getAllQuestions();

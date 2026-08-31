@@ -13,10 +13,16 @@ class SrsSessionScreen extends StatefulWidget {
   final List<QuestionData> questions;
   final String sessionTitle;
 
+  /// The full due set [questions] was drawn from, so the completion screen can
+  /// offer another batch from the same scope after a capped quick session.
+  /// Null means [questions] was already the whole scope.
+  final List<QuestionData>? scopePool;
+
   const SrsSessionScreen({
     super.key,
     required this.questions,
     required this.sessionTitle,
+    this.scopePool,
   });
 
   @override
@@ -29,6 +35,12 @@ class _SrsSessionScreenState extends State<SrsSessionScreen> {
   late final List<QuestionData> _questions;
   int currentIndex = 0;
   int correctAnswers = 0;
+
+  /// Questions answered "Again" this session. They are force-carried into the
+  /// continue pool: [SrsService.updateAfterAnswer] applies `lapseMultiplier` to
+  /// the current interval, so a lapsed card is rescheduled hours-to-days out
+  /// and `getDueQuestions` would otherwise drop it right back out.
+  final Set<String> _againIds = {};
 
   @override
   void initState() {
@@ -51,6 +63,16 @@ class _SrsSessionScreenState extends State<SrsSessionScreen> {
         await StatisticsService().recordPerfectSession();
       }
       if (!mounted) return;
+
+      // Lapses first, then whatever else in this scope is still due. Ordering
+      // here is only for the pool — takeMostOverdue re-sorts by nextReview.
+      final pool = widget.scopePool ?? widget.questions;
+      final lapsed =
+          _questions.where((q) => _againIds.contains(q.id)).toList();
+      final stillDue = _srsService
+          .getDueQuestions(pool)
+          .where((q) => !_againIds.contains(q.id));
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -58,6 +80,8 @@ class _SrsSessionScreenState extends State<SrsSessionScreen> {
             completedQuizTitle: widget.sessionTitle,
             reviewedCount: _questions.length,
             streakEvent: streakEvent,
+            continuePool: [...lapsed, ...stillDue],
+            continueScope: pool,
           ),
         ),
       );
@@ -83,12 +107,12 @@ class _SrsSessionScreenState extends State<SrsSessionScreen> {
       questionNumber: currentIndex + 1,
       totalQuestions: _questions.length,
       onContinue: (wasCorrect, quality) async {
-        if (quality != null) {
-          await StatisticsService().recordSrsQuality(quality);
-          await _srsService.updateAfterAnswer(question, quality);
-        } else if (!wasCorrect) {
-          await StatisticsService().recordSrsQuality(SrsQuality.again);
-          await _srsService.updateAfterAnswer(question, SrsQuality.again);
+        final effective =
+            quality ?? (wasCorrect ? null : SrsQuality.again);
+        if (effective != null) {
+          if (effective == SrsQuality.again) _againIds.add(question.id);
+          await StatisticsService().recordSrsQuality(effective);
+          await _srsService.updateAfterAnswer(question, effective);
         }
         _nextQuestion(wasCorrect);
       },

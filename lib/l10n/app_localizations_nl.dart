@@ -479,6 +479,37 @@ class AppLocalizationsNl extends AppLocalizations {
   String get srsAllDueTitle => 'Alle te herhalen vragen';
 
   @override
+  String srsQuickReviewLabel(int count) {
+    return 'Korte sessie · $count';
+  }
+
+  @override
+  String srsQuickReviewTooltip(int count) {
+    return 'Korte sessie — $count langst openstaand';
+  }
+
+  @override
+  String srsReviewAllTooltip(int count) {
+    return 'Alle $count herhalen';
+  }
+
+  @override
+  String srsContinueStillDue(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Doorgaan · nog $count te doen',
+      one: 'Doorgaan · nog 1 te doen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String srsQuestionCount(int count) {
+    return '$count vragen';
+  }
+
+  @override
   String get srsViewListView => 'Lijstweergave';
 
   @override
@@ -1310,6 +1341,16 @@ class AppLocalizationsNl extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get settingsQuickReviewSize => 'Grootte korte sessie';
+
+  @override
+  String get settingsQuickReviewSizeDesc =>
+      'Hoeveel vragen een korte sessie bevat.';
+
+  @override
+  String get settingsQuickReviewSizeUnlimited => 'Onbeperkt';
 
   @override
   String get settingsAnimations => 'Animaties';

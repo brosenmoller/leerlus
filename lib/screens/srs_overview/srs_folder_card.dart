@@ -2,15 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:leerlus/l10n/app_localizations.dart';
 import 'package:leerlus/screens/srs_overview/srs_overview_data.dart';
 import 'package:leerlus/screens/srs_overview/srs_tag.dart';
+import 'package:leerlus/services/settings_service.dart';
 
 /// A tappable folder row. Tapping opens the folder's contents in a subscreen.
 class SrsFolderCard extends StatelessWidget {
   final SrsFolderNode node;
   final VoidCallback onTap;
 
-  /// Reviews every due question in this folder and all of its descendants
+  /// Reviews the due questions in this folder and all of its descendants
   /// (scrambled). Wired to the card's Review button when anything is due.
-  final VoidCallback onReview;
+  /// [quick] asks for a capped, bite-size session instead of the whole pile.
+  final void Function({bool quick}) onReview;
 
   const SrsFolderCard({
     super.key,
@@ -117,16 +119,7 @@ class SrsFolderCard extends StatelessWidget {
                   Center(
                     child: Padding(
                       padding: const EdgeInsets.only(left: 4),
-                      child: FilledButton(
-                        onPressed: onReview,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: colorScheme.error,
-                          foregroundColor: colorScheme.onError,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 10),
-                        ),
-                        child: Text(l10n.start),
-                      ),
+                      child: _buildStartButtons(colorScheme, l10n, dueCount),
                     ),
                   ),
                 Padding(
@@ -139,6 +132,53 @@ class SrsFolderCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  /// Mirrors [SrsQuizCard]: a single Start normally, splitting into a capped
+  /// quick session plus a secondary review-all only when the folder's due pile
+  /// exceeds a quick session.
+  Widget _buildStartButtons(
+      ColorScheme colorScheme, AppLocalizations l10n, int dueCount) {
+    final settings = SettingsService();
+    final batchSize = settings.srsBatchSize;
+    final split = settings.quickReviewEnabled && dueCount > batchSize;
+
+    if (!split) {
+      return FilledButton(
+        onPressed: () => onReview(quick: false),
+        style: FilledButton.styleFrom(
+          backgroundColor: colorScheme.error,
+          foregroundColor: colorScheme.onError,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        ),
+        child: Text(l10n.start),
+      );
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Tooltip(
+          message: l10n.srsQuickReviewTooltip(batchSize),
+          child: FilledButton.icon(
+            onPressed: () => onReview(quick: true),
+            icon: const Icon(Icons.bolt, size: 20),
+            label: Text('$batchSize'),
+            style: FilledButton.styleFrom(
+              backgroundColor: colorScheme.error,
+              foregroundColor: colorScheme.onError,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            ),
+          ),
+        ),
+        const SizedBox(width: 4),
+        IconButton.filledTonal(
+          tooltip: l10n.srsReviewAllTooltip(dueCount),
+          onPressed: () => onReview(quick: false),
+          icon: const Icon(Icons.play_arrow_rounded),
+        ),
+      ],
     );
   }
 

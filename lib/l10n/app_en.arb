@@ -223,6 +223,36 @@
   "srsBackToSpacedRepetition": "Back to Spaced Repetition",
   "srsReviewAll": "Review all",
   "srsAllDueTitle": "All due questions",
+  "srsQuickReviewLabel": "Quick review · {count}",
+  "@srsQuickReviewLabel": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "srsQuickReviewTooltip": "Quick review — {count} most overdue",
+  "@srsQuickReviewTooltip": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "srsReviewAllTooltip": "Review all {count}",
+  "@srsReviewAllTooltip": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "srsContinueStillDue": "{count, plural, =1{Continue · 1 still due} other{Continue · {count} still due}}",
+  "@srsContinueStillDue": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "srsQuestionCount": "{count} questions",
+  "@srsQuestionCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "srsViewListView": "List view",
   "srsViewFolderView": "Folder view",
   "srsHowWellKnew": "How well did you know this?",
@@ -649,6 +679,9 @@
     }
   },
 
+  "settingsQuickReviewSize": "Quick review size",
+  "settingsQuickReviewSizeDesc": "How many questions a quick session contains.",
+  "settingsQuickReviewSizeUnlimited": "Unlimited",
   "settingsAnimations": "Animations",
   "settingsAnimationsSubtitle": "Show confetti and other visual effects",
   "settingsSessionProgress": "Session progress",

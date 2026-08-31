@@ -848,6 +848,36 @@ abstract class AppLocalizations {
   /// **'All due questions'**
   String get srsAllDueTitle;
 
+  /// No description provided for @srsQuickReviewLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick review · {count}'**
+  String srsQuickReviewLabel(int count);
+
+  /// No description provided for @srsQuickReviewTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick review — {count} most overdue'**
+  String srsQuickReviewTooltip(int count);
+
+  /// No description provided for @srsReviewAllTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Review all {count}'**
+  String srsReviewAllTooltip(int count);
+
+  /// No description provided for @srsContinueStillDue.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Continue · 1 still due} other{Continue · {count} still due}}'**
+  String srsContinueStillDue(int count);
+
+  /// No description provided for @srsQuestionCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} questions'**
+  String srsQuestionCount(int count);
+
   /// No description provided for @srsViewListView.
   ///
   /// In en, this message translates to:
@@ -2065,6 +2095,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 image failed to sync} other{{count} images failed to sync}}'**
   String syncResultImagesFailed(int count);
+
+  /// No description provided for @settingsQuickReviewSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick review size'**
+  String get settingsQuickReviewSize;
+
+  /// No description provided for @settingsQuickReviewSizeDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'How many questions a quick session contains.'**
+  String get settingsQuickReviewSizeDesc;
+
+  /// No description provided for @settingsQuickReviewSizeUnlimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlimited'**
+  String get settingsQuickReviewSizeUnlimited;
 
   /// No description provided for @settingsAnimations.
   ///

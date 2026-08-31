@@ -188,6 +188,36 @@
   "srsBackToSpacedRepetition": "Terug naar Spaced Repetition",
   "srsReviewAll": "Alles herhalen",
   "srsAllDueTitle": "Alle te herhalen vragen",
+  "srsQuickReviewLabel": "Korte sessie · {count}",
+  "@srsQuickReviewLabel": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "srsQuickReviewTooltip": "Korte sessie — {count} langst openstaand",
+  "@srsQuickReviewTooltip": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "srsReviewAllTooltip": "Alle {count} herhalen",
+  "@srsReviewAllTooltip": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "srsContinueStillDue": "{count, plural, =1{Doorgaan · nog 1 te doen} other{Doorgaan · nog {count} te doen}}",
+  "@srsContinueStillDue": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "srsQuestionCount": "{count} vragen",
+  "@srsQuestionCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "srsViewListView": "Lijstweergave",
   "srsViewFolderView": "Mapweergave",
   "srsHowWellKnew": "Hoe goed kende je dit?",
@@ -539,6 +569,9 @@
     }
   },
 
+  "settingsQuickReviewSize": "Grootte korte sessie",
+  "settingsQuickReviewSizeDesc": "Hoeveel vragen een korte sessie bevat.",
+  "settingsQuickReviewSizeUnlimited": "Onbeperkt",
   "settingsAnimations": "Animaties",
   "settingsAnimationsSubtitle": "Toon confetti en andere visuele effecten",
   "settingsSessionProgress": "Sessievoortgang",

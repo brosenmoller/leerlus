@@ -122,6 +122,23 @@ class SettingsService {
   Future<void> setAnimationsEnabled(bool value) =>
       _box.put(_kAnimationsEnabled, value);
 
+  // ── Quick review (bite-size SRS sessions) ────────────────────────────────
+
+  static const _kSrsBatchSize = 'srs_batch_size';
+  static const defaultSrsBatchSize = 20;
+
+  /// Questions per quick session. `0` means unlimited — quick review is off
+  /// and every SRS surface behaves as it did before the feature existed.
+  int get srsBatchSize =>
+      (_box.get(_kSrsBatchSize) as int?) ?? defaultSrsBatchSize;
+
+  Future<void> setSrsBatchSize(int value) => _box.put(_kSrsBatchSize, value);
+
+  /// The single gate every quick-review surface checks. Keeps the `0` sentinel
+  /// from leaking into UI conditions, where a bare `dueCount > srsBatchSize`
+  /// would be true for `0` and split every card.
+  bool get quickReviewEnabled => srsBatchSize > 0;
+
   // ── Session progress indicator ───────────────────────────────────────────
 
   static const _kSessionProgressStyle = 'session_progress_style';
