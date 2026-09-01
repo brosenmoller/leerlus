@@ -10,8 +10,10 @@ import 'package:path/path.dart' as p;
 ///    picking it again under the same original name produces a *different*
 ///    file instead of overwriting the old one (and every question pointing at
 ///    it silently changing image).
-///  - Only files inside app storage may be deleted. A picked image is not
-///    copied until save, so its path still points at the user's own file.
+///  - Only files already stored in the content folder may be deleted. A picked
+///    file is not copied until save, so it is still an absolute path pointing at
+///    the user's own file — deleting that would destroy something we never
+///    owned.
 void main() {
   group('hashedImageName', () {
     test('is stable for identical bytes and differs for different bytes', () {
@@ -41,17 +43,24 @@ void main() {
     });
   });
 
-  group('isInAppImageStorage', () {
-    test('accepts a file in the images dir, rejects one outside it', () async {
-      final dir = await appImagesDir();
+  group('isStoredMedia', () {
+    test('a bare filename is stored, an absolute path is not', () {
+      expect(isStoredMedia('photo_1a2b3c4d.png'), isTrue);
+      expect(isStoredMedia('clip_00ff11ee.mp4'), isTrue);
+    });
 
-      expect(await isInAppImageStorage(p.join(dir.path, 'a.png')), isTrue);
+    test('a freshly picked file is rejected', () {
+      // Still pointing at the user's own file until save copies it in.
       expect(
-        await isInAppImageStorage(
-            p.join(Directory.systemTemp.path, 'downloads', 'a.png')),
+        isStoredMedia(p.join(Directory.systemTemp.path, 'downloads', 'a.png')),
         isFalse,
       );
-      expect(await isInAppImageStorage(''), isFalse);
+      expect(isStoredMedia(p.absolute('a.png')), isFalse);
+    });
+
+    test('empty and null are rejected', () {
+      expect(isStoredMedia(''), isFalse);
+      expect(isStoredMedia(null), isFalse);
     });
   });
 }

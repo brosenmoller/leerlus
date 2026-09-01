@@ -1106,41 +1106,23 @@ abstract class AppLocalizations {
   /// **'No folder'**
   String get moveToQuizNoFolder;
 
-  /// No description provided for @contentPacksTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Content Packs'**
-  String get contentPacksTitle;
-
-  /// No description provided for @contentPacksTooltip.
-  ///
-  /// In en, this message translates to:
-  /// **'Browse content packs'**
-  String get contentPacksTooltip;
-
-  /// No description provided for @contentPacksImport.
+  /// No description provided for @importAction.
   ///
   /// In en, this message translates to:
   /// **'Import'**
-  String get contentPacksImport;
+  String get importAction;
 
-  /// No description provided for @contentPacksImportedCount.
+  /// No description provided for @importedItemsCount.
   ///
   /// In en, this message translates to:
   /// **'Imported {count} new items'**
-  String contentPacksImportedCount(int count);
+  String importedItemsCount(int count);
 
-  /// No description provided for @contentPacksAlreadyUpToDate.
+  /// No description provided for @importAlreadyUpToDate.
   ///
   /// In en, this message translates to:
   /// **'Already up to date'**
-  String get contentPacksAlreadyUpToDate;
-
-  /// No description provided for @contentPacksNoneAvailable.
-  ///
-  /// In en, this message translates to:
-  /// **'No content packs available'**
-  String get contentPacksNoneAvailable;
+  String get importAlreadyUpToDate;
 
   /// No description provided for @importSuccess.
   ///
@@ -2258,77 +2240,89 @@ abstract class AppLocalizations {
   /// **'Switch anyway'**
   String get occlusionTypeChangeContinue;
 
-  /// No description provided for @imageLibraryTitle.
+  /// No description provided for @contentLibraryTitle.
   ///
   /// In en, this message translates to:
-  /// **'Image Library'**
-  String get imageLibraryTitle;
+  /// **'Content Library'**
+  String get contentLibraryTitle;
 
-  /// No description provided for @imageLibrarySubtitle.
+  /// No description provided for @contentLibrarySubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Manage images on this device'**
-  String get imageLibrarySubtitle;
+  /// **'Manage images, audio and video on this device'**
+  String get contentLibrarySubtitle;
 
-  /// No description provided for @imageLibraryEmpty.
+  /// No description provided for @contentLibraryEmpty.
   ///
   /// In en, this message translates to:
-  /// **'No images found'**
-  String get imageLibraryEmpty;
+  /// **'No content found'**
+  String get contentLibraryEmpty;
 
-  /// No description provided for @imageNotUsed.
+  /// No description provided for @contentNotUsed.
   ///
   /// In en, this message translates to:
   /// **'Not used'**
-  String get imageNotUsed;
+  String get contentNotUsed;
 
-  /// No description provided for @imageBuiltIn.
-  ///
-  /// In en, this message translates to:
-  /// **'Built-in'**
-  String get imageBuiltIn;
-
-  /// No description provided for @imageDeleteUnused.
+  /// No description provided for @contentDeleteUnused.
   ///
   /// In en, this message translates to:
   /// **'Delete unused'**
-  String get imageDeleteUnused;
+  String get contentDeleteUnused;
 
-  /// No description provided for @imageDeleteUnusedConfirm.
+  /// No description provided for @contentDeleteUnusedConfirm.
   ///
   /// In en, this message translates to:
-  /// **'Delete {count} unused image(s)? This cannot be undone.'**
-  String imageDeleteUnusedConfirm(int count);
+  /// **'Delete {count} unused file(s)? This cannot be undone.'**
+  String contentDeleteUnusedConfirm(int count);
 
-  /// No description provided for @imageDeleteUnusedSuccess.
+  /// No description provided for @contentDeleteUnusedSuccess.
   ///
   /// In en, this message translates to:
-  /// **'Deleted {count} image(s)'**
-  String imageDeleteUnusedSuccess(int count);
+  /// **'Deleted {count} file(s)'**
+  String contentDeleteUnusedSuccess(int count);
 
-  /// No description provided for @imageUpload.
+  /// No description provided for @contentUpload.
   ///
   /// In en, this message translates to:
-  /// **'Upload image'**
-  String get imageUpload;
+  /// **'Add file'**
+  String get contentUpload;
 
-  /// No description provided for @imageUploadSuccess.
+  /// No description provided for @contentUploadSuccess.
   ///
   /// In en, this message translates to:
-  /// **'Image added to library'**
-  String get imageUploadSuccess;
+  /// **'Added to library'**
+  String get contentUploadSuccess;
 
-  /// No description provided for @imageDeleteConfirm.
+  /// No description provided for @contentUsedByTitle.
   ///
   /// In en, this message translates to:
-  /// **'Delete this image? It is not used anywhere and will be permanently removed.'**
-  String get imageDeleteConfirm;
+  /// **'Content usage'**
+  String get contentUsedByTitle;
 
-  /// No description provided for @imageUsedByTitle.
+  /// No description provided for @contentSearchHint.
   ///
   /// In en, this message translates to:
-  /// **'Image usage'**
-  String get imageUsedByTitle;
+  /// **'Search files…'**
+  String get contentSearchHint;
+
+  /// No description provided for @contentFilterImages.
+  ///
+  /// In en, this message translates to:
+  /// **'Images'**
+  String get contentFilterImages;
+
+  /// No description provided for @contentFilterAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio'**
+  String get contentFilterAudio;
+
+  /// No description provided for @contentFilterVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Video'**
+  String get contentFilterVideo;
 
   /// No description provided for @deleteOrphanImages.
   ///

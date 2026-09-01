@@ -17,6 +17,40 @@ enum MediaSource {
   existing,
 }
 
+/// Big attachments are allowed, but not silently: they slow sync down and
+/// bloat `.lus` exports, and the user should know that before committing.
+///
+/// Shared by the clip button and the content library, which both accept a
+/// freshly picked file of any kind.
+Future<bool> confirmIfLargeMedia(BuildContext context, String path) async {
+  final size = await mediaFileSize(path);
+  if (size == null || size <= largeMediaWarningBytes) return true;
+  if (!context.mounted) return false;
+
+  final l10n = AppLocalizations.of(context);
+  final mb = (size / (1024 * 1024)).toStringAsFixed(1);
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(l10n.attachmentsLargeFileTitle),
+      content: Text(l10n.attachmentsLargeFileContent(p.basename(path), mb)),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: Text(l10n.cancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: Text(l10n.attachmentsAttachAnyway),
+        ),
+      ],
+    ),
+  );
+  return ok == true;
+}
+
+
+
 /// The clip button: one compact icon that opens a cascading menu for attaching
 /// images, audio clips and video to a question.
 ///
@@ -92,7 +126,7 @@ class MediaAttachmentButton extends StatelessWidget {
       path = result?.files.single.path;
       if (path == null) return;
       if (!context.mounted) return;
-      if (!await _confirmIfLarge(context, path)) return;
+      if (!await confirmIfLargeMedia(context, path)) return;
     }
 
     // The bytes behind this path may have changed since it was last shown here.
@@ -100,35 +134,6 @@ class MediaAttachmentButton extends StatelessWidget {
     // decode, in the preview and in the occlusion editor alike.
     await evictImageCache(path);
     await onAttach(kind, path);
-  }
-
-  /// Big attachments are allowed, but not silently: they slow sync down and
-  /// bloat `.lus` exports, and the user should know that before committing.
-  Future<bool> _confirmIfLarge(BuildContext context, String path) async {
-    final size = await mediaFileSize(path);
-    if (size == null || size <= largeMediaWarningBytes) return true;
-    if (!context.mounted) return false;
-
-    final l10n = AppLocalizations.of(context);
-    final mb = (size / (1024 * 1024)).toStringAsFixed(1);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.attachmentsLargeFileTitle),
-        content: Text(l10n.attachmentsLargeFileContent(p.basename(path), mb)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l10n.attachmentsAttachAnyway),
-          ),
-        ],
-      ),
-    );
-    return ok == true;
   }
 
   // ── Labels ─────────────────────────────────────────────────────────────────

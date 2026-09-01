@@ -339,17 +339,14 @@
     }
   },
   "moveToQuizNoFolder": "No folder",
-  "contentPacksTitle": "Content Packs",
-  "contentPacksTooltip": "Browse content packs",
-  "contentPacksImport": "Import",
-  "contentPacksImportedCount": "Imported {count} new items",
-  "@contentPacksImportedCount": {
+  "importAction": "Import",
+  "importedItemsCount": "Imported {count} new items",
+  "@importedItemsCount": {
     "placeholders": {
       "count": { "type": "int" }
     }
   },
-  "contentPacksAlreadyUpToDate": "Already up to date",
-  "contentPacksNoneAvailable": "No content packs available",
+  "importAlreadyUpToDate": "Already up to date",
   "importSuccess": "Import successful",
   "importUpdatedCount": "Updated {count} existing items",
   "@importUpdatedCount": {
@@ -731,28 +728,30 @@
   },
   "occlusionTypeChangeContinue": "Switch anyway",
 
-  "imageLibraryTitle": "Image Library",
-  "imageLibrarySubtitle": "Manage images on this device",
-  "imageLibraryEmpty": "No images found",
-  "imageNotUsed": "Not used",
-  "imageBuiltIn": "Built-in",
-  "imageDeleteUnused": "Delete unused",
-  "imageDeleteUnusedConfirm": "Delete {count} unused image(s)? This cannot be undone.",
-  "@imageDeleteUnusedConfirm": {
+  "contentLibraryTitle": "Content Library",
+  "contentLibrarySubtitle": "Manage images, audio and video on this device",
+  "contentLibraryEmpty": "No content found",
+  "contentNotUsed": "Not used",
+  "contentDeleteUnused": "Delete unused",
+  "contentDeleteUnusedConfirm": "Delete {count} unused file(s)? This cannot be undone.",
+  "@contentDeleteUnusedConfirm": {
     "placeholders": {
       "count": { "type": "int" }
     }
   },
-  "imageDeleteUnusedSuccess": "Deleted {count} image(s)",
-  "@imageDeleteUnusedSuccess": {
+  "contentDeleteUnusedSuccess": "Deleted {count} file(s)",
+  "@contentDeleteUnusedSuccess": {
     "placeholders": {
       "count": { "type": "int" }
     }
   },
-  "imageUpload": "Upload image",
-  "imageUploadSuccess": "Image added to library",
-  "imageDeleteConfirm": "Delete this image? It is not used anywhere and will be permanently removed.",
-  "imageUsedByTitle": "Image usage",
+  "contentUpload": "Add file",
+  "contentUploadSuccess": "Added to library",
+  "contentUsedByTitle": "Content usage",
+  "contentSearchHint": "Search files…",
+  "contentFilterImages": "Images",
+  "contentFilterAudio": "Audio",
+  "contentFilterVideo": "Video",
   "deleteOrphanImages": "Also delete {count} unused image(s)",
   "@deleteOrphanImages": {
     "placeholders": {

@@ -284,17 +284,14 @@
     }
   },
   "moveToQuizNoFolder": "Geen map",
-  "contentPacksTitle": "Inhoudspakketten",
-  "contentPacksTooltip": "Inhoudspakketten bekijken",
-  "contentPacksImport": "Importeren",
-  "contentPacksImportedCount": "{count} nieuwe items geïmporteerd",
-  "@contentPacksImportedCount": {
+  "importAction": "Importeren",
+  "importedItemsCount": "{count} nieuwe items geïmporteerd",
+  "@importedItemsCount": {
     "placeholders": {
       "count": { "type": "int" }
     }
   },
-  "contentPacksAlreadyUpToDate": "Al up-to-date",
-  "contentPacksNoneAvailable": "Geen inhoudspakketten beschikbaar",
+  "importAlreadyUpToDate": "Al up-to-date",
   "importSuccess": "Importeren geslaagd",
   "importUpdatedCount": "{count} bestaande items bijgewerkt",
   "@importUpdatedCount": {
@@ -605,28 +602,30 @@
   "occlusionHighlightMode": "Markeren",
   "occlusionClear": "Verwijderen",
 
-  "imageLibraryTitle": "Afbeeldingsbibliotheek",
-  "imageLibrarySubtitle": "Beheer afbeeldingen op dit apparaat",
-  "imageLibraryEmpty": "Geen afbeeldingen gevonden",
-  "imageNotUsed": "Niet gebruikt",
-  "imageBuiltIn": "Ingebouwd",
-  "imageDeleteUnused": "Verwijder ongebruikte",
-  "imageDeleteUnusedConfirm": "Verwijder {count} ongebruikte afbeelding(en)? Dit kan niet ongedaan worden gemaakt.",
-  "@imageDeleteUnusedConfirm": {
+  "contentLibraryTitle": "Contentbibliotheek",
+  "contentLibrarySubtitle": "Beheer afbeeldingen, audio en video op dit apparaat",
+  "contentLibraryEmpty": "Geen content gevonden",
+  "contentNotUsed": "Niet gebruikt",
+  "contentDeleteUnused": "Verwijder ongebruikte",
+  "contentDeleteUnusedConfirm": "Verwijder {count} ongebruikt(e) bestand(en)? Dit kan niet ongedaan worden gemaakt.",
+  "@contentDeleteUnusedConfirm": {
     "placeholders": {
       "count": { "type": "int" }
     }
   },
-  "imageDeleteUnusedSuccess": "{count} afbeelding(en) verwijderd",
-  "@imageDeleteUnusedSuccess": {
+  "contentDeleteUnusedSuccess": "{count} bestand(en) verwijderd",
+  "@contentDeleteUnusedSuccess": {
     "placeholders": {
       "count": { "type": "int" }
     }
   },
-  "imageUpload": "Afbeelding uploaden",
-  "imageUploadSuccess": "Afbeelding toegevoegd aan bibliotheek",
-  "imageDeleteConfirm": "Afbeelding verwijderen? Het wordt nergens gebruikt en wordt permanent verwijderd.",
-  "imageUsedByTitle": "Afbeeldingsgebruik",
+  "contentUpload": "Bestand toevoegen",
+  "contentUploadSuccess": "Toegevoegd aan bibliotheek",
+  "contentUsedByTitle": "Contentgebruik",
+  "contentSearchHint": "Zoek bestanden…",
+  "contentFilterImages": "Afbeeldingen",
+  "contentFilterAudio": "Audio",
+  "contentFilterVideo": "Video",
   "deleteOrphanImages": "Verwijder ook {count} ongebruikte afbeelding(en)",
   "@deleteOrphanImages": {
     "placeholders": {

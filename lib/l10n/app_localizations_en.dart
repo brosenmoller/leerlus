@@ -667,24 +667,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get moveToQuizNoFolder => 'No folder';
 
   @override
-  String get contentPacksTitle => 'Content Packs';
+  String get importAction => 'Import';
 
   @override
-  String get contentPacksTooltip => 'Browse content packs';
-
-  @override
-  String get contentPacksImport => 'Import';
-
-  @override
-  String contentPacksImportedCount(int count) {
+  String importedItemsCount(int count) {
     return 'Imported $count new items';
   }
 
   @override
-  String get contentPacksAlreadyUpToDate => 'Already up to date';
-
-  @override
-  String get contentPacksNoneAvailable => 'No content packs available';
+  String get importAlreadyUpToDate => 'Already up to date';
 
   @override
   String get importSuccess => 'Import successful';
@@ -1434,45 +1425,51 @@ class AppLocalizationsEn extends AppLocalizations {
   String get occlusionTypeChangeContinue => 'Switch anyway';
 
   @override
-  String get imageLibraryTitle => 'Image Library';
+  String get contentLibraryTitle => 'Content Library';
 
   @override
-  String get imageLibrarySubtitle => 'Manage images on this device';
+  String get contentLibrarySubtitle =>
+      'Manage images, audio and video on this device';
 
   @override
-  String get imageLibraryEmpty => 'No images found';
+  String get contentLibraryEmpty => 'No content found';
 
   @override
-  String get imageNotUsed => 'Not used';
+  String get contentNotUsed => 'Not used';
 
   @override
-  String get imageBuiltIn => 'Built-in';
+  String get contentDeleteUnused => 'Delete unused';
 
   @override
-  String get imageDeleteUnused => 'Delete unused';
-
-  @override
-  String imageDeleteUnusedConfirm(int count) {
-    return 'Delete $count unused image(s)? This cannot be undone.';
+  String contentDeleteUnusedConfirm(int count) {
+    return 'Delete $count unused file(s)? This cannot be undone.';
   }
 
   @override
-  String imageDeleteUnusedSuccess(int count) {
-    return 'Deleted $count image(s)';
+  String contentDeleteUnusedSuccess(int count) {
+    return 'Deleted $count file(s)';
   }
 
   @override
-  String get imageUpload => 'Upload image';
+  String get contentUpload => 'Add file';
 
   @override
-  String get imageUploadSuccess => 'Image added to library';
+  String get contentUploadSuccess => 'Added to library';
 
   @override
-  String get imageDeleteConfirm =>
-      'Delete this image? It is not used anywhere and will be permanently removed.';
+  String get contentUsedByTitle => 'Content usage';
 
   @override
-  String get imageUsedByTitle => 'Image usage';
+  String get contentSearchHint => 'Search files…';
+
+  @override
+  String get contentFilterImages => 'Images';
+
+  @override
+  String get contentFilterAudio => 'Audio';
+
+  @override
+  String get contentFilterVideo => 'Video';
 
   @override
   String deleteOrphanImages(int count) {

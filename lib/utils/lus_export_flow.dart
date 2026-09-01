@@ -175,7 +175,7 @@ Future<bool?> askImportOptions(BuildContext context) {
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(updateExisting),
-              child: Text(l10n.contentPacksImport),
+              child: Text(l10n.importAction),
             ),
           ],
         ),
@@ -188,8 +188,8 @@ Future<bool?> askImportOptions(BuildContext context) {
 /// separately — a bare "0 new items" after an update-mode import reads as
 /// "already up to date" when it is anything but.
 String importSummary(AppLocalizations l10n, ImportResult result) {
-  if (result.isEmpty) return l10n.contentPacksAlreadyUpToDate;
-  if (result.updated == 0) return l10n.contentPacksImportedCount(result.inserted);
+  if (result.isEmpty) return l10n.importAlreadyUpToDate;
+  if (result.updated == 0) return l10n.importedItemsCount(result.inserted);
   if (result.inserted == 0) return l10n.importUpdatedCount(result.updated);
   return l10n.importInsertedAndUpdatedCount(result.inserted, result.updated);
 }

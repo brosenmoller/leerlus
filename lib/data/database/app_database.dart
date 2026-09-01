@@ -6,6 +6,7 @@ import 'package:path/path.dart' as path_dart;
 import 'package:uuid/uuid.dart';
 import 'package:leerlus/utils/app_storage.dart';
 import 'package:leerlus/models/answer_type.dart';
+import 'package:leerlus/utils/media_paths.dart';
 import 'package:leerlus/services/lus_archive_service.dart';
 import 'package:leerlus/services/srs_service.dart';
 import 'tables.dart';
@@ -883,8 +884,12 @@ class AppDatabase extends _$AppDatabase {
 
   // ─── Image reference helpers ──────────────────────────────────
 
-  static bool isUserImagePath(String? path) =>
-      path != null && !path.startsWith('assets/');
+  /// Whether [name] refers to a file this app owns in the content folder.
+  ///
+  /// Every stored value is a bare filename now that nothing ships bundled, so
+  /// this is just a non-empty check. It stays a named predicate because callers
+  /// read as "is this ours to delete?", which is the question being asked.
+  static bool isUserImagePath(String? name) => name != null && name.isNotEmpty;
 
   Set<String> _extractUserImagePathsFromQuestion(Question q) {
     final paths = <String>{};
@@ -986,17 +991,106 @@ class AppDatabase extends _$AppDatabase {
     return paths;
   }
 
+  /// Rewrites every stored media reference to a bare filename.
+  ///
+  /// Run once by the content-folder migration. Absolute paths recorded before
+  /// the move (`C:\Users\me\Documents\images\x.png`) become `x.png`,
+  /// resolved against [contentDir] at read time from then on.
+  ///
+  /// Idempotent: `p.basename('x.png') == 'x.png'`, so re-running is a no-op and
+  /// a half-finished run simply completes on the next launch. Rows that are
+  /// already fully normalized are not written at all, which keeps `updatedAt`
+  /// untouched so sync does not see the migration as an edit.
+  ///
+  /// Returns the number of rows it changed.
+  Future<int> normalizeMediaPathsToBasenames() async {
+    var changed = 0;
+
+    for (final f in await getAllFolders()) {
+      final name = _basenameOrNull(f.imagePath);
+      if (name == f.imagePath) continue;
+      await (update(folders)..where((t) => t.id.equals(f.id)))
+          .write(FoldersCompanion(imagePath: Value(name)));
+      changed++;
+    }
+
+    for (final q in await getAllQuizzes()) {
+      final name = _basenameOrNull(q.imagePath);
+      if (name == q.imagePath) continue;
+      await (update(quizzes)..where((t) => t.id.equals(q.id)))
+          .write(QuizzesCompanion(imagePath: Value(name)));
+      changed++;
+    }
+
+    for (final q in await getAllQuestions()) {
+      final imagePath = _basenameOrNull(q.imagePath);
+
+      final variants = basenameVariants(q.imagePathVariants);
+      final variantsJson =
+          variants == null || variants.isEmpty ? null : jsonEncode(variants);
+
+      String? answerConfig = q.answerConfig;
+      try {
+        final decoded =
+            Map<String, dynamic>.from(jsonDecode(q.answerConfig) as Map);
+        final normalized = basenameConfigImagePaths(decoded, q.answerType);
+        // Only re-encode when something actually moved: jsonEncode of a decoded
+        // map can differ from the stored string by key order alone, which would
+        // otherwise mark every flashcard as changed.
+        if (!_mapsEqual(decoded, normalized)) {
+          answerConfig = jsonEncode(normalized);
+        }
+      } catch (_) {}
+
+      String? occlusionConfig = q.occlusionConfig;
+      if (q.occlusionConfig != null) {
+        try {
+          final before = Map<String, dynamic>.from(
+              jsonDecode(q.occlusionConfig!) as Map);
+          final after = basenameOcclusionConfig(before, q.answerType);
+          if (after != null && !_mapsEqual(before, after)) {
+            occlusionConfig = jsonEncode(after);
+          }
+        } catch (_) {}
+      }
+
+      if (imagePath == q.imagePath &&
+          variantsJson == q.imagePathVariants &&
+          answerConfig == q.answerConfig &&
+          occlusionConfig == q.occlusionConfig) {
+        continue;
+      }
+
+      await (update(questions)..where((t) => t.id.equals(q.id))).write(
+        QuestionsCompanion(
+          imagePath: Value(imagePath),
+          imagePathVariants: Value(variantsJson),
+          answerConfig: Value(answerConfig!),
+          occlusionConfig: Value(occlusionConfig),
+        ),
+      );
+      changed++;
+    }
+
+    return changed;
+  }
+
+  static String? _basenameOrNull(String? value) =>
+      (value == null || value.isEmpty) ? null : path_dart.basename(value);
+
+  /// Shallow compare good enough for the shapes above (string values, plus a
+  /// nested `perImage` map compared by its JSON form).
+  static bool _mapsEqual(Map<String, dynamic> a, Map<String, dynamic> b) =>
+      jsonEncode(a) == jsonEncode(b);
+
   /// Returns a map from user image path to list of referencing names
   /// (quiz/folder titles) for the image library screen.
   Future<Map<String, List<String>>> getImageUsageMap() async {
     final usageMap = <String, Set<String>>{};
 
     void record(String? path, String label) {
-      if (path == null || path.isEmpty) return;
-      // In debug mode, user images are stored with 'assets/images/' relative
-      // paths (not absolute). Include them so the image library can map usage.
-      if (!isUserImagePath(path) && !path.startsWith('assets/images/')) return;
-      usageMap.putIfAbsent(path, () => {}).add(label);
+      if (!isUserImagePath(path)) return;
+      usageMap.putIfAbsent(path!, () => {}).add(label);
     }
 
     final allFolders = await getAllFolders();

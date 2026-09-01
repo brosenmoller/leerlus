@@ -6,6 +6,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 
 import 'package:leerlus/l10n/app_localizations.dart';
 import 'package:leerlus/models/media_kind.dart';
+import 'package:leerlus/utils/image_storage.dart';
 
 /// How much of media_kit's control overlay a picture is big enough to carry.
 /// See [_MediaPlayerWidgetState._controlsTierFor].
@@ -106,7 +107,7 @@ class _MediaPlayerWidgetState extends State<MediaPlayerWidget> {
   Future<void> _open() async {
     // play: false always — autoplay is applied explicitly below so video can
     // open (and show its first frame) without ever starting on its own.
-    await _player.open(Media(widget.path), play: false);
+    await _player.open(Media(mediaFileFor(widget.path).path), play: false);
     if (!mounted) return;
     if (widget.autoPlay && !_isVideo) {
       _started = true;

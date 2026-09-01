@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:leerlus/models/media_kind.dart';
@@ -65,41 +64,22 @@ class _MediaBrowserDialogState extends State<MediaBrowserDialog> {
 
   Future<void> _load() async {
     final entries = <_MediaEntry>[];
-    final bundledKeys = <String>{};
 
-    // ── Bundled assets (content packs) ────────────────────────────
-    final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
-    for (final key in manifest.listAssets()) {
-      if (key.startsWith('assets/images/') && _matchesKind(key)) {
-        bundledKeys.add(key);
-        entries.add(_MediaEntry(
-          displayName: p.basename(key),
-          path: key,
-          source: 'Bundled',
-        ));
-      }
-    }
-
-    // ── Files in app storage ──────────────────────────────────────
-    // Read through appImagesDir rather than the documents dir directly, so this
-    // also finds debug-build attachments (which live in the repo's
-    // assets/images/). Anything already listed from the bundle is skipped so a
-    // debug asset doesn't appear twice.
-    final dir = await appImagesDir();
+    // Everything the library can offer lives in the content folder — nothing
+    // ships bundled with the app any more. Entries carry the bare filename,
+    // which is exactly what gets stored on a question.
+    final dir = contentDir;
     if (dir.existsSync()) {
       for (final file in dir.listSync().whereType<File>()) {
         if (!_matchesKind(file.path)) continue;
-        final assetKey = 'assets/images/${p.basename(file.path)}';
-        if (bundledKeys.contains(assetKey)) continue;
         entries.add(_MediaEntry(
-          displayName: p.basename(file.path),
-          path: file.path,
-          source: 'My $_nounPlural',
+          name: p.basename(file.path),
+          sizeBytes: file.statSync().size,
         ));
       }
     }
 
-    entries.sort((a, b) => a.displayName.compareTo(b.displayName));
+    entries.sort((a, b) => a.name.compareTo(b.name));
     if (!mounted) return;
     setState(() {
       _entries = entries;
@@ -111,7 +91,7 @@ class _MediaBrowserDialogState extends State<MediaBrowserDialog> {
     if (_search.isEmpty) return _entries;
     final q = _search.toLowerCase();
     return _entries
-        .where((e) => e.displayName.toLowerCase().contains(q))
+        .where((e) => e.name.toLowerCase().contains(q))
         .toList();
   }
 
@@ -166,7 +146,7 @@ class _MediaBrowserDialogState extends State<MediaBrowserDialog> {
                             style: const TextStyle(color: Colors.grey),
                           ),
                         )
-                      : _buildGroupedList(),
+                      : _buildList(),
             ),
           ],
         ),
@@ -174,56 +154,41 @@ class _MediaBrowserDialogState extends State<MediaBrowserDialog> {
     );
   }
 
-  Widget _buildGroupedList() {
-    final groups = <String, List<_MediaEntry>>{};
-    for (final e in _filtered) {
-      groups.putIfAbsent(e.source, () => []).add(e);
-    }
-
+  Widget _buildList() {
     return ListView(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
-        for (final entry in groups.entries) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text(
-              entry.key,
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade600,
-                  letterSpacing: 0.5),
+        for (final e in _filtered)
+          ListTile(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            leading: SizedBox(
+              width: 56,
+              height: 56,
+              child: MediaThumbnail(path: e.name, size: 56),
             ),
+            title: Text(e.name, style: const TextStyle(fontSize: 14)),
+            subtitle: Text(e.readableSize,
+                style: const TextStyle(fontSize: 11, color: Colors.grey)),
+            onTap: () => Navigator.pop(context, e.name),
           ),
-          ...entry.value.map((e) => ListTile(
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                leading: SizedBox(
-                  width: 56,
-                  height: 56,
-                  child: MediaThumbnail(path: e.path, size: 56),
-                ),
-                title:
-                    Text(e.displayName, style: const TextStyle(fontSize: 14)),
-                subtitle: Text(e.path,
-                    style: const TextStyle(fontSize: 11, color: Colors.grey),
-                    overflow: TextOverflow.ellipsis),
-                onTap: () => Navigator.pop(context, e.path),
-              )),
-        ],
       ],
     );
   }
 }
 
 class _MediaEntry {
-  final String displayName;
-  final String path;
-  final String source;
+  /// The bare filename — both what is shown and what gets stored.
+  final String name;
+  final int sizeBytes;
 
-  const _MediaEntry({
-    required this.displayName,
-    required this.path,
-    required this.source,
-  });
+  const _MediaEntry({required this.name, required this.sizeBytes});
+
+  String get readableSize {
+    if (sizeBytes >= 1024 * 1024) {
+      return '${(sizeBytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    }
+    if (sizeBytes >= 1024) return '${(sizeBytes / 1024).round()} KB';
+    return '$sizeBytes B';
+  }
 }

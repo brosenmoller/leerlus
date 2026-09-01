@@ -1,5 +1,4 @@
-﻿import 'dart:io';
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:leerlus/models/occlusion_data.dart';
 import 'package:leerlus/widgets/app_image.dart';
 import 'package:leerlus/widgets/occluded_image.dart';
@@ -71,10 +70,10 @@ class _QuestionImageState extends State<QuestionImage> {
         ),
       );
     } else {
-      // Default: plain image (or image while aspect ratio is loading)
-      child = widget.path.startsWith('assets/')
-          ? Image.asset(widget.path, fit: BoxFit.contain)
-          : Image.file(File(widget.path), fit: BoxFit.contain);
+      // Default: plain image (or image while aspect ratio is loading).
+      // Goes through AppImage so the cache key matches what evictImageCache
+      // builds — this used to hand-roll the provider and could drift from it.
+      child = AppImage(path: widget.path, fit: BoxFit.contain);
     }
 
     return ConstrainedBox(

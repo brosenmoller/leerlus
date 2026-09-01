@@ -672,24 +672,15 @@ class AppLocalizationsNl extends AppLocalizations {
   String get moveToQuizNoFolder => 'Geen map';
 
   @override
-  String get contentPacksTitle => 'Inhoudspakketten';
+  String get importAction => 'Importeren';
 
   @override
-  String get contentPacksTooltip => 'Inhoudspakketten bekijken';
-
-  @override
-  String get contentPacksImport => 'Importeren';
-
-  @override
-  String contentPacksImportedCount(int count) {
+  String importedItemsCount(int count) {
     return '$count nieuwe items geïmporteerd';
   }
 
   @override
-  String get contentPacksAlreadyUpToDate => 'Al up-to-date';
-
-  @override
-  String get contentPacksNoneAvailable => 'Geen inhoudspakketten beschikbaar';
+  String get importAlreadyUpToDate => 'Al up-to-date';
 
   @override
   String get importSuccess => 'Importeren geslaagd';
@@ -1441,45 +1432,51 @@ class AppLocalizationsNl extends AppLocalizations {
   String get occlusionTypeChangeContinue => 'Toch wisselen';
 
   @override
-  String get imageLibraryTitle => 'Afbeeldingsbibliotheek';
+  String get contentLibraryTitle => 'Contentbibliotheek';
 
   @override
-  String get imageLibrarySubtitle => 'Beheer afbeeldingen op dit apparaat';
+  String get contentLibrarySubtitle =>
+      'Beheer afbeeldingen, audio en video op dit apparaat';
 
   @override
-  String get imageLibraryEmpty => 'Geen afbeeldingen gevonden';
+  String get contentLibraryEmpty => 'Geen content gevonden';
 
   @override
-  String get imageNotUsed => 'Niet gebruikt';
+  String get contentNotUsed => 'Niet gebruikt';
 
   @override
-  String get imageBuiltIn => 'Ingebouwd';
+  String get contentDeleteUnused => 'Verwijder ongebruikte';
 
   @override
-  String get imageDeleteUnused => 'Verwijder ongebruikte';
-
-  @override
-  String imageDeleteUnusedConfirm(int count) {
-    return 'Verwijder $count ongebruikte afbeelding(en)? Dit kan niet ongedaan worden gemaakt.';
+  String contentDeleteUnusedConfirm(int count) {
+    return 'Verwijder $count ongebruikt(e) bestand(en)? Dit kan niet ongedaan worden gemaakt.';
   }
 
   @override
-  String imageDeleteUnusedSuccess(int count) {
-    return '$count afbeelding(en) verwijderd';
+  String contentDeleteUnusedSuccess(int count) {
+    return '$count bestand(en) verwijderd';
   }
 
   @override
-  String get imageUpload => 'Afbeelding uploaden';
+  String get contentUpload => 'Bestand toevoegen';
 
   @override
-  String get imageUploadSuccess => 'Afbeelding toegevoegd aan bibliotheek';
+  String get contentUploadSuccess => 'Toegevoegd aan bibliotheek';
 
   @override
-  String get imageDeleteConfirm =>
-      'Afbeelding verwijderen? Het wordt nergens gebruikt en wordt permanent verwijderd.';
+  String get contentUsedByTitle => 'Contentgebruik';
 
   @override
-  String get imageUsedByTitle => 'Afbeeldingsgebruik';
+  String get contentSearchHint => 'Zoek bestanden…';
+
+  @override
+  String get contentFilterImages => 'Afbeeldingen';
+
+  @override
+  String get contentFilterAudio => 'Audio';
+
+  @override
+  String get contentFilterVideo => 'Video';
 
   @override
   String deleteOrphanImages(int count) {

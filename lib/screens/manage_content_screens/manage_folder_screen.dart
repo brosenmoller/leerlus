@@ -1,7 +1,4 @@
-﻿import 'dart:convert';
-import 'dart:io';
-
-import 'package:flutter/foundation.dart' show kDebugMode;
+﻿
 import 'package:flutter/material.dart';
 import 'package:leerlus/l10n/app_localizations.dart';
 import 'package:leerlus/data/database/app_database.dart';
@@ -15,7 +12,6 @@ import 'package:leerlus/utils/lus_export_flow.dart';
 import 'package:leerlus/utils/text_field_selection_fix.dart';
 import 'package:leerlus/widgets/app_image.dart';
 import 'package:leerlus/widgets/screen_shortcuts.dart';
-import 'package:path/path.dart' as p;
 
 /// Shows the contents (subfolders + quizzes) of a folder, or the root if
 /// [folder] is null. Navigating into a subfolder pushes another instance.
@@ -246,24 +242,12 @@ class _FolderTile extends StatefulWidget {
 }
 
 class _FolderTileState extends State<_FolderTile> {
-  bool _inManifest = false;
 
   AppDatabase get db => widget.db;
   Folder get f => widget.f;
 
   String get _fileName =>
       'folder_${f.title.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_').toLowerCase()}.lus';
-
-  @override
-  void initState() {
-    super.initState();
-    if (kDebugMode) _checkManifest();
-  }
-
-  Future<void> _checkManifest() async {
-    final result = await _isPackInManifest(f.id, _fileName);
-    if (mounted) setState(() => _inManifest = result);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -330,21 +314,6 @@ class _FolderTileState extends State<_FolderTile> {
                   ],
                 ),
               ),
-              if (kDebugMode)
-                PopupMenuItem(
-                  onTap: () => _addToManifest(context),
-                  child: Row(
-                    children: [
-                      _inManifest
-                          ? const Icon(Icons.library_add, color: Colors.orange)
-                          : const Icon(Icons.library_add_outlined),
-                      const SizedBox(width: 12),
-                      Text(_inManifest
-                          ? 'Update in content packs'
-                          : 'Add to content packs'),
-                    ],
-                  ),
-                ),
               PopupMenuItem(
                 onTap: () => _confirmDeleteFolder(context),
                 child: Row(
@@ -367,19 +336,6 @@ class _FolderTileState extends State<_FolderTile> {
         ),
       ),
     );
-  }
-
-  Future<void> _addToManifest(BuildContext context) async {
-    final data = await db.exportFolderToJsonMap(f.id);
-    final ok = await _writePackToManifest(
-      context,
-      data: data,
-      fileName: _fileName,
-      title: f.title,
-      syncId: f.id,
-      wasInManifest: _inManifest,
-    );
-    if (ok && mounted) setState(() => _inManifest = true);
   }
 
   Future<void> _exportFolder(BuildContext context) => runLusExport(
@@ -469,24 +425,12 @@ class _QuizTile extends StatefulWidget {
 }
 
 class _QuizTileState extends State<_QuizTile> {
-  bool _inManifest = false;
 
   AppDatabase get db => widget.db;
   Quiz get q => widget.q;
 
   String get _fileName =>
       'quiz_${q.title.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_').toLowerCase()}.lus';
-
-  @override
-  void initState() {
-    super.initState();
-    if (kDebugMode) _checkManifest();
-  }
-
-  Future<void> _checkManifest() async {
-    final result = await _isPackInManifest(q.id, _fileName);
-    if (mounted) setState(() => _inManifest = result);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -550,21 +494,6 @@ class _QuizTileState extends State<_QuizTile> {
                   ],
                 ),
               ),
-              if (kDebugMode)
-                PopupMenuItem(
-                  onTap: () => _addToManifest(context),
-                  child: Row(
-                    children: [
-                      _inManifest
-                          ? const Icon(Icons.library_add, color: Colors.orange)
-                          : const Icon(Icons.library_add_outlined),
-                      const SizedBox(width: 12),
-                      Text(_inManifest
-                          ? 'Update in content packs'
-                          : 'Add to content packs'),
-                    ],
-                  ),
-                ),
               PopupMenuItem(
                 onTap: () => _confirmDeleteQuiz(context),
                 child: Row(
@@ -587,19 +516,6 @@ class _QuizTileState extends State<_QuizTile> {
         ),
       ),
     );
-  }
-
-  Future<void> _addToManifest(BuildContext context) async {
-    final data = await db.exportQuizToJsonMap(q.id);
-    final ok = await _writePackToManifest(
-      context,
-      data: data,
-      fileName: _fileName,
-      title: q.title,
-      syncId: q.id,
-      wasInManifest: _inManifest,
-    );
-    if (ok && mounted) setState(() => _inManifest = true);
   }
 
   Future<void> _exportQuiz(BuildContext context) => runLusExport(
@@ -732,81 +648,3 @@ Future<void> _showMoveToFolderDialog({
   );
 }
 
-// ── Shared manifest helpers ────────────────────────────────────────────────────
-
-/// Returns true if [syncId] or [fileName] already appears in index.json.
-Future<bool> _isPackInManifest(String? syncId, String fileName) async {
-  try {
-    final manifestFile = File(
-        p.join(Directory.current.path, 'assets', 'content_packs', 'index.json'));
-    if (!await manifestFile.exists()) return false;
-    final manifest = jsonDecode(await manifestFile.readAsString()) as List;
-    return manifest.any((e) {
-      final entry = e as Map<String, dynamic>;
-      if (syncId != null && entry['id'] == syncId) return true;
-      return entry['file'] == fileName;
-    });
-  } catch (_) {
-    return false;
-  }
-}
-
-/// Writes [data] to `assets/content_packs/[fileName]` and upserts the entry
-/// in `assets/content_packs/index.json`. Deduplicates by [syncId] then [fileName].
-/// Returns true on success, false on error (error is shown as a snackbar).
-Future<bool> _writePackToManifest(
-  BuildContext context, {
-  required Map<String, dynamic> data,
-  required String fileName,
-  required String title,
-  required String? syncId,
-  required bool wasInManifest,
-}) async {
-  try {
-    final packDir = p.join(Directory.current.path, 'assets', 'content_packs');
-
-    await File(p.join(packDir, fileName))
-        .writeAsString(const JsonEncoder.withIndent('  ').convert(data));
-
-    final manifestFile = File(p.join(packDir, 'index.json'));
-    List<dynamic> manifest = [];
-    if (await manifestFile.exists()) {
-      manifest = jsonDecode(await manifestFile.readAsString()) as List;
-    }
-
-    final newEntry = <String, dynamic>{
-      'file': fileName,
-      'title': title,
-      if (syncId != null) 'id': syncId,
-    };
-
-    final idx = manifest.indexWhere((e) {
-      final entry = e as Map<String, dynamic>;
-      if (syncId != null && entry['id'] == syncId) return true;
-      return entry['file'] == fileName;
-    });
-    if (idx >= 0) {
-      manifest[idx] = newEntry;
-    } else {
-      manifest.add(newEntry);
-    }
-
-    await manifestFile
-        .writeAsString(const JsonEncoder.withIndent('  ').convert(manifest));
-
-    if (context.mounted) {
-      final verb = wasInManifest ? 'Updated' : 'Added';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$verb "$title" in content packs')),
-      );
-    }
-    return true;
-  } catch (e) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to write to content packs: $e')),
-      );
-    }
-    return false;
-  }
-}

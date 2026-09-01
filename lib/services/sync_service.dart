@@ -1,15 +1,14 @@
 ﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_router/shelf_router.dart';
 import 'package:leerlus/data/database/app_database.dart';
+import 'package:leerlus/utils/image_storage.dart';
+import 'package:leerlus/utils/media_paths.dart';
 import 'package:leerlus/models/sync_models.dart';
 import 'package:leerlus/models/user_question_data.dart';
 import 'package:leerlus/services/favorites_service.dart';
@@ -323,22 +322,9 @@ class SyncService {
     final safeName = p.basename(name);
     if (safeName.isEmpty || safeName.contains('..')) return Response.badRequest();
 
-    final imgDir = await _getImagesDir();
-    final file = File(p.join(imgDir, safeName));
-
-    late final Uint8List bytes;
-    if (await file.exists()) {
-      bytes = await file.readAsBytes();
-    } else {
-      // Content pack images are Flutter bundled assets — try the asset bundle
-      // when the file doesn't exist on disk (e.g. release builds on Windows).
-      try {
-        final data = await rootBundle.load('assets/images/$safeName');
-        bytes = data.buffer.asUint8List();
-      } catch (_) {
-        return Response.notFound('Image not found');
-      }
-    }
+    final file = File(p.join(contentDir.path, safeName));
+    if (!await file.exists()) return Response.notFound('Image not found');
+    final bytes = await file.readAsBytes();
 
     final ext = p.extension(safeName).toLowerCase();
     final contentType = switch (ext) {
@@ -1240,64 +1226,17 @@ class SyncService {
     Map<String, dynamic> config,
     String answerType,
     Set<String> imageFilenames,
-  ) {
-    if (answerType != 'flashcard') return config;
-    final result = Map<String, dynamic>.from(config);
-    if (result['frontImagePath'] != null) {
-      final name = p.basename(result['frontImagePath'] as String);
-      imageFilenames.add(name);
-      result['frontImagePath'] = name;
-    }
-    if (result['backImagePath'] != null) {
-      final name = p.basename(result['backImagePath'] as String);
-      imageFilenames.add(name);
-      result['backImagePath'] = name;
-    }
-    return result;
-  }
+  ) =>
+      basenameConfigImagePaths(config, answerType, collect: imageFilenames);
 
   /// Normalizes occlusionConfig path keys to basenames for network transfer.
-  /// For flashcard questions the keys are 'front'/'back' (not paths) — skip them.
   Map<String, dynamic>? _normalizeOcclusionConfig(
     String? occlusionConfigJson,
     String answerType,
     Set<String> imageFilenames,
-  ) {
-    if (occlusionConfigJson == null) return null;
-    final config =
-        Map<String, dynamic>.from(jsonDecode(occlusionConfigJson) as Map);
-    if (config['v'] != 2) return config;
-    final perImage =
-        Map<String, dynamic>.from(config['perImage'] as Map);
-    if (answerType == 'flashcard') return config;
-    final normalized = <String, dynamic>{};
-    for (final entry in perImage.entries) {
-      final name = p.basename(entry.key);
-      imageFilenames.add(name);
-      normalized[name] = entry.value;
-    }
-    return {'v': 2, 'perImage': normalized};
-  }
-
-  /// Localizes occlusionConfig basename keys back to full paths after receiving.
-  Map<String, dynamic>? _localizeOcclusionConfig(
-    dynamic occlusionConfigRaw,
-    String answerType,
-    String imgDir,
-  ) {
-    if (occlusionConfigRaw == null) return null;
-    final config =
-        Map<String, dynamic>.from(occlusionConfigRaw as Map);
-    if (config['v'] != 2) return config;
-    final perImage =
-        Map<String, dynamic>.from(config['perImage'] as Map);
-    if (answerType == 'flashcard') return config;
-    final localized = <String, dynamic>{};
-    for (final entry in perImage.entries) {
-      localized[p.join(imgDir, entry.key)] = entry.value;
-    }
-    return {'v': 2, 'perImage': localized};
-  }
+  ) =>
+      basenameOcclusionConfig(occlusionConfigJson, answerType,
+          collect: imageFilenames);
 
   // ── Import ───────────────────────────────────────────────────
 
@@ -1327,7 +1266,6 @@ class SyncService {
     int foldersUpdated = 0, quizzesUpdated = 0, questionsUpdated = 0;
     int srsUpdated = 0, favoritesAdded = 0;
 
-    final imgDir = await _getImagesDir();
     final folderIdMap = <String, String>{};
     final questionIdMap = <String, String>{};
 
@@ -1339,8 +1277,9 @@ class SyncService {
         final answerType = qJson['answerType'] as String;
         final configRaw =
             Map<String, dynamic>.from(qJson['answerConfig'] as Map);
-        final localConfig =
-            _localizeConfigImagePaths(configRaw, answerType, imgDir);
+        // Normalizing rather than localizing: an older peer may still send an
+        // absolute path, and basename is what this database stores.
+        final localConfig = basenameConfigImagePaths(configRaw, answerType);
 
         final variants =
             (qJson['questionVariants'] as List?)?.map((e) => e as String).toList();
@@ -1348,31 +1287,23 @@ class SyncService {
             ? variants!.first
             : qJson['questionText'] as String? ?? '';
 
-        String? imagePath;
+        // The wire has always carried basenames; that is now also what the
+        // database stores, so there is nothing to localize.
         final imgName = qJson['imageName'] as String?;
-        if (imgName != null) {
-          final safe = p.basename(imgName);
-          if (safe.isNotEmpty) imagePath = p.join(imgDir, safe);
-        }
+        final imagePath = (imgName == null || p.basename(imgName).isEmpty)
+            ? null
+            : p.basename(imgName);
 
-        // Localize imagePathVariants basenames to full paths
         final imageVariantsRaw = qJson['imageVariants'] as List?;
-        String? imagePathVariants;
-        if (imageVariantsRaw != null) {
-          final localPaths = imageVariantsRaw
-              .map((n) => p.join(imgDir, p.basename(n as String)))
-              .toList();
-          imagePathVariants = jsonEncode(localPaths);
-        }
+        final imagePathVariants = imageVariantsRaw == null
+            ? null
+            : jsonEncode(imageVariantsRaw
+                .map((n) => p.basename(n as String))
+                .toList());
 
-        // Localize occlusionConfig path keys
         final occlusionRaw = qJson['occlusionConfig'];
-        String? occlusionConfig;
-        if (occlusionRaw != null) {
-          final localized =
-              _localizeOcclusionConfig(occlusionRaw, answerType, imgDir);
-          if (localized != null) occlusionConfig = jsonEncode(localized);
-        }
+        final occlusionConfig =
+            occlusionRaw == null ? null : jsonEncode(occlusionRaw);
 
         final incomingTs = _parseTs(qJson['updatedAt']);
         final existing = await _db!.getQuestionById(id);
@@ -1430,12 +1361,12 @@ class SyncService {
       for (final fJson in payload.folders) {
         final id = fJson['id'] as String;
 
-        String? imagePath;
+        // The wire has always carried basenames; that is now also what the
+        // database stores, so there is nothing to localize.
         final imgName = fJson['imageName'] as String?;
-        if (imgName != null) {
-          final safe = p.basename(imgName);
-          if (safe.isNotEmpty) imagePath = p.join(imgDir, safe);
-        }
+        final imagePath = (imgName == null || p.basename(imgName).isEmpty)
+            ? null
+            : p.basename(imgName);
 
         final incomingTs = _parseTs(fJson['updatedAt']);
         final existing = await _db!.getFolderById(id);
@@ -1499,12 +1430,12 @@ class SyncService {
                 (await _db!.getFolderById(folderId))?.id)
             : null;
 
-        String? imagePath;
+        // The wire has always carried basenames; that is now also what the
+        // database stores, so there is nothing to localize.
         final imgName = qzJson['imageName'] as String?;
-        if (imgName != null) {
-          final safe = p.basename(imgName);
-          if (safe.isNotEmpty) imagePath = p.join(imgDir, safe);
-        }
+        final imagePath = (imgName == null || p.basename(imgName).isEmpty)
+            ? null
+            : p.basename(imgName);
 
         final incomingTs = _parseTs(qzJson['updatedAt']);
         final existing = await _db!.getQuizById(id);
@@ -1703,24 +1634,6 @@ class SyncService {
     return changed;
   }
 
-  Map<String, dynamic> _localizeConfigImagePaths(
-    Map<String, dynamic> config,
-    String answerType,
-    String imgDir,
-  ) {
-    if (answerType != 'flashcard') return config;
-    final result = Map<String, dynamic>.from(config);
-    if (result['frontImagePath'] != null) {
-      final name = p.basename(result['frontImagePath'] as String);
-      result['frontImagePath'] = name.isNotEmpty ? p.join(imgDir, name) : null;
-    }
-    if (result['backImagePath'] != null) {
-      final name = p.basename(result['backImagePath'] as String);
-      result['backImagePath'] = name.isNotEmpty ? p.join(imgDir, name) : null;
-    }
-    return result;
-  }
-
   // ── Image transfer ───────────────────────────────────────────
 
   // Returns true if the image is available locally after the call (either it
@@ -1728,7 +1641,7 @@ class SyncService {
   Future<bool> _fetchImage(String base, String imageName) async {
     final safeName = p.basename(imageName);
     if (safeName.isEmpty) return true;
-    final imgDir = await _getImagesDir();
+    final imgDir = contentDir.path;
     final localFile = File(p.join(imgDir, safeName));
     if (await localFile.exists()) return true;
     try {
@@ -1746,16 +1659,6 @@ class SyncService {
   }
 
   // ── Utilities ────────────────────────────────────────────────
-
-  Future<String> _getImagesDir() async {
-    if (kDebugMode) {
-      return '${Directory.current.path}/assets/images';
-    }
-    final docDir = await getApplicationDocumentsDirectory();
-    final imgDir = Directory('${docDir.path}/images');
-    if (!await imgDir.exists()) await imgDir.create(recursive: true);
-    return imgDir.path;
-  }
 
   String get _deviceName {
     if (_myDeviceName.isNotEmpty) return _myDeviceName;

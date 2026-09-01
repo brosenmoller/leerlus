@@ -5,9 +5,9 @@ import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+
+import 'package:leerlus/utils/image_storage.dart';
 
 class LusArchiveException implements Exception {
   final String message;
@@ -147,7 +147,7 @@ class CancellableLusDecode {
   /// cancel the work. The images directory is resolved on the calling isolate
   /// (plugin access must stay on the main isolate) and passed in.
   static Future<CancellableLusDecode> start(Uint8List lusBytes) async {
-    final imgDir = await LusArchiveService._getImagesDir();
+    final imgDir = contentDir.path;
     final port = ReceivePort();
     final isolate = await Isolate.spawn(
       _decodeIsolateEntry,
@@ -197,7 +197,7 @@ class LusArchiveService {
   ) async {
     final normalized = _normalizeImagePaths(contentJson);
     final basenames = _collectImageBasenames(contentJson);
-    final imgDir = await _getImagesDir();
+    final imgDir = contentDir.path;
 
     final entries = <String, Uint8List>{};
     entries['content.json'] = Uint8List.fromList(
@@ -216,7 +216,7 @@ class LusArchiveService {
   }
 
   static Future<Map<String, dynamic>> unpackFromLus(Uint8List lusBytes) async {
-    final imgDir = await _getImagesDir();
+    final imgDir = contentDir.path;
     return decodeAndLocalize(lusBytes, imgDir);
   }
 
@@ -253,22 +253,18 @@ class LusArchiveService {
       localFile.writeAsBytesSync(entry.content as List<int>);
     }
 
-    return _localizeImagePaths(contentJson, imgDir);
+    // Both directions reduce to a basename now that the database stores
+    // filenames. Older archives may carry absolute paths, so import still has
+    // to normalize rather than trust what it is given.
+    return _normalizeImagePaths(contentJson);
   }
 
   // ── Path helpers ─────────────────────────────────────────────────────────
 
-  static bool _isUserPath(String? path) =>
-      path != null && !path.startsWith('assets/');
+  static bool _isUserPath(String? path) => path != null && path.isNotEmpty;
 
   static String? _normalizePath(String? path) =>
       _isUserPath(path) ? p.basename(path!) : path;
-
-  static String? _localizePath(String? path, String imgDir) {
-    if (!_isUserPath(path)) return path;
-    final name = p.basename(path!);
-    return name.isEmpty ? null : p.join(imgDir, name);
-  }
 
   // ── Collect image basenames from original (un-normalized) JSON ───────────
 
@@ -336,53 +332,4 @@ class LusArchiveService {
     };
   }
 
-  // ── Localize: basenames → full paths ─────────────────────────────────────
-
-  static Map<String, dynamic> _localizeImagePaths(
-    Map<String, dynamic> json,
-    String imgDir,
-  ) {
-    return {
-      ...json,
-      'folders': (json['folders'] as List? ?? []).map((f) {
-        final m = Map<String, dynamic>.from(f as Map);
-        m['imagePath'] = _localizePath(m['imagePath'] as String?, imgDir);
-        return m;
-      }).toList(),
-      'quizzes': (json['quizzes'] as List? ?? []).map((q) {
-        final m = Map<String, dynamic>.from(q as Map);
-        m['imagePath'] = _localizePath(m['imagePath'] as String?, imgDir);
-        return m;
-      }).toList(),
-      'questions': (json['questions'] as List? ?? []).map((q) {
-        final m = Map<String, dynamic>.from(q as Map);
-        m['imagePath'] = _localizePath(m['imagePath'] as String?, imgDir);
-        m['imagePathVariants'] = (m['imagePathVariants'] as List?)
-            ?.map((v) => _localizePath(v as String?, imgDir))
-            .toList();
-        final fc = m['flashcardConfig'] as Map?;
-        if (fc != null) {
-          final fc2 = Map<String, dynamic>.from(fc);
-          fc2['frontImagePath'] =
-              _localizePath(fc2['frontImagePath'] as String?, imgDir);
-          fc2['backImagePath'] =
-              _localizePath(fc2['backImagePath'] as String?, imgDir);
-          m['flashcardConfig'] = fc2;
-        }
-        return m;
-      }).toList(),
-    };
-  }
-
-  // ── Images directory (mirrors SyncService._getImagesDir) ─────────────────
-
-  static Future<String> _getImagesDir() async {
-    if (kDebugMode) {
-      return '${Directory.current.path}/assets/images';
-    }
-    final docDir = await getApplicationDocumentsDirectory();
-    final imgDir = Directory('${docDir.path}/images');
-    if (!await imgDir.exists()) await imgDir.create(recursive: true);
-    return imgDir.path;
-  }
 }

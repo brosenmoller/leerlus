@@ -82,9 +82,10 @@ dev_dependencies:
 # The following section is specific to Flutter packages.
 flutter:
   generate: true
-  assets:
-    - assets/content_packs/
-    - assets/images/
+  # No assets are bundled: Leerlus ships no content of its own, and user media
+  # lives in the app-scoped content folder (see lib/utils/image_storage.dart).
+  # Declaring assets/images/ here used to compile whatever happened to be in that
+  # folder at build time straight into the release.
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

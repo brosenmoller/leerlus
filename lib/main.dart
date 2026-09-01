@@ -14,6 +14,8 @@ import 'package:leerlus/services/srs_service.dart' show SrsService;
 import 'package:leerlus/services/statistics_service.dart';
 import 'package:leerlus/services/streak_service.dart';
 import 'package:leerlus/utils/app_storage.dart';
+import 'package:leerlus/utils/image_storage.dart';
+import 'package:leerlus/utils/media_migration.dart';
 import 'package:media_kit/media_kit.dart';
 
 void main() async {
@@ -26,6 +28,11 @@ void main() async {
   Hive.registerAdapter(UserQuestionDataAdapter());
 
   final db = AppDatabase();
+
+  // Resolve the content folder before anything renders: imageProviderFor is
+  // synchronous, and QuestionService loads media references immediately below.
+  await initContentDir();
+  await MediaMigration.run(db);
 
   final srsService = SrsService();
   final questionService = QuestionService();

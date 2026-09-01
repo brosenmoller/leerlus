@@ -676,14 +676,11 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
     if (!mounted) return;
     setState(() {
       _imagePathVariants.add(path);
-      // Library picks already live in app storage; only explorer picks are
-      // pending. isInAppImageStorage is async, so key off the browser instead:
-      // a path outside the app's own images dir is by definition a fresh pick.
+      // A library pick is already a stored filename; an explorer pick is still
+      // an absolute path into the user's own files and stays put until save.
+      if (!isStoredMedia(path)) _pendingVariantSources.add(path);
       _isDirty = true;
     });
-    if (!await isInAppImageStorage(path)) {
-      if (mounted) setState(() => _pendingVariantSources.add(path));
-    }
   }
 
   /// Sets one flashcard side's attachment, replacing whatever it held.
@@ -694,9 +691,9 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
       {required bool front, required String path}) async {
     final previous =
         front ? _flashcardFrontImagePath : _flashcardBackImagePath;
-    // A library pick already lives in app storage; an explorer pick does not
-    // and stays where it is until save.
-    final pending = !await isInAppImageStorage(path);
+    // A library pick already lives in the content folder; an explorer pick does
+    // not and stays where it is until save.
+    final pending = !isStoredMedia(path);
     if (!mounted) return;
     setState(() {
       _occlusionDataByImage.remove(front ? 'front' : 'back');
@@ -770,7 +767,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
     if (path == null || path.isEmpty) return;
     await evictImageCache(path);
     if (!AppDatabase.isUserImagePath(path)) return;
-    if (!await isInAppImageStorage(path)) return;
+    if (!isStoredMedia(path)) return;
     if (_originalImagePaths.contains(path)) return;
     if (_pathsStillInForm.contains(path)) return;
     final referenced = await widget.db.getAllReferencedUserImagePaths();
@@ -1032,7 +1029,9 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
       });
     } else if (_answerType == 'imageClick') {
       if (_imageClickImagePending && _imagePath != null) {
-        singleImagePath = await copyMediaIntoStorage(_imagePath!);
+        // ?? keeps the existing value: a failed copy must not silently strip
+        // the attachment off the question.
+        singleImagePath = await copyMediaIntoStorage(_imagePath!) ?? _imagePath;
         if (mounted) setState(() { _imagePath = singleImagePath; _imageClickImagePending = false; });
       } else {
         singleImagePath = await _pickerKey.currentState
@@ -1051,13 +1050,17 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
       // Auto-populate questionText from front side (used in list views)
       questionText = frontText.isNotEmpty ? frontText : backText.isNotEmpty ? backText : 'Flashcard';
       if (_flashcardFrontImagePending && _flashcardFrontImagePath != null) {
-        resolvedFrontImagePath = await copyMediaIntoStorage(_flashcardFrontImagePath!);
+        resolvedFrontImagePath =
+            await copyMediaIntoStorage(_flashcardFrontImagePath!) ??
+                _flashcardFrontImagePath;
         if (mounted) setState(() { _flashcardFrontImagePath = resolvedFrontImagePath; _flashcardFrontImagePending = false; });
       } else {
         resolvedFrontImagePath = _flashcardFrontImagePath;
       }
       if (_flashcardBackImagePending && _flashcardBackImagePath != null) {
-        resolvedBackImagePath = await copyMediaIntoStorage(_flashcardBackImagePath!);
+        resolvedBackImagePath =
+            await copyMediaIntoStorage(_flashcardBackImagePath!) ??
+                _flashcardBackImagePath;
         if (mounted) setState(() { _flashcardBackImagePath = resolvedBackImagePath; _flashcardBackImagePending = false; });
       } else {
         resolvedBackImagePath = _flashcardBackImagePath;
@@ -1251,14 +1254,16 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
 
     String? frontImagePath;
     if (_flashcardFrontImagePending && _flashcardFrontImagePath != null) {
-      frontImagePath = await copyMediaIntoStorage(_flashcardFrontImagePath!);
+      frontImagePath = await copyMediaIntoStorage(_flashcardFrontImagePath!) ??
+          _flashcardFrontImagePath;
       if (mounted) setState(() { _flashcardFrontImagePath = frontImagePath; _flashcardFrontImagePending = false; });
     } else {
       frontImagePath = _flashcardFrontImagePath;
     }
     String? backImagePath;
     if (_flashcardBackImagePending && _flashcardBackImagePath != null) {
-      backImagePath = await copyMediaIntoStorage(_flashcardBackImagePath!);
+      backImagePath = await copyMediaIntoStorage(_flashcardBackImagePath!) ??
+          _flashcardBackImagePath;
       if (mounted) setState(() { _flashcardBackImagePath = backImagePath; _flashcardBackImagePending = false; });
     } else {
       backImagePath = _flashcardBackImagePath;

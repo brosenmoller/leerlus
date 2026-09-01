@@ -1,39 +1,64 @@
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
 import 'package:leerlus/models/media_kind.dart';
+import 'package:leerlus/utils/app_storage.dart';
 
-/// Single home for reading, writing and forgetting user image files.
+/// Single home for reading, writing and forgetting user media files.
 ///
 /// The debug/release split used to be copy-pasted into every screen that
 /// touched an image, which is how the two halves of the re-upload bug slipped
 /// in: same-named files silently overwrote each other, and nothing ever evicted
 /// the decoded bitmap Flutter had already cached under that path.
+///
+/// Stored values are **bare filenames**, not paths. The content hash in the
+/// name (see [hashedImageName]) already makes them unique, and sync and `.lus`
+/// archives have always transmitted basenames because an absolute path is
+/// meaningless on another device. Keeping the database in that same form means
+/// the content folder can be renamed, moved or made configurable without ever
+/// rewriting stored data again.
 
-/// Where user images live. Debug builds write into the repo's `assets/images/`
-/// and store the *asset key*, so the running app reads them through the
-/// compiled bundle; release builds use `<documents>/images` and store absolute
-/// paths.
-Future<Directory> appImagesDir({bool create = false}) async {
-  final dir = kDebugMode
-      ? Directory(p.join(Directory.current.path, 'assets', 'images'))
-      : Directory(
-          p.join((await getApplicationDocumentsDirectory()).path, 'images'));
-  if (create && !dir.existsSync()) dir.createSync(recursive: true);
+Directory? _contentDir;
+
+/// Resolves the content folder. Must be awaited in `main()` before any widget
+/// renders, because [imageProviderFor] is synchronous.
+///
+/// Lives inside [getAppStorageDir] alongside `leerlus.db` and the Hive boxes,
+/// so it inherits that helper's `debug/` subdirectory: a debug build can never
+/// read, overwrite or delete the real library.
+Future<Directory> initContentDir() async {
+  final existing = _contentDir;
+  if (existing != null) return existing;
+  final base = await getAppStorageDir();
+  final dir = Directory(p.join(base.path, 'content'));
+  if (!dir.existsSync()) dir.createSync(recursive: true);
+  return _contentDir = dir;
+}
+
+/// The content folder. Throws if [initContentDir] has not completed.
+Directory get contentDir {
+  final dir = _contentDir;
+  if (dir == null) {
+    throw StateError('initContentDir() must be awaited before use');
+  }
   return dir;
 }
 
-/// The provider [AppImage] renders a path with. Eviction has to build the same
+/// Resolves a stored filename to a file on disk.
+///
+/// An absolute path passes through untouched: between picking a file and
+/// saving, a slot still holds the user's own path (their Downloads folder, a
+/// USB stick) so the editors can preview it before anything is copied.
+File mediaFileFor(String name) =>
+    p.isAbsolute(name) ? File(name) : File(p.join(contentDir.path, name));
+
+/// The provider [AppImage] renders a name with. Eviction has to build the same
 /// provider — and therefore the same cache key — as the widget, so both go
 /// through here.
-ImageProvider imageProviderFor(String path) => path.startsWith('assets/')
-    ? AssetImage(path)
-    : FileImage(File(path));
+ImageProvider imageProviderFor(String name) => FileImage(mediaFileFor(name));
 
 final _hashSuffix = RegExp(r'_[0-9a-f]{8}$');
 
@@ -57,85 +82,61 @@ String hashedImageName(List<int> bytes, String originalName) {
   return '${base}_$digest$ext';
 }
 
-/// Copies [sourcePath] into app storage and returns the stored path (the asset
-/// key in debug, an absolute path in release), or null if the copy failed.
-Future<String?> copyImageIntoStorage(String sourcePath) async {
+/// Copies any attachment — image, audio or video — into the content folder and
+/// returns its stored **filename**, or null if the copy failed.
+Future<String?> copyMediaIntoStorage(String sourcePath) async {
   try {
     final bytes = await File(sourcePath).readAsBytes();
-    final dir = await appImagesDir(create: true);
     final name = hashedImageName(bytes, p.basename(sourcePath));
-    final dest = File(p.join(dir.path, name));
-    // Same name ⇒ same content, so an existing file already *is* this image.
+    final dest = File(p.join(contentDir.path, name));
+    // Same name ⇒ same content, so an existing file already *is* this media.
     if (!dest.existsSync() || dest.lengthSync() != bytes.length) {
       await dest.writeAsBytes(bytes, flush: true);
     }
-    final stored = kDebugMode ? 'assets/images/$name' : dest.path;
-    await evictImageCache(stored);
-    return stored;
+    await evictImageCache(name);
+    return name;
   } catch (_) {
     return null;
   }
 }
 
-/// Drops any decoded bitmap cached for [path].
+/// Image-only alias, kept for the cover-art picker which never handles clips.
+Future<String?> copyImageIntoStorage(String sourcePath) =>
+    copyMediaIntoStorage(sourcePath);
+
+/// Drops any decoded bitmap cached for [name].
 ///
-/// Flutter keys `FileImage`/`AssetImage` on the path string alone — mtime and
-/// size are not part of the key — so a file replaced at the same path keeps
-/// serving the old decode forever. Call this whenever a path starts pointing at
-/// different bytes: on pick, on copy, on delete.
-Future<void> evictImageCache(String? path) async {
-  if (path == null || path.isEmpty) return;
+/// Flutter keys `FileImage` on the path string alone — mtime and size are not
+/// part of the key — so a file replaced at the same path keeps serving the old
+/// decode forever. Call this whenever a name starts pointing at different
+/// bytes: on pick, on copy, on delete.
+Future<void> evictImageCache(String? name) async {
+  if (name == null || name.isEmpty) return;
   // Audio and video never enter Flutter's image cache, and building an
   // ImageProvider for a .mp4 would only decode-fail. Nothing to forget.
-  if (!mediaKindOf(path).isImage) return;
+  if (!mediaKindOf(name).isImage) return;
   try {
-    await imageProviderFor(path).evict();
+    await imageProviderFor(name).evict();
   } catch (_) {}
 }
 
-/// Whether [path] is a file this app owns and may therefore delete. A picked
-/// image is not copied until save, so its path still points at the user's own
-/// file (their Downloads folder, a USB stick) — deleting that would be
+/// Whether [name] is already stored in the content folder, and therefore needs
+/// no copy and is safe to delete.
+///
+/// A freshly picked file is not copied until save, so its value is still an
+/// absolute path pointing at the user's own file — deleting that would be
 /// destructive.
-Future<bool> isInAppImageStorage(String path) async {
-  if (path.isEmpty) return false;
-  final dir = await appImagesDir();
-  return p.isWithin(dir.path, p.absolute(path));
-}
+bool isStoredMedia(String? name) =>
+    name != null && name.isNotEmpty && !p.isAbsolute(name);
 
-/// Deletes an image from app storage and forgets its cached decode. Silent if
-/// the file is already gone.
-Future<void> deleteAppImageFile(String path) async {
+/// Deletes a file from the content folder and forgets its cached decode.
+/// Silent if the file is already gone.
+Future<void> deleteAppImageFile(String name) async {
   try {
-    final file = File(path);
+    final file = mediaFileFor(name);
     if (file.existsSync()) await file.delete();
   } catch (_) {}
-  await evictImageCache(path);
-}
-
-/// Copies any attachment — image, audio or video — into app storage and returns
-/// the stored path, or null if the copy failed.
-///
-/// Images keep [copyImageIntoStorage]'s behaviour exactly, including the debug
-/// build storing an `assets/images/...` asset key. Audio and video always get
-/// the **absolute** path instead: media_kit plays a real file, and a file
-/// written into the repo at runtime is not in the compiled asset bundle, so an
-/// asset key would simply fail to open in debug.
-Future<String?> copyMediaIntoStorage(String sourcePath) async {
-  if (mediaKindOf(sourcePath).isImage) return copyImageIntoStorage(sourcePath);
-  try {
-    final bytes = await File(sourcePath).readAsBytes();
-    final dir = await appImagesDir(create: true);
-    final name = hashedImageName(bytes, p.basename(sourcePath));
-    final dest = File(p.join(dir.path, name));
-    // Same name ⇒ same content, so an existing file already *is* this clip.
-    if (!dest.existsSync() || dest.lengthSync() != bytes.length) {
-      await dest.writeAsBytes(bytes, flush: true);
-    }
-    return dest.path;
-  } catch (_) {
-    return null;
-  }
+  await evictImageCache(name);
 }
 
 /// Size of the file at [sourcePath] in bytes, or null if it can't be read.
