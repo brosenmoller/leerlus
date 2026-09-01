@@ -161,14 +161,21 @@ class SrsFolderCard extends StatelessWidget {
       children: [
         Tooltip(
           message: l10n.srsQuickReviewTooltip(batchSize),
-          child: FilledButton.icon(
+          child: FilledButton(
             onPressed: () => onReview(quick: true),
-            icon: const Icon(Icons.bolt, size: 20),
-            label: Text('$batchSize'),
             style: FilledButton.styleFrom(
               backgroundColor: colorScheme.error,
               foregroundColor: colorScheme.onError,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              // Left padding is trimmed to offset the bolt glyph's own side
+              // bearing, so the gap reads equal on both sides of the pill.
+              padding: const EdgeInsets.fromLTRB(10, 10, 12, 10),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.bolt, size: 20),
+                Text('$batchSize'),
+              ],
             ),
           ),
         ),

@@ -851,13 +851,13 @@ abstract class AppLocalizations {
   /// No description provided for @srsQuickReviewLabel.
   ///
   /// In en, this message translates to:
-  /// **'Quick review · {count}'**
+  /// **'Quick review {count}'**
   String srsQuickReviewLabel(int count);
 
   /// No description provided for @srsQuickReviewTooltip.
   ///
   /// In en, this message translates to:
-  /// **'Quick review — {count} most overdue'**
+  /// **'Quick review {count} most overdue'**
   String srsQuickReviewTooltip(int count);
 
   /// No description provided for @srsReviewAllTooltip.

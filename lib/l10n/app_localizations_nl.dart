@@ -480,12 +480,12 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String srsQuickReviewLabel(int count) {
-    return 'Korte sessie · $count';
+    return 'Korte sessie $count';
   }
 
   @override
   String srsQuickReviewTooltip(int count) {
-    return 'Korte sessie — $count langst openstaand';
+    return 'Korte sessie $count langst openstaand';
   }
 
   @override

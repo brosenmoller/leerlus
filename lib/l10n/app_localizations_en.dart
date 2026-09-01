@@ -475,12 +475,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String srsQuickReviewLabel(int count) {
-    return 'Quick review · $count';
+    return 'Quick review $count';
   }
 
   @override
   String srsQuickReviewTooltip(int count) {
-    return 'Quick review — $count most overdue';
+    return 'Quick review $count most overdue';
   }
 
   @override

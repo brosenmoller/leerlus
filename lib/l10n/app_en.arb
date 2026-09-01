@@ -223,13 +223,13 @@
   "srsBackToSpacedRepetition": "Back to Spaced Repetition",
   "srsReviewAll": "Review all",
   "srsAllDueTitle": "All due questions",
-  "srsQuickReviewLabel": "Quick review · {count}",
+  "srsQuickReviewLabel": "Quick review {count}",
   "@srsQuickReviewLabel": {
     "placeholders": {
       "count": { "type": "int" }
     }
   },
-  "srsQuickReviewTooltip": "Quick review — {count} most overdue",
+  "srsQuickReviewTooltip": "Quick review {count} most overdue",
   "@srsQuickReviewTooltip": {
     "placeholders": {
       "count": { "type": "int" }
